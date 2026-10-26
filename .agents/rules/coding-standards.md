@@ -40,8 +40,10 @@ func (h *HoldEngine) Hold(ctx context.Context, req DecisionRequest, timeout time
 All commits must follow the **Conventional Commits 1.0.0** pattern:
 `<type>(<scope>): <short imperative description>`
 - **Allowed Types**: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `chore`, `ci`.
-- **Allowed Scopes**: `mcp`, `hold`, `ws`, `bridge`, `canvas`, `inspector`, `store`, `observability`, `auth`, `plans`.
-- **Rules**: Imperative mood, lowercase description, no trailing period, max 72 chars subject.
-  - Good: `feat(mcp): implement dynamic delegation tool injection`
-  - Bad: `Added new mcp stuff.` or `WIP`
+- **Allowed Scopes (Categorized)**:
+  - **Backend**: `mcp`, `hold`, `ws`, `presence`, `bridge`, `api`, `store`, `auth`, `observability`
+  - **Frontend**: `canvas`, `nodes`, `edges`, `inspector`, `stream`, `approval`, `chat`, `modals`, `state`
+  - **Providers**: `agent`, `workspace`, `openai`, `grok`, `claude`, `muse`
+  - **DevOps & Quality**: `docker`, `deploy`, `tests`, `simulator`, `docs`, `plans`, `deps`, `ci`
+- **Rules**: Imperative mood, lowercase description, no trailing period, max 72 chars subject. Scope is optional for repository-wide changes.
 

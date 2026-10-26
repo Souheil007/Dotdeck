@@ -200,19 +200,17 @@ Dotdeck strictly adheres to the **Conventional Commits 1.0.0** specification. Cl
 | `chore` | Build tasks, configs, dependency updates, tooling | `chore(deps): bump coder/websocket to v1.8.12` |
 | `ci` | Continuous Integration / deployment scripts | `ci(github): add automated go test workflow` |
 
-### 4.3 Standard Scopes
+### 4.3 Comprehensive Scopes Taxonomy
 
-Use concise, lowercase scopes matching project subsystems:
-- `mcp`: Model Context Protocol endpoints, tool definitions, schemas.
-- `hold`: HoldEngine, pause-and-answer channels, timeouts.
-- `ws`: WebSockets, room dispatching, presence, cursor sync.
-- `bridge`: Slack, webhooks, email outbound wake-up triggers.
-- `canvas`: React Flow board, custom nodes, pulse edges, auto-layout.
-- `inspector`: Thought stream, approval cards, direct chat drawer.
-- `store`: PostgreSQL migrations, sqlc queries, repository implementations.
-- `observability`: Prometheus metrics, OpenTelemetry, Sentry, log/slog.
-- `auth`: RBAC, token verification, session middleware.
-- `plans`: Execution plan documents in `plans/`.
+Scopes are grouped by architectural layer. Choose the most specific scope applicable:
+
+- **Backend Core**: `mcp`, `hold`, `ws`, `presence`, `bridge`, `api`, `store`, `auth`, `observability`
+- **Frontend & UI**: `canvas`, `nodes`, `edges`, `inspector`, `stream`, `approval`, `chat`, `modals`, `state`
+- **Agents & Providers**: `agent`, `workspace`, `openai`, `grok`, `claude`, `muse`
+- **DevOps & Quality**: `docker`, `deploy`, `tests`, `simulator`, `docs`, `plans`, `deps`, `ci`
+
+> [!TIP]
+> Scope is **optional** for repo-wide changes (e.g., `chore: update root license`). For changes tightly spanning two areas, compound scopes like `feat(nodes/edges): ...` or `fix(auth/api): ...` are permitted.
 
 ### 4.4 Golden Rules
 1. **Imperative mood**: Use `"add"`, `"implement"`, `"fix"`, `"prevent"`, NOT `"added"`, `"fixing"`, or `"adds"`.
