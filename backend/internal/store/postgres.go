@@ -136,6 +136,48 @@ func (store *PostgresStore) RecordThought(agentID string, step int, trace, nextS
 	return insertError
 }
 
+// GetAgentByID fetches a single agent by its UUID primary key.
+func (store *PostgresStore) GetAgentByID(requestContext context.Context, agentID string) (*domain.Agent, error) {
+	agentUUID, parseError := stringToUUID(agentID)
+	if parseError != nil {
+		return nil, parseError
+	}
+
+	agentRecord, queryError := store.queries.GetAgentByID(requestContext, agentUUID)
+	if queryError != nil {
+		return nil, queryError
+	}
+
+	var rulesList []string
+	if len(agentRecord.AuthorityRules) > 0 {
+		_ = json.Unmarshal(agentRecord.AuthorityRules, &rulesList)
+	}
+
+	var heartbeat *time.Time
+	if agentRecord.LastHeartbeat.Valid {
+		heartbeat = &agentRecord.LastHeartbeat.Time
+	}
+
+	resultAgent := domain.Agent{
+		ID:             uuidToString(agentRecord.ID),
+		WorkspaceID:    uuidToString(agentRecord.WorkspaceID),
+		Token:          agentRecord.Token,
+		Name:           agentRecord.Name,
+		Provider:       domain.Provider(agentRecord.Provider),
+		Goal:           agentRecord.Goal,
+		ScheduleCron:   agentRecord.ScheduleCron,
+		AuthorityRules: rulesList,
+		Status:         domain.AgentStatus(agentRecord.Status),
+		PositionX:      agentRecord.PositionX,
+		PositionY:      agentRecord.PositionY,
+		LastHeartbeat:  heartbeat,
+		CreatedAt:      agentRecord.CreatedAt.Time,
+		UpdatedAt:      agentRecord.UpdatedAt.Time,
+	}
+
+	return &resultAgent, nil
+}
+
 // CreateAgent persists a new cloud agent record to the database.
 func (store *PostgresStore) CreateAgent(requestContext context.Context, agent domain.Agent) (*domain.Agent, error) {
 	workspaceUUID, parseWorkspaceError := stringToUUID(agent.WorkspaceID)

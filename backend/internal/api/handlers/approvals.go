@@ -4,6 +4,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -18,6 +19,11 @@ type ApprovalRepository interface {
 	ResolveApproval(requestContext context.Context, approvalID string, decision domain.DecisionResult) (*domain.ApprovalRequest, error)
 }
 
+// ApprovalWakeDispatcher abstracts waking sleeping agents when approvals resolve after timeouts.
+type ApprovalWakeDispatcher interface {
+	WakeAgentByID(requestContext context.Context, agentID, promptText string) error
+}
+
 // LockManager abstracts distributed concurrency locks for pending approvals.
 type LockManager interface {
 	TryClaimLock(claimContext context.Context, approvalID, operatorID string, lockDuration time.Duration) (bool, error)
@@ -26,10 +32,11 @@ type LockManager interface {
 
 // ApprovalHandler processes human-in-the-loop decisions submitted from the visual canvas.
 type ApprovalHandler struct {
-	holdEngine  *mcp.HoldEngine
-	repository  ApprovalRepository
-	broadcaster mcp.EventBroadcaster
-	lockManager LockManager
+	holdEngine     *mcp.HoldEngine
+	repository     ApprovalRepository
+	broadcaster    mcp.EventBroadcaster
+	lockManager    LockManager
+	wakeDispatcher ApprovalWakeDispatcher
 }
 
 // NewApprovalHandler constructs an approval decision controller.
@@ -50,6 +57,11 @@ func (handler *ApprovalHandler) SetBroadcaster(broadcaster mcp.EventBroadcaster)
 // SetLockManager binds an optional distributed lock manager (e.g. RedisHoldAdapter).
 func (handler *ApprovalHandler) SetLockManager(lockManager LockManager) {
 	handler.lockManager = lockManager
+}
+
+// SetWakeDispatcher binds an outbound bridge dispatcher for waking sleeping agents on late approvals.
+func (handler *ApprovalHandler) SetWakeDispatcher(wakeDispatcher ApprovalWakeDispatcher) {
+	handler.wakeDispatcher = wakeDispatcher
 }
 
 // ApprovalClaimPayload defines the request body for locking an approval while authoring an answer.
@@ -179,6 +191,7 @@ func (handler *ApprovalHandler) Resolve(writer http.ResponseWriter, request *htt
 	}
 
 	// If database repository is attached, perform atomic database state update first
+	var resolvedApproval *domain.ApprovalRequest
 	if handler.repository != nil {
 		domainDecision := domain.DecisionResult{
 			Approved:   decision.Approved,
@@ -187,18 +200,24 @@ func (handler *ApprovalHandler) Resolve(writer http.ResponseWriter, request *htt
 			ResolvedAt: decision.ResolvedAt,
 		}
 
-		_, updateError := handler.repository.ResolveApproval(request.Context(), payload.ApprovalID, domainDecision)
+		updatedRecord, updateError := handler.repository.ResolveApproval(request.Context(), payload.ApprovalID, domainDecision)
 		if updateError != nil {
 			response.Error(writer, http.StatusConflict, "approval request already resolved or not found")
 			return
 		}
+		resolvedApproval = updatedRecord
 	}
 
 	// Unblock the held in-memory or Redis-backed channel
 	if resolveError := handler.holdEngine.Resolve(payload.ApprovalID, decision); resolveError != nil {
 		// If already resolved in database or held channel timed out, report status
 		if resolveError == mcp.ErrApprovalNotFound && handler.repository != nil {
-			// Resolved asynchronously past 45s deadline
+			// Resolved asynchronously past 45s deadline; wake sleeping agent via bridge
+			if handler.wakeDispatcher != nil && resolvedApproval != nil {
+				wakePrompt := formatApprovalWakePrompt(resolvedApproval.Question, decision.Approved, decision.Answer)
+				_ = handler.wakeDispatcher.WakeAgentByID(request.Context(), resolvedApproval.AgentID, wakePrompt)
+			}
+
 			response.JSON(writer, http.StatusOK, ApprovalResolveResponse{
 				Status:     "resolved_asynchronously",
 				ApprovalID: payload.ApprovalID,
@@ -215,4 +234,12 @@ func (handler *ApprovalHandler) Resolve(writer http.ResponseWriter, request *htt
 		ApprovalID: payload.ApprovalID,
 		Decision:   decision,
 	})
+}
+
+func formatApprovalWakePrompt(questionText string, isApproved bool, answerText string) string {
+	verdict := "approved"
+	if !isApproved {
+		verdict = "rejected"
+	}
+	return fmt.Sprintf("Human operator %s your request (%q). Decision: %s", verdict, questionText, answerText)
 }

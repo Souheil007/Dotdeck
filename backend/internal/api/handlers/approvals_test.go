@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -283,5 +284,63 @@ func TestApprovalHandlerResolve_AsynchronousPastDeadline(testingTarget *testing.
 
 	if responseEnvelope.Data.Status != "resolved_asynchronously" {
 		testingTarget.Errorf("expected status 'resolved_asynchronously', got %q", responseEnvelope.Data.Status)
+	}
+}
+
+type mockApprovalWakeDispatcher struct {
+	wokenAgentID string
+	wokenPrompt  string
+}
+
+func (dispatcher *mockApprovalWakeDispatcher) WakeAgentByID(requestContext context.Context, agentID, promptText string) error {
+	dispatcher.wokenAgentID = agentID
+	dispatcher.wokenPrompt = promptText
+	return nil
+}
+
+// TestApprovalHandlerResolve_LateApprovalWakesAgent validates that late resolution triggers the wake-up bridge.
+func TestApprovalHandlerResolve_LateApprovalWakesAgent(testingTarget *testing.T) {
+	holdEngine := mcp.NewHoldEngine()
+	mockRepo := &mockApprovalRepository{}
+	mockWake := &mockApprovalWakeDispatcher{}
+
+	approvalHandler := NewApprovalHandler(holdEngine)
+	approvalHandler.SetRepository(mockRepo)
+	approvalHandler.SetWakeDispatcher(mockWake)
+
+	expiredApprovalID := "expired-approval-456"
+	targetAgentID := "agent-789"
+	mockRepo.resolveFunc = func(requestContext context.Context, approvalID string, decision domain.DecisionResult) (*domain.ApprovalRequest, error) {
+		return &domain.ApprovalRequest{
+			ID:       approvalID,
+			AgentID:  targetAgentID,
+			Question: "Deploy to production cluster?",
+			Status:   domain.ApprovalStatusApproved,
+		}, nil
+	}
+
+	payloadResolve := ApprovalResolvePayload{
+		ApprovalID: expiredApprovalID,
+		Approved:   true,
+		Answer:     "Deploy approved by Alex",
+	}
+	serializedResolve, _ := json.Marshal(payloadResolve)
+
+	httpRequest := httptest.NewRequest(http.MethodPost, "/api/v1/approvals/resolve", bytes.NewReader(serializedResolve))
+	recorder := httptest.NewRecorder()
+
+	approvalHandler.Resolve(recorder, httpRequest)
+
+	if recorder.Code != http.StatusOK {
+		testingTarget.Fatalf("expected HTTP 200, got %d: %s", recorder.Code, recorder.Body.String())
+	}
+
+	if mockWake.wokenAgentID != targetAgentID {
+		testingTarget.Errorf("expected woken agent ID %q, got %q", targetAgentID, mockWake.wokenAgentID)
+	}
+
+	expectedSubstring := "Deploy to production cluster?"
+	if !strings.Contains(mockWake.wokenPrompt, expectedSubstring) {
+		testingTarget.Errorf("expected wake prompt to contain %q, got %q", expectedSubstring, mockWake.wokenPrompt)
 	}
 }

@@ -20,6 +20,7 @@ import (
 
 	"github.com/Souheil007/Dotdeck/backend/internal/api"
 	"github.com/Souheil007/Dotdeck/backend/internal/api/handlers"
+	"github.com/Souheil007/Dotdeck/backend/internal/bridge"
 	"github.com/Souheil007/Dotdeck/backend/internal/mcp"
 	"github.com/Souheil007/Dotdeck/backend/internal/observability"
 	"github.com/Souheil007/Dotdeck/backend/internal/store"
@@ -92,14 +93,46 @@ func main() {
 	websocketHub := websocket.NewHub()
 	go websocketHub.Run()
 
+	// Initialize Outbound Wake-Up Bridges (Slack & Webhooks)
+	slackWebhookURL := os.Getenv("SLACK_WEBHOOK_URL")
+	slackBotToken := os.Getenv("SLACK_BOT_TOKEN")
+	slackChannel := os.Getenv("SLACK_CHANNEL")
+	slackBridge := bridge.NewSlackBridge(bridge.SlackBridgeConfig{
+		WebhookURL: slackWebhookURL,
+		BotToken:   slackBotToken,
+		Channel:    slackChannel,
+	})
+
+	webhookBridge := bridge.NewWebhookBridge()
+	outboundWebhookURL := os.Getenv("OUTBOUND_WEBHOOK_URL")
+	webhookSecret := os.Getenv("WEBHOOK_SECRET")
+
+	var agentProviderRepo bridge.AgentProviderRepository
+	if postgresStoreInstance, isPostgres := agentRepository.(*store.PostgresStore); isPostgres {
+		agentProviderRepo = postgresStoreInstance
+	} else if memoryStoreInstance, isMemory := agentRepository.(*store.MemoryStore); isMemory {
+		agentProviderRepo = memoryStoreInstance
+	}
+
+	bridgeDispatcher := bridge.NewDispatcher(slackBridge, webhookBridge, agentProviderRepo, outboundWebhookURL, webhookSecret)
+
 	mcpServer := mcp.NewServer(agentRepository, holdEngine, websocketHub)
 	workspaceHandler := handlers.NewWorkspaceHandler()
 	agentHandler := handlers.NewAgentHandler(baseURL)
+	if postgresStoreInstance, isPostgres := agentRepository.(*store.PostgresStore); isPostgres {
+		agentHandler.SetRepository(postgresStoreInstance)
+	} else if memoryStoreInstance, isMemory := agentRepository.(*store.MemoryStore); isMemory {
+		agentHandler.SetRepository(memoryStoreInstance)
+	}
+	agentHandler.SetWakeDispatcher(bridgeDispatcher)
+	agentHandler.SetBroadcaster(websocketHub)
+
 	approvalHandler := handlers.NewApprovalHandler(holdEngine)
 	if postgresStoreInstance, isPostgres := agentRepository.(*store.PostgresStore); isPostgres {
 		approvalHandler.SetRepository(postgresStoreInstance)
 	}
 	approvalHandler.SetBroadcaster(websocketHub)
+	approvalHandler.SetWakeDispatcher(bridgeDispatcher)
 	if redisAdapter != nil {
 		approvalHandler.SetLockManager(redisAdapter)
 	}

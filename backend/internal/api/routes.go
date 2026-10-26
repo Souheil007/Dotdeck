@@ -27,6 +27,7 @@ func RegisterRoutes(rootRouter chi.Router, config RouterConfig) {
 		// Agent provisioning and canvas graph wiring routes
 		apiRouter.Post("/agents", config.AgentHandler.Create)
 		apiRouter.Post("/agents/edges", config.AgentHandler.ConnectEdge)
+		apiRouter.Post("/agents/{id}/steer", config.AgentHandler.Steer)
 
 		// Human-in-the-loop approval decision routes
 		apiRouter.Post("/approvals/claim", config.ApprovalHandler.Claim)

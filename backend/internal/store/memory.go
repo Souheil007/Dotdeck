@@ -3,10 +3,13 @@
 package store
 
 import (
+	"context"
+	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
 
+	"github.com/Souheil007/Dotdeck/backend/internal/domain"
 	"github.com/Souheil007/Dotdeck/backend/internal/mcp"
 )
 
@@ -58,6 +61,25 @@ func (store *MemoryStore) GetOutboundEdges(agentID string) ([]mcp.EdgeContext, e
 	store.storeMutex.RLock()
 	defer store.storeMutex.RUnlock()
 	return store.edges[agentID], nil
+}
+
+// GetAgentByID retrieves an agent descriptor by its ID.
+func (store *MemoryStore) GetAgentByID(requestContext context.Context, agentID string) (*domain.Agent, error) {
+	store.storeMutex.RLock()
+	defer store.storeMutex.RUnlock()
+
+	agentContext, exists := store.byID[agentID]
+	if !exists {
+		return nil, fmt.Errorf("agent %q not found", agentID)
+	}
+
+	return &domain.Agent{
+		ID:          agentContext.ID,
+		WorkspaceID: agentContext.WorkspaceID,
+		Name:        agentContext.Name,
+		Provider:    domain.Provider(agentContext.Provider),
+		Status:      domain.AgentStatus(agentContext.Status),
+	}, nil
 }
 
 // UpdateStatus adjusts the agent state badge across the Dotdeck live canvas.
