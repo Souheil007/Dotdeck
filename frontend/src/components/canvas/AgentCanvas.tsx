@@ -161,16 +161,61 @@ export function AgentCanvas() {
       if (!params.source || !params.target) return;
       if (params.source === params.target) return; // Prevent self-connection
 
-      // Prevent duplicate connections in same direction
-      const isDuplicate = storeEdges.some(
-        (edgeItem) => edgeItem.source === params.source && edgeItem.target === params.target
-      );
-      if (isDuplicate) return;
-
       const targetNode = storeNodes.find((nodeItem) => nodeItem.id === params.target);
       const targetName = targetNode?.data?.name || 'peer';
       const sanitizedName = targetName.toLowerCase().replace(/[^a-z0-9]/g, '_');
       const synthesizedToolName = `delegate_task_to_${sanitizedName}`;
+
+      // Check if an edge already exists between these two agents in this direction
+      const existingEdgeIndex = storeEdges.findIndex(
+        (edgeItem) => edgeItem.source === params.source && edgeItem.target === params.target
+      );
+
+      if (existingEdgeIndex !== -1) {
+        const existingEdge = storeEdges[existingEdgeIndex];
+        // If connecting exact same handles, it is an exact duplicate -> safe no-op
+        if (
+          existingEdge.sourceHandle === params.sourceHandle &&
+          existingEdge.targetHandle === params.targetHandle
+        ) {
+          return;
+        }
+
+        // Rewire the existing connection to the newly chosen handles!
+        const rewiredEdge: Edge = {
+          ...existingEdge,
+          sourceHandle: params.sourceHandle,
+          targetHandle: params.targetHandle,
+          data: {
+            ...existingEdge.data,
+            toolName: synthesizedToolName,
+          },
+        };
+
+        const updatedEdges = storeEdges.map((edgeItem, index) =>
+          index === existingEdgeIndex ? rewiredEdge : edgeItem
+        );
+        setEdges(updatedEdges);
+        useWorkspaceStore.setState({ edges: updatedEdges });
+
+        // Update backend with the connection
+        const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+        try {
+          await fetch(`${backendUrl}/api/v1/agents/edges`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              workspace_id: workspaceId,
+              source_agent_id: params.source,
+              target_agent_id: params.target,
+              target_name: targetName,
+            }),
+          });
+        } catch {
+          // Fall back gracefully in offline or standalone demo mode
+        }
+        return;
+      }
 
       const edgeId = `edge-${params.source}-${params.target}-${Date.now()}`;
       const newEdge: Edge = {
@@ -240,7 +285,7 @@ export function AgentCanvas() {
         onConnect={userRole !== 'read' ? onConnect : undefined}
         isValidConnection={isValidConnection}
         connectionMode={ConnectionMode.Loose}
-        connectionRadius={20}
+        connectionRadius={32}
         connectionLineStyle={{ stroke: '#3b82f6', strokeWidth: 2.5 }}
         nodesDraggable={userRole !== 'read'}
         nodesConnectable={userRole !== 'read'}

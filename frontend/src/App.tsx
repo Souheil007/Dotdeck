@@ -50,15 +50,18 @@ export function App() {
     if (searchParams.has('showcase') || searchParams.get('role') === 'read') {
       setIsShowcase(true);
       setUserRole('read');
+      switchWorkspace('ws-prod-sales');
       setActiveView('canvas');
     } else if (searchParams.get('view') === 'canvas' || searchParams.has('workspace')) {
+      const targetWorkspace = searchParams.get('workspace') || activeWorkspaceId || 'ws-prod-sales';
+      switchWorkspace(targetWorkspace);
       setActiveView('canvas');
     } else if (searchParams.get('view') === 'dashboard' || isAuthenticated) {
       setActiveView('dashboard');
     } else {
       setActiveView('landing');
     }
-  }, [isAuthenticated, setUserRole]);
+  }, [isAuthenticated, setUserRole, switchWorkspace, activeWorkspaceId]);
 
   // Sync role with logged-in user if available and not showcase
   useEffect(() => {
@@ -75,6 +78,7 @@ export function App() {
         onOpenShowcase={() => {
           setIsShowcase(true);
           setUserRole('read');
+          switchWorkspace('ws-prod-sales');
           setActiveView('canvas');
         }}
       />

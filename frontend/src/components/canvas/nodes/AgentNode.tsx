@@ -110,20 +110,20 @@ export const AgentNode = memo(({ id, data, selected }: AgentNodeProps) => {
         config.borderClass
       } ${selected ? 'ring-2 ring-blue-500 dark:ring-indigo-500 ring-offset-2 ring-offset-white dark:ring-offset-zinc-950 shadow-2xl' : 'shadow-sm hover:shadow-xl'}`}
     >
-      {/* 4 Connection Handles with rock-solid positioning (no scaling transforms that disrupt mouse coordinates) */}
+      {/* 4 Connection Handles with rock-solid positioning and expanded hit-zones */}
       <Handle
         type="target"
         position={Position.Top}
         id="handle-top"
         onClick={(clickEvent) => clickEvent.stopPropagation()}
-        className="!w-3.5 !h-3.5 !rounded-full !bg-zinc-400 dark:!bg-zinc-500 hover:!bg-blue-600 dark:hover:!bg-cyan-400 !border-2 !border-white dark:!border-zinc-900 shadow-sm hover:!ring-4 hover:!ring-blue-500/30 dark:hover:!ring-cyan-500/30 !cursor-crosshair !z-30"
+        className="!w-3.5 !h-3.5 !rounded-full !bg-zinc-400 dark:!bg-zinc-500 hover:!bg-blue-600 dark:hover:!bg-cyan-400 !border-2 !border-white dark:!border-zinc-900 shadow-sm hover:!ring-4 hover:!ring-blue-500/30 dark:hover:!ring-cyan-500/30 !cursor-crosshair !z-30 before:content-[''] before:absolute before:-inset-2 before:rounded-full"
       />
       <Handle
         type="target"
         position={Position.Left}
         id="handle-left"
         onClick={(clickEvent) => clickEvent.stopPropagation()}
-        className="!w-3.5 !h-3.5 !rounded-full !bg-zinc-400 dark:!bg-zinc-500 hover:!bg-blue-600 dark:hover:!bg-cyan-400 !border-2 !border-white dark:!border-zinc-900 shadow-sm hover:!ring-4 hover:!ring-blue-500/30 dark:hover:!ring-cyan-500/30 !cursor-crosshair !z-30"
+        className="!w-3.5 !h-3.5 !rounded-full !bg-zinc-400 dark:!bg-zinc-500 hover:!bg-blue-600 dark:hover:!bg-cyan-400 !border-2 !border-white dark:!border-zinc-900 shadow-sm hover:!ring-4 hover:!ring-blue-500/30 dark:hover:!ring-cyan-500/30 !cursor-crosshair !z-30 before:content-[''] before:absolute before:-inset-2 before:rounded-full"
       />
 
       {/* Header Row */}
@@ -219,14 +219,14 @@ export const AgentNode = memo(({ id, data, selected }: AgentNodeProps) => {
         position={Position.Bottom}
         id="handle-bottom"
         onClick={(clickEvent) => clickEvent.stopPropagation()}
-        className="!w-3.5 !h-3.5 !rounded-full !bg-blue-500 dark:!bg-indigo-500 hover:!bg-blue-600 dark:hover:!bg-cyan-400 !border-2 !border-white dark:!border-zinc-900 shadow-sm hover:!ring-4 hover:!ring-blue-500/30 dark:hover:!ring-cyan-500/30 !cursor-crosshair !z-30"
+        className="!w-3.5 !h-3.5 !rounded-full !bg-blue-500 dark:!bg-indigo-500 hover:!bg-blue-600 dark:hover:!bg-cyan-400 !border-2 !border-white dark:!border-zinc-900 shadow-sm hover:!ring-4 hover:!ring-blue-500/30 dark:hover:!ring-cyan-500/30 !cursor-crosshair !z-30 before:content-[''] before:absolute before:-inset-2 before:rounded-full"
       />
       <Handle
         type="source"
         position={Position.Right}
         id="handle-right"
         onClick={(clickEvent) => clickEvent.stopPropagation()}
-        className="!w-3.5 !h-3.5 !rounded-full !bg-blue-500 dark:!bg-indigo-500 hover:!bg-blue-600 dark:hover:!bg-cyan-400 !border-2 !border-white dark:!border-zinc-900 shadow-sm hover:!ring-4 hover:!ring-blue-500/30 dark:hover:!ring-cyan-500/30 !cursor-crosshair !z-30"
+        className="!w-3.5 !h-3.5 !rounded-full !bg-blue-500 dark:!bg-indigo-500 hover:!bg-blue-600 dark:hover:!bg-cyan-400 !border-2 !border-white dark:!border-zinc-900 shadow-sm hover:!ring-4 hover:!ring-blue-500/30 dark:hover:!ring-cyan-500/30 !cursor-crosshair !z-30 before:content-[''] before:absolute before:-inset-2 before:rounded-full"
       />
     </div>
   );
