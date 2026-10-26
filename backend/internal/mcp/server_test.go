@@ -57,6 +57,10 @@ func (repository *mockAgentRepository) RecordThought(agentID string, step int, t
 	return nil
 }
 
+func (repository *mockAgentRepository) RecordApproval(workspaceID, agentID, question string, options []string, trace string) (string, error) {
+	return "mock-approval-id", nil
+}
+
 // TestMCPServerInitialize validates the JSON-RPC 2.0 initialize handshake.
 func TestMCPServerInitialize(testingT *testing.T) {
 	mockRepo := newMockRepository()

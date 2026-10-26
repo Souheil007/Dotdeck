@@ -16,6 +16,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/Souheil007/Dotdeck/backend/internal/api"
 	"github.com/Souheil007/Dotdeck/backend/internal/api/handlers"
@@ -71,6 +72,23 @@ func main() {
 	}
 
 	holdEngine := mcp.NewHoldEngine()
+
+	// Initialize Redis Pub/Sub cluster mesh if REDIS_URL configured
+	redisURL := os.Getenv("REDIS_URL")
+	var redisAdapter *mcp.RedisHoldAdapter
+	if redisURL != "" {
+		redisOptions, redisParseError := redis.ParseURL(redisURL)
+		if redisParseError == nil {
+			redisClient := redis.NewClient(redisOptions)
+			redisAdapter = mcp.NewRedisHoldAdapter(redisClient)
+			holdEngine.SetPublisher(redisAdapter)
+			redisAdapter.StartListening(context.Background(), holdEngine)
+			slog.Info("Connected to Redis Pub/Sub cluster mesh")
+		} else {
+			slog.Warn("Failed to parse REDIS_URL", "error", redisParseError)
+		}
+	}
+
 	websocketHub := websocket.NewHub()
 	go websocketHub.Run()
 
@@ -78,6 +96,13 @@ func main() {
 	workspaceHandler := handlers.NewWorkspaceHandler()
 	agentHandler := handlers.NewAgentHandler(baseURL)
 	approvalHandler := handlers.NewApprovalHandler(holdEngine)
+	if postgresStoreInstance, isPostgres := agentRepository.(*store.PostgresStore); isPostgres {
+		approvalHandler.SetRepository(postgresStoreInstance)
+	}
+	approvalHandler.SetBroadcaster(websocketHub)
+	if redisAdapter != nil {
+		approvalHandler.SetLockManager(redisAdapter)
+	}
 
 	router := chi.NewRouter()
 

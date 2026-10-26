@@ -39,74 +39,119 @@ type DecisionResult struct {
 	ResolvedAt time.Time `json:"resolved_at"`
 }
 
-type pendingSlot struct {
-	req      DecisionRequest
-	replyCh  chan DecisionResult
-	claimed  string
-	expireAt time.Time
+type pendingHoldSlot struct {
+	request        DecisionRequest
+	replyChannel   chan DecisionResult
+	claimedBy      string
+	expirationTime time.Time
+}
+
+// ResolutionPublisher abstracts publishing resolution events to an external cluster mesh (e.g., Redis).
+type ResolutionPublisher interface {
+	PublishResolution(publishContext context.Context, approvalID string, result DecisionResult) error
 }
 
 // HoldEngine manages synchronous pause-and-answer channels for cloud agent tool calls.
 type HoldEngine struct {
-	mu      sync.RWMutex
-	pending map[string]*pendingSlot
+	engineMutex sync.RWMutex
+	pendingMap  map[string]*pendingHoldSlot
+	publisher   ResolutionPublisher
 }
 
 // NewHoldEngine initializes an in-memory holding registry for interactive tool calls.
 func NewHoldEngine() *HoldEngine {
 	return &HoldEngine{
-		pending: make(map[string]*pendingSlot),
+		pendingMap: make(map[string]*pendingHoldSlot),
 	}
+}
+
+// SetPublisher attaches an external resolution mesh publisher (e.g., Redis Pub/Sub adapter).
+func (engine *HoldEngine) SetPublisher(publisher ResolutionPublisher) {
+	engine.engineMutex.Lock()
+	defer engine.engineMutex.Unlock()
+	engine.publisher = publisher
 }
 
 // Hold registers a decision request and pauses the caller until resolved, cancelled, or timed out.
 //
 // The default ceiling is 45 seconds to safely precede cloud provider tool-call deadlines.
-func (engine *HoldEngine) Hold(ctx context.Context, req DecisionRequest, timeout time.Duration) (*DecisionResult, error) {
+func (engine *HoldEngine) Hold(streamContext context.Context, request DecisionRequest, timeout time.Duration) (*DecisionResult, error) {
 	if timeout <= 0 {
 		timeout = 45 * time.Second
 	}
 
-	replyCh := make(chan DecisionResult, 1)
-	slot := &pendingSlot{
-		req:      req,
-		replyCh:  replyCh,
-		expireAt: time.Now().Add(timeout),
+	replyChannel := make(chan DecisionResult, 1)
+	slotInstance := &pendingHoldSlot{
+		request:        request,
+		replyChannel:   replyChannel,
+		expirationTime: time.Now().Add(timeout),
 	}
 
-	engine.mu.Lock()
-	engine.pending[req.ID] = slot
-	engine.mu.Unlock()
+	engine.engineMutex.Lock()
+	engine.pendingMap[request.ID] = slotInstance
+	engine.engineMutex.Unlock()
 
 	defer func() {
-		engine.mu.Lock()
-		delete(engine.pending, req.ID)
-		engine.mu.Unlock()
+		engine.engineMutex.Lock()
+		delete(engine.pendingMap, request.ID)
+		engine.engineMutex.Unlock()
 	}()
 
 	select {
-	case res := <-replyCh:
-		return &res, nil
+	case outcome := <-replyChannel:
+		return &outcome, nil
 	case <-time.After(timeout):
 		return nil, ErrApprovalTimeout
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	case <-streamContext.Done():
+		return nil, streamContext.Err()
 	}
 }
 
-// Resolve delivers the operator verdict to the waiting agent channel.
+// Resolve delivers the operator verdict to the waiting agent channel, forwarding to Redis if configured.
 func (engine *HoldEngine) Resolve(approvalID string, result DecisionResult) error {
-	engine.mu.RLock()
-	slot, exists := engine.pending[approvalID]
-	engine.mu.RUnlock()
+	result.ResolvedAt = time.Now().UTC()
 
-	if !exists {
+	engine.engineMutex.RLock()
+	slotInstance, existsLocally := engine.pendingMap[approvalID]
+	publisherInstance := engine.publisher
+	engine.engineMutex.RUnlock()
+
+	if existsLocally {
+		select {
+		case slotInstance.replyChannel <- result:
+			if publisherInstance != nil {
+				publishContext, cancelPublish := context.WithTimeout(context.Background(), 3*time.Second)
+				defer cancelPublish()
+				_ = publisherInstance.PublishResolution(publishContext, approvalID, result)
+			}
+			return nil
+		default:
+			return ErrApprovalNotFound
+		}
+	}
+
+	// If slot is not held on this node, but publisher is configured, publish across cluster
+	if publisherInstance != nil {
+		publishContext, cancelPublish := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancelPublish()
+		return publisherInstance.PublishResolution(publishContext, approvalID, result)
+	}
+
+	return ErrApprovalNotFound
+}
+
+// ResolveLocal unblocks a locally held channel without re-publishing to the cluster mesh.
+func (engine *HoldEngine) ResolveLocal(approvalID string, result DecisionResult) error {
+	engine.engineMutex.RLock()
+	slotInstance, existsLocally := engine.pendingMap[approvalID]
+	engine.engineMutex.RUnlock()
+
+	if !existsLocally {
 		return ErrApprovalNotFound
 	}
 
-	result.ResolvedAt = time.Now()
 	select {
-	case slot.replyCh <- result:
+	case slotInstance.replyChannel <- result:
 		return nil
 	default:
 		return ErrApprovalNotFound
@@ -115,17 +160,41 @@ func (engine *HoldEngine) Resolve(approvalID string, result DecisionResult) erro
 
 // Claim marks an in-flight approval request as locked by a specific operator to prevent double-replies.
 func (engine *HoldEngine) Claim(approvalID, operatorID string) error {
-	engine.mu.Lock()
-	defer engine.mu.Unlock()
+	engine.engineMutex.Lock()
+	defer engine.engineMutex.Unlock()
 
-	slot, exists := engine.pending[approvalID]
+	slotInstance, exists := engine.pendingMap[approvalID]
 	if !exists {
 		return ErrApprovalNotFound
 	}
-	if slot.claimed != "" && slot.claimed != operatorID {
+	if slotInstance.claimedBy != "" && slotInstance.claimedBy != operatorID {
 		return ErrAlreadyClaimed
 	}
 
-	slot.claimed = operatorID
+	slotInstance.claimedBy = operatorID
 	return nil
+}
+
+// ReleaseClaim clears an operator's edit lock if they cancel or close the review drawer.
+func (engine *HoldEngine) ReleaseClaim(approvalID, operatorID string) error {
+	engine.engineMutex.Lock()
+	defer engine.engineMutex.Unlock()
+
+	slotInstance, exists := engine.pendingMap[approvalID]
+	if !exists {
+		return ErrApprovalNotFound
+	}
+	if slotInstance.claimedBy == operatorID {
+		slotInstance.claimedBy = ""
+	}
+	return nil
+}
+
+// IsPending checks whether a given approval identifier is actively held on this node.
+func (engine *HoldEngine) IsPending(approvalID string) bool {
+	engine.engineMutex.RLock()
+	defer engine.engineMutex.RUnlock()
+
+	_, exists := engine.pendingMap[approvalID]
+	return exists
 }

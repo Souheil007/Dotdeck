@@ -33,6 +33,7 @@ type AgentRepository interface {
 	GetOutboundEdges(agentID string) ([]EdgeContext, error)
 	UpdateStatus(agentID, status string) error
 	RecordThought(agentID string, step int, trace, nextStep, tool string, payload interface{}) error
+	RecordApproval(workspaceID, agentID, question string, options []string, trace string) (string, error)
 }
 
 // AgentContext contains core metadata required to serve an agent's MCP session.
@@ -436,6 +437,9 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 		}
 
 		approvalIdentifier := uuid.New().String()
+		if recordedID, recordError := server.repository.RecordApproval(agentContext.WorkspaceID, agentContext.ID, questionText, optionsList, reasoningTrace); recordError == nil && recordedID != "" {
+			approvalIdentifier = recordedID
+		}
 		_ = server.repository.UpdateStatus(agentContext.ID, "blocked_on_user")
 
 		server.broadcaster.Broadcast(agentContext.WorkspaceID, "APPROVAL_REQUESTED", map[string]interface{}{

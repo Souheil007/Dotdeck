@@ -302,6 +302,22 @@ func (store *PostgresStore) ResolveApproval(requestContext context.Context, appr
 	return &resultApproval, nil
 }
 
+// RecordApproval persists an incoming approval question emitted by a cloud agent.
+func (store *PostgresStore) RecordApproval(workspaceID, agentID, question string, options []string, trace string) (string, error) {
+	createdApproval, createError := store.CreateApproval(context.Background(), domain.ApprovalRequest{
+		WorkspaceID:    workspaceID,
+		AgentID:        agentID,
+		Question:       question,
+		Options:        options,
+		ReasoningTrace: trace,
+		Status:         domain.ApprovalStatusPending,
+	})
+	if createError != nil {
+		return "", createError
+	}
+	return createdApproval.ID, nil
+}
+
 func uuidToString(sourceUUID pgtype.UUID) string {
 	if !sourceUUID.Valid {
 		return ""

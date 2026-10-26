@@ -57,6 +57,13 @@ func GetUserName(ctx context.Context) string {
 	return ""
 }
 
+// WithUserContext injects operator credentials into a request context.
+func WithUserContext(parentContext context.Context, userID, userName, userRole string) context.Context {
+	userContext := context.WithValue(parentContext, UserIDKey, userID)
+	userContext = context.WithValue(userContext, UserNameKey, userName)
+	return context.WithValue(userContext, UserRoleKey, userRole)
+}
+
 // BearerToken extracts the token component from an Authorization header.
 func BearerToken(request *http.Request) string {
 	header := request.Header.Get("Authorization")

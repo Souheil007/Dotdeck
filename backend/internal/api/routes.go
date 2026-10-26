@@ -29,6 +29,8 @@ func RegisterRoutes(rootRouter chi.Router, config RouterConfig) {
 		apiRouter.Post("/agents/edges", config.AgentHandler.ConnectEdge)
 
 		// Human-in-the-loop approval decision routes
+		apiRouter.Post("/approvals/claim", config.ApprovalHandler.Claim)
+		apiRouter.Post("/approvals/release-claim", config.ApprovalHandler.ReleaseClaim)
 		apiRouter.Post("/approvals/resolve", config.ApprovalHandler.Resolve)
 	})
 }
