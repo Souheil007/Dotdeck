@@ -114,8 +114,8 @@ classDiagram
         +string ID
         +string Name
         +string Slug
-        +time.Time CreatedAt
-        +time.Time UpdatedAt
+        +Time CreatedAt
+        +Time UpdatedAt
     }
 
     class WorkspaceMember {
@@ -124,14 +124,14 @@ classDiagram
         +string UserID
         +string Email
         +Role Role
-        +time.Time CreatedAt
+        +Time CreatedAt
     }
 
     class Role {
         <<enumeration>>
-        RoleAdmin ("admin")
-        RoleWrite ("write")
-        RoleRead ("read")
+        RoleAdmin
+        RoleWrite
+        RoleRead
     }
 
     class Agent {
@@ -142,31 +142,31 @@ classDiagram
         +Provider Provider
         +string Goal
         +string ScheduleCron
-        +[]string AuthorityRules
+        +List~string~ AuthorityRules
         +AgentStatus Status
         +float64 PositionX
         +float64 PositionY
-        +*time.Time LastHeartbeat
-        +time.Time CreatedAt
-        +time.Time UpdatedAt
+        +Time LastHeartbeat
+        +Time CreatedAt
+        +Time UpdatedAt
     }
 
     class Provider {
         <<enumeration>>
-        ProviderOpenAIDot ("openai_dot")
-        ProviderGrokBot ("grok_bot")
-        ProviderMetaMuse ("meta_muse")
-        ProviderClaude ("claude")
+        ProviderOpenAIDot
+        ProviderGrokBot
+        ProviderMetaMuse
+        ProviderClaude
     }
 
     class AgentStatus {
         <<enumeration>>
-        StatusUnpaired ("unpaired")
-        StatusResting ("resting")
-        StatusScheduled ("scheduled")
-        StatusWorking ("working")
-        StatusBlockedOnUser ("blocked_on_user")
-        StatusFailed ("failed")
+        StatusUnpaired
+        StatusResting
+        StatusScheduled
+        StatusWorking
+        StatusBlockedOnUser
+        StatusFailed
     }
 
     class Edge {
@@ -175,7 +175,7 @@ classDiagram
         +string SourceAgentID
         +string TargetAgentID
         +string ToolName
-        +time.Time CreatedAt
+        +Time CreatedAt
     }
 
     class ApprovalRequest {
@@ -183,25 +183,25 @@ classDiagram
         +string WorkspaceID
         +string AgentID
         +string Question
-        +[]string Options
+        +List~string~ Options
         +string ReasoningTrace
         +ApprovalStatus Status
-        +time.Time CreatedAt
+        +Time CreatedAt
     }
 
     class ApprovalStatus {
         <<enumeration>>
-        ApprovalStatusPending ("pending")
-        ApprovalStatusApproved ("approved")
-        ApprovalStatusRejected ("rejected")
-        ApprovalStatusTimedOut ("timed_out")
+        ApprovalStatusPending
+        ApprovalStatusApproved
+        ApprovalStatusRejected
+        ApprovalStatusTimedOut
     }
 
     class DecisionResult {
         +bool Approved
         +string Answer
         +string OperatorID
-        +time.Time ResolvedAt
+        +Time ResolvedAt
     }
 
     class ThoughtEvent {
@@ -213,8 +213,8 @@ classDiagram
         +string ReasoningTrace
         +string NextPlannedStep
         +string ToolCalled
-        +interface{} ToolPayload
-        +time.Time CreatedAt
+        +any ToolPayload
+        +Time CreatedAt
     }
 
     Workspace "1" *-- "many" WorkspaceMember : assigns
@@ -223,7 +223,7 @@ classDiagram
     WorkspaceMember o-- Role : enforces
     Agent o-- Provider : runs on
     Agent o-- AgentStatus : tracks
-    Agent "1" *-- "many" Edge : source / target
+    Agent "1" *-- "many" Edge : source or target
     Agent "1" *-- "many" ApprovalRequest : triggers
     Agent "1" *-- "many" ThoughtEvent : emits
     ApprovalRequest o-- ApprovalStatus : transitions
