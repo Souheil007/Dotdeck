@@ -139,9 +139,13 @@ export function InspectorDrawer() {
         </div>
 
         {agent.goal && (
-          <div className="mt-3 p-2 rounded-md bg-zinc-900/60 border border-zinc-800/60 text-xs text-zinc-300 line-clamp-2">
-            <span className="text-zinc-500 font-mono text-[10px] uppercase block mb-0.5">Objective</span>
-            {agent.goal}
+          <div className="mt-3 p-2.5 rounded-lg bg-zinc-900/70 border border-zinc-800/70 text-xs transition-all max-h-48 overflow-y-auto">
+            <span className="text-zinc-500 font-mono text-[10px] uppercase font-semibold tracking-wider block mb-1">
+              Objective
+            </span>
+            <p className="text-zinc-200 leading-relaxed break-words font-sans">
+              {agent.goal}
+            </p>
           </div>
         )}
       </div>
