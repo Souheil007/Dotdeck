@@ -95,6 +95,8 @@ function calculateAutoLayout(nodes: Node<AgentData>[], edges: { source: string; 
 export function AgentCanvas() {
   const {
     workspaceId,
+    currentUserId,
+    currentUserName,
     nodes: storeNodes,
     edges: storeEdges,
     setNodes: setStoreNodes,
@@ -116,7 +118,8 @@ export function AgentCanvas() {
     setEdges(storeEdges);
   }, [storeEdges, setEdges]);
 
-  const websocketUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
+  const baseWsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
+  const websocketUrl = `${baseWsUrl}?user_id=${encodeURIComponent(currentUserId)}&user_name=${encodeURIComponent(currentUserName)}&workspace_id=${encodeURIComponent(workspaceId)}&role=write`;
   const { sendCursor } = useMultiplayerWebSocket(websocketUrl);
 
   const onConnect = useCallback(
@@ -200,7 +203,9 @@ export function AgentCanvas() {
       </ReactFlow>
 
       {/* Teammate Cursors Overlay */}
-      {Object.values(cursors).map((cursor) => (
+      {Object.values(cursors)
+        .filter((cursor) => cursor.userId !== currentUserId)
+        .map((cursor) => (
         <div
           key={cursor.userId}
           style={{

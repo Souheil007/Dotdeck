@@ -10,6 +10,7 @@ import type { AgentData } from './store/useWorkspaceStore';
 
 export function App() {
   const {
+    currentUserId,
     nodes,
     setNodes,
     setEdges,
@@ -125,16 +126,18 @@ export function App() {
             <div className="w-6 h-6 rounded-full bg-indigo-500 ring-2 ring-zinc-950 flex items-center justify-center text-[10px] font-bold text-white">
               You
             </div>
-            {Object.values(cursors).map((teammateCursor) => (
-              <div
-                key={teammateCursor.userId}
-                style={{ backgroundColor: teammateCursor.color }}
-                className="w-6 h-6 rounded-full ring-2 ring-zinc-950 flex items-center justify-center text-[10px] font-bold text-white"
-                title={teammateCursor.userName}
-              >
-                {teammateCursor.userName.slice(0, 2).toUpperCase()}
-              </div>
-            ))}
+            {Object.values(cursors)
+              .filter((teammateCursor) => teammateCursor.userId !== currentUserId)
+              .map((teammateCursor) => (
+                <div
+                  key={teammateCursor.userId}
+                  style={{ backgroundColor: teammateCursor.color }}
+                  className="w-6 h-6 rounded-full ring-2 ring-zinc-950 flex items-center justify-center text-[10px] font-bold text-white shadow-sm"
+                  title={teammateCursor.userName}
+                >
+                  {teammateCursor.userName.slice(0, 2).toUpperCase()}
+                </div>
+              ))}
           </div>
 
           <button

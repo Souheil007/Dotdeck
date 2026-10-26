@@ -55,7 +55,25 @@ export interface HandoffPreview {
   payload?: unknown;
 }
 
+function getOrCreateSessionUser() {
+  if (typeof window === 'undefined') {
+    return { userId: 'operator-1', userName: 'Operator' };
+  }
+  let sessionUserId = sessionStorage.getItem('dotdeck-user-id');
+  let sessionUserName = sessionStorage.getItem('dotdeck-user-name');
+  if (!sessionUserId) {
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    sessionUserId = `operator-${randomSuffix}`;
+    sessionUserName = `Operator ${randomSuffix}`;
+    sessionStorage.setItem('dotdeck-user-id', sessionUserId);
+    sessionStorage.setItem('dotdeck-user-name', sessionUserName);
+  }
+  return { userId: sessionUserId, userName: sessionUserName || 'Operator' };
+}
+
 interface WorkspaceState {
+  currentUserId: string;
+  currentUserName: string;
   workspaceId: string;
   userRole: 'admin' | 'write' | 'read';
   nodes: Node<AgentData>[];
@@ -91,19 +109,23 @@ interface WorkspaceState {
 
 export const useWorkspaceStore = create<WorkspaceState>()(
   persist(
-    (set) => ({
-      workspaceId: 'default-workspace',
-      userRole: 'write',
-      nodes: [],
-      edges: [],
-      selectedAgentId: null,
-      thoughts: {},
-      approvals: {},
-      cursors: {},
-      isPairingModalOpen: false,
-      pairingAgent: null,
-      isShareModalOpen: false,
-      handoffPreview: null,
+    (set) => {
+      const initialUser = getOrCreateSessionUser();
+      return {
+        currentUserId: initialUser.userId,
+        currentUserName: initialUser.userName,
+        workspaceId: 'default-workspace',
+        userRole: 'write',
+        nodes: [],
+        edges: [],
+        selectedAgentId: null,
+        thoughts: {},
+        approvals: {},
+        cursors: {},
+        isPairingModalOpen: false,
+        pairingAgent: null,
+        isShareModalOpen: false,
+        handoffPreview: null,
 
       setNodes: (nodes) => set({ nodes }),
       setEdges: (edges) => set({ edges }),
@@ -185,7 +207,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       closePairingModal: () => set({ isPairingModalOpen: false, pairingAgent: null }),
       setShareModalOpen: (isShareModalOpen) => set({ isShareModalOpen }),
       setHandoffPreview: (handoffPreview) => set({ handoffPreview }),
-    }),
+    };
+  },
     {
       name: 'dotdeck-canvas-state',
       partialize: (state) => ({
