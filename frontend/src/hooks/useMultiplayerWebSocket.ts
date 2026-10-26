@@ -1,8 +1,8 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useWorkspaceStore } from '../store/useWorkspaceStore';
 
-export function useMultiplayerWS(url: string) {
-  const wsRef = useRef<WebSocket | null>(null);
+export function useMultiplayerWebSocket(websocketUrl: string) {
+  const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
 
   const {
@@ -17,12 +17,12 @@ export function useMultiplayerWS(url: string) {
 
   const connect = useCallback(() => {
     try {
-      const ws = new WebSocket(url);
-      wsRef.current = ws;
+      const activeSocket = new WebSocket(websocketUrl);
+      socketRef.current = activeSocket;
 
-      ws.onmessage = (event) => {
+      activeSocket.onmessage = (messageEvent) => {
         try {
-          const { type, payload } = JSON.parse(event.data);
+          const { type, payload } = JSON.parse(messageEvent.data);
           switch (type) {
             case 'AGENT_STATE_CHANGED':
               updateNodeStatus(payload.agent_id, payload.status);
@@ -76,36 +76,36 @@ export function useMultiplayerWS(url: string) {
         }
       };
 
-      ws.onclose = () => {
+      activeSocket.onclose = () => {
         reconnectTimeoutRef.current = window.setTimeout(connect, 2000);
       };
     } catch {
       reconnectTimeoutRef.current = window.setTimeout(connect, 3000);
     }
-  }, [url, updateNodeStatus, updateNodeThought, addThoughtStep, addApproval, updateCursor, setQuestionLock, unlockQuestion]);
+  }, [websocketUrl, updateNodeStatus, updateNodeThought, addThoughtStep, addApproval, updateCursor, setQuestionLock, unlockQuestion]);
 
   useEffect(() => {
     connect();
     return () => {
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-      if (wsRef.current) wsRef.current.close();
+      if (socketRef.current) socketRef.current.close();
     };
   }, [connect]);
 
-  const sendCursor = useCallback((coordX: number, coordY: number) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(
+  const sendCursor = useCallback((coordinateX: number, coordinateY: number) => {
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(
         JSON.stringify({
           type: 'CURSOR_MOVE',
-          payload: { position_x: coordX, position_y: coordY },
+          payload: { position_x: coordinateX, position_y: coordinateY },
         })
       );
     }
   }, []);
 
   const lockQuestion = useCallback((approvalId: string) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(
         JSON.stringify({
           type: 'LOCK_QUESTION',
           payload: { approval_id: approvalId },
@@ -115,8 +115,8 @@ export function useMultiplayerWS(url: string) {
   }, []);
 
   const unlockQuestionAction = useCallback((approvalId: string) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(
         JSON.stringify({
           type: 'UNLOCK_QUESTION',
           payload: { approval_id: approvalId },

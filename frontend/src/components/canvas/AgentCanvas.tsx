@@ -14,7 +14,7 @@ import '@xyflow/react/dist/style.css';
 import { AgentNode } from './nodes/AgentNode';
 import { PulseEdge } from './edges/PulseEdge';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
-import { useMultiplayerWS } from '../../hooks/useMultiplayerWS';
+import { useMultiplayerWebSocket } from '../../hooks/useMultiplayerWebSocket';
 
 const nodeTypes = {
   agentNode: AgentNode,
@@ -29,8 +29,8 @@ export function AgentCanvas() {
   const [nodes, , onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
-  const { sendCursor } = useMultiplayerWS(wsUrl);
+  const websocketUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
+  const { sendCursor } = useMultiplayerWebSocket(websocketUrl);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((currentEdges) => addEdge({ ...params, type: 'pulseEdge' }, currentEdges)),

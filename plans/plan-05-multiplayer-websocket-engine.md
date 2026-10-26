@@ -9,12 +9,12 @@ Implement high-throughput real-time multiplayer synchronization using `coder/web
 
 ## Deliverables
 
-- [ ] **1. Room Router & Hub Architecture (`backend/internal/ws/hub.go`)**
+- [ ] **1. Room Router & Hub Architecture (`backend/internal/websocket/hub.go`)**
   - [ ] Implement isolated client registration grouped strictly by `workspace_id`.
   - [ ] Implement non-blocking broadcast ring: drop slow clients rather than stalling peer broadcasts.
   - [ ] Provide 30-second ping/pong keepalive tickers for persistent connection health.
 
-- [ ] **2. Live Canvas Presence (`backend/internal/ws/presence.go`)**
+- [ ] **2. Live Canvas Presence (`backend/internal/websocket/presence.go`)**
   - [ ] Track real-time coordinates `(x, y)`, display names, and assigned avatar colors per user.
   - [ ] Broadcast `PRESENCE_SYNC` events with throttled client movement updates.
   - [ ] Clean up disconnected user cursors immediately upon socket termination.
@@ -24,7 +24,7 @@ Implement high-throughput real-time multiplayer synchronization using `coder/web
   - [ ] Broadcast `QUESTION_LOCKED` to all workspace peers: `"Sarah is currently reviewing..."`.
   - [ ] Implement `UNLOCK_QUESTION` on submit, cancel, or socket disconnect.
 
-- [ ] **4. Robust Frontend Client Hook (`frontend/src/hooks/useMultiplayerWS.ts`)**
+- [ ] **4. Robust Frontend Client Hook (`frontend/src/hooks/useMultiplayerWebSocket.ts`)**
   - [ ] Implement exponential backoff auto-reconnect logic on socket drop.
   - [ ] Synchronize incoming messages directly into the Zustand `useWorkspaceStore`.
   - [ ] Expose throttled `sendCursor(x, y)` and question lock/unlock actions.

@@ -85,7 +85,7 @@ Dotdeck/
 │   │   │   ├── middleware/           # Context authentication & RBAC policy enforcement
 │   │   │   └── routes.go             # API route registration
 │   │   ├── mcp/                      # JSON-RPC 2.0 multi-tenant switchboard & HoldEngine
-│   │   ├── ws/                       # Real-time WebSocket room broadcaster & presence hub
+│   │   ├── websocket/                # Real-time WebSocket room broadcaster & presence hub
 │   │   ├── bridge/                   # Outbound wake-up bridges (Slack, Webhooks, Email)
 │   │   ├── store/                    # Database migrations & sqlc persistence repository
 │   │   └── observability/            # slog logging, Prometheus /metrics, OTel tracing & Sentry

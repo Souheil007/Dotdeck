@@ -72,7 +72,7 @@ Consistency across backend, frontend, database, and MCP boundaries is critical f
 
 | Category | Convention | Examples | Anti-patterns |
 | :--- | :--- | :--- | :--- |
-| **Packages** | Short, lowercase, single-word, no underscores | `holdengine`, `store`, `bridge`, `ws` | `hold_engine`, `agentUtils` |
+| **Packages** | Short, lowercase, single-word, no underscores | `holdengine`, `store`, `bridge`, `websocket` | `hold_engine`, `agentUtils` |
 | **Exported Types** | PascalCase, descriptive nouns | `AgentNode`, `ApprovalRequest`, `WorkspaceHub` | `AgentNodeStruct`, `IApproval` |
 | **Interfaces** | PascalCase; `-er` suffix for single methods | `Router`, `Broadcaster`, `WakeUpBridge` | `IAgentManager` |
 | **Methods / Funcs** | PascalCase (exported), camelCase (unexported) | `DispatchEvent`, `resolveHandoff` | `Dispatch_Event`, `Get_Data` |
@@ -86,7 +86,7 @@ Consistency across backend, frontend, database, and MCP boundaries is critical f
 | Category | Convention | Examples | Anti-patterns |
 | :--- | :--- | :--- | :--- |
 | **Components** | PascalCase `.tsx` | `AgentCanvas.tsx`, `ThoughtStream.tsx`, `PulseEdge.tsx` | `agentCanvas.tsx` |
-| **Custom Hooks** | `use` prefix, camelCase `.ts` | `useMultiplayerWS.ts`, `useAgentHandoff.ts` | `MultiplayerWS.ts` |
+| **Custom Hooks** | `use` prefix, camelCase `.ts` | `useMultiplayerWebSocket.ts`, `useAgentHandoff.ts` | `MultiplayerWS.ts` |
 | **Stores** | `use` prefix + `Store`, camelCase `.ts`| `useWorkspaceStore.ts`, `useApprovalStore.ts` | `workspaceStore.ts` |
 | **Utilities** | kebab-case or camelCase `.ts` | `format-duration.ts`, `crypto.ts` | `Utils.ts` |
 | **Types / Interfaces** | PascalCase, no `I` prefix | `AgentPayload`, `CanvasEdgeData`, `ThoughtStep` | `IAgentPayload` |
@@ -144,7 +144,7 @@ Dotdeck acts as the vendor-neutral control plane for Tier 3 closed cloud agents 
 1. **Entrypoint (`cmd/server/main.go`)**: Responsible purely for environment parsing, database connection pooling, service wiring, and graceful shutdown on `os.Interrupt` / `SIGTERM`.
 2. **API Layer (`internal/api`)**: Handles HTTP routing, input validation, authentication, and workspace RBAC enforcement. Handlers delegate business logic to domain packages.
 3. **MCP Switchboard (`internal/mcp`)**: Manages dynamic per-agent tool endpoints over HTTP/SSE. Generates dynamic schemas reflecting canvas connections.
-4. **WebSocket Hub (`internal/ws`)**: Isolates multiplayer rooms per workspace. Broadcasts state updates, thought streams, cursor positions, and optimistic approval locks.
+4. **WebSocket Hub (`internal/websocket`)**: Isolates multiplayer rooms per workspace. Broadcasts state updates, thought streams, cursor positions, and optimistic approval locks.
 5. **Bridge Engine (`internal/bridge`)**: Dispatches outbound triggers (Slack threads, inbound webhooks, email endpoints) to wake resting cloud agents.
 6. **Persistence Layer (`internal/store`)**: Uses PostgreSQL with pure SQL queries managed via `sqlc`. Zero ORM reflection overhead.
 
@@ -219,7 +219,7 @@ Dotdeck strictly adheres to the **Conventional Commits 1.0.0** specification. Cl
 
 Scopes are grouped by architectural layer. Choose the most specific scope applicable:
 
-- **Backend Core**: `mcp`, `hold`, `ws`, `presence`, `bridge`, `api`, `store`, `auth`, `observability`
+- **Backend Core**: `mcp`, `hold`, `websocket`, `presence`, `bridge`, `api`, `store`, `auth`, `observability`
 - **Frontend & UI**: `canvas`, `nodes`, `edges`, `inspector`, `stream`, `approval`, `chat`, `modals`, `state`
 - **Agents & Providers**: `agent`, `workspace`, `openai`, `grok`, `claude`, `muse`
 - **DevOps & Quality**: `docker`, `deploy`, `tests`, `simulator`, `docs`, `plans`, `deps`, `ci`

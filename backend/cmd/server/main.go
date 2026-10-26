@@ -21,7 +21,7 @@ import (
 	"github.com/Souheil007/Dotdeck/backend/internal/mcp"
 	"github.com/Souheil007/Dotdeck/backend/internal/observability"
 	"github.com/Souheil007/Dotdeck/backend/internal/store"
-	"github.com/Souheil007/Dotdeck/backend/internal/ws"
+	"github.com/Souheil007/Dotdeck/backend/internal/websocket"
 )
 
 func main() {
@@ -51,10 +51,10 @@ func main() {
 	// Initialize core engine components
 	memStore := store.NewMemoryStore()
 	holdEngine := mcp.NewHoldEngine()
-	wsHub := ws.NewHub()
-	go wsHub.Run()
+	websocketHub := websocket.NewHub()
+	go websocketHub.Run()
 
-	mcpServer := mcp.NewServer(memStore, holdEngine, wsHub)
+	mcpServer := mcp.NewServer(memStore, holdEngine, websocketHub)
 	workspaceHandler := handlers.NewWorkspaceHandler()
 	agentHandler := handlers.NewAgentHandler(baseURL)
 	approvalHandler := handlers.NewApprovalHandler(holdEngine)
@@ -109,7 +109,7 @@ func main() {
 			role = "write"
 		}
 
-		wsHub.ServeWebSocket(writer, request, userID, userName, role, workspaceID)
+		websocketHub.ServeWebSocket(writer, request, userID, userName, role, workspaceID)
 	})
 
 	// Register versioned REST API routes

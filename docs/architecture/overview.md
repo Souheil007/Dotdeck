@@ -53,7 +53,7 @@ Dotdeck is a vendor-neutral cross-vendor orchestration and command hub for Tier 
 - Wakes sleeping agents when human operators send direct instructions or resolve delayed approvals.
 - Connects to Slack channels/threads, HMAC-signed webhooks, and email triggers.
 
-### 2.4 Multiplayer Real-Time Engine (`internal/ws`)
+### 2.4 Multiplayer Real-Time Engine (`internal/websocket`)
 - Built on `coder/websocket` for context cancellation safety and high-concurrency fan-out.
 - Tracks live operator cursor positions `(x, y)` and provides visual avatar stacks.
 - Broadcasts optimistic question locks (`LOCK_QUESTION`) to prevent double-approval conflicts.

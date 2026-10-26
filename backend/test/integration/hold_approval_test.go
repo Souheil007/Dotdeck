@@ -15,7 +15,7 @@ import (
 	"github.com/Souheil007/Dotdeck/backend/internal/api/handlers"
 	"github.com/Souheil007/Dotdeck/backend/internal/mcp"
 	"github.com/Souheil007/Dotdeck/backend/internal/store"
-	"github.com/Souheil007/Dotdeck/backend/internal/ws"
+	"github.com/Souheil007/Dotdeck/backend/internal/websocket"
 )
 
 // TestMCPHoldAndResolveIntegration verifies that a cloud agent tool call pausing for approval
@@ -23,8 +23,8 @@ import (
 func TestMCPHoldAndResolveIntegration(testingT *testing.T) {
 	memStore := store.NewMemoryStore()
 	holdEngine := mcp.NewHoldEngine()
-	wsHub := ws.NewHub()
-	go wsHub.Run()
+	websocketHub := websocket.NewHub()
+	go websocketHub.Run()
 
 	agentToken := "test-agent-token-123"
 	agentCtx := &mcp.AgentContext{
@@ -36,7 +36,7 @@ func TestMCPHoldAndResolveIntegration(testingT *testing.T) {
 	}
 	memStore.SaveAgent(agentToken, agentCtx)
 
-	mcpServer := mcp.NewServer(memStore, holdEngine, wsHub)
+	mcpServer := mcp.NewServer(memStore, holdEngine, websocketHub)
 	approvalHandler := handlers.NewApprovalHandler(holdEngine)
 
 	router := chi.NewRouter()

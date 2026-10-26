@@ -25,12 +25,12 @@ func (h *HoldEngine) Hold(ctx context.Context, req DecisionRequest, timeout time
   - **NO single-character identifiers** are allowed anywhere (variables, loop counters, receivers, function arguments, imported packages).
   - Forbidden: `w`, `r`, `e`, `c`, `s`, `h`, `p`, `n`, `i`, `x`, `y`, `m`, `t`.
   - Required: Use `responseWriter`/`writer`, `request`, `engine`, `hub`, `server`, `store`, `client`, `bridge`, `node`, `edge`, `event`, `coordX`/`coordY`, `index`, `step`.
-- **Go Packages**: Short, lowercase, single-word, no underscores or mixedCaps (`mcp`, `ws`, `bridge`, `store`, `api`, `observability`).
+- **Go Packages**: Short, lowercase, single-word, no underscores or mixedCaps (`mcp`, `websocket`, `bridge`, `store`, `api`, `observability`).
 - **Go Structs & Interfaces**: PascalCase (`AgentContext`, `EventBroadcaster`, `HoldEngine`).
 - **Go Methods / Functions**: PascalCase for exported, camelCase for internal.
 - **Go Receivers**: Full descriptive nouns `(engine *HoldEngine)`, `(hub *Hub)`, `(store *MemoryStore)` (never single letters).
 - **Go Sentinel Errors**: `Err` prefix (`ErrApprovalTimeout`, `ErrAlreadyClaimed`).
-- **TypeScript**: PascalCase components and interfaces (`AgentNode.tsx`, `PulseEdge.tsx`), camelCase custom hooks (`useMultiplayerWS.ts`), stores (`useWorkspaceStore.ts`). Iterations must use full names `nodes.map((node) => ...)` and event handlers `(event) => ...`.
+- **TypeScript**: PascalCase components and interfaces (`AgentNode.tsx`, `PulseEdge.tsx`), camelCase custom hooks (`useMultiplayerWebSocket.ts`), stores (`useWorkspaceStore.ts`). Iterations must use full names `nodes.map((node) => ...)` and event handlers `(event) => ...`.
 - **Database**: Lowercase plural `snake_case` tables (`workspaces`, `agents`, `agent_edges`, `thought_events`, `approvals`).
 - **WebSocket Events**: Screaming snake_case (`AGENT_STATE_CHANGED`, `THOUGHT_STEP_EMITTED`, `APPROVAL_REQUESTED`, `PRESENCE_SYNC`).
 - **MCP Tools**: Lowercase snake_case (`report_thought_step`, `ask_human_question`, `delegate_task_*`).
@@ -47,7 +47,7 @@ All commits must follow the **Conventional Commits 1.0.0** pattern:
 `<type>(<scope>): <short imperative description>`
 - **Allowed Types**: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `chore`, `ci`.
 - **Allowed Scopes (Categorized)**:
-  - **Backend**: `mcp`, `hold`, `ws`, `presence`, `bridge`, `api`, `store`, `auth`, `observability`
+  - **Backend**: `mcp`, `hold`, `websocket`, `presence`, `bridge`, `api`, `store`, `auth`, `observability`
   - **Frontend**: `canvas`, `nodes`, `edges`, `inspector`, `stream`, `approval`, `chat`, `modals`, `state`
   - **Providers**: `agent`, `workspace`, `openai`, `grok`, `claude`, `muse`
   - **DevOps & Quality**: `docker`, `deploy`, `tests`, `simulator`, `docs`, `plans`, `deps`, `ci`
