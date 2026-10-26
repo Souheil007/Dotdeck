@@ -35,3 +35,13 @@ func (h *HoldEngine) Hold(ctx context.Context, req DecisionRequest, timeout time
 - All inter-agent routing tools must enforce piggybacked telemetry fields: `current_reasoning_trace` and `next_planned_step`.
 - Approval windows are bounded by a 45-second timer before falling back to async wake-up queues.
 - Multiplayer operations must be concurrency-safe with non-blocking WebSocket fanouts and optimistic locks on approval actions.
+
+## 4. Git Commit Message Standards (Conventional Commits)
+All commits must follow the **Conventional Commits 1.0.0** pattern:
+`<type>(<scope>): <short imperative description>`
+- **Allowed Types**: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `chore`, `ci`.
+- **Allowed Scopes**: `mcp`, `hold`, `ws`, `bridge`, `canvas`, `inspector`, `store`, `observability`, `auth`, `plans`.
+- **Rules**: Imperative mood, lowercase description, no trailing period, max 72 chars subject.
+  - Good: `feat(mcp): implement dynamic delegation tool injection`
+  - Bad: `Added new mcp stuff.` or `WIP`
+

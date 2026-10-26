@@ -1,0 +1,13 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "report_thought_step",
+    "arguments": {
+      "step_index": 1,
+      "reasoning_trace": "Extracted 5 Stripe developer emails from public GitHub issues.",
+      "next_planned_step": "Validate email domain MX records."
+    }
+  }
+}

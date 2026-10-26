@@ -171,3 +171,52 @@ Dotdeck acts as the vendor-neutral control plane for Tier 3 closed cloud agents 
   }
   ```
 - Expose sanitized, human-readable error messages over HTTP and WebSocket protocols; never leak raw database connection strings or stack traces.
+
+---
+
+## 4. Git Commit Message Standards (Conventional Commits)
+
+Dotdeck strictly adheres to the **Conventional Commits 1.0.0** specification. Clear, structured commit messages ensure readable change histories, automated changelog generation, and precise semantic versioning.
+
+### 4.1 Structure
+```
+<type>(<scope>): <short imperative description>
+
+[optional body explaining context, rationale, or breaking changes]
+
+[optional footer(s), e.g., Closes #123]
+```
+
+### 4.2 Allowed Types
+
+| Type | When to Use | Example |
+| :--- | :--- | :--- |
+| `feat` | New user-facing or agent-facing functionality | `feat(mcp): synthesize dynamic delegation tools from canvas edges` |
+| `fix` | Bug fixes in code, protocols, or UI | `fix(hold): prevent double-approval race on simultaneous clicks` |
+| `docs` | Documentation, plans, ADRs, or guides only | `docs(decisions): add ADR for Tier 3 closed cloud orchestration` |
+| `test` | Adding or refactoring unit, integration, or E2E tests | `test(ws): add concurrent client broadcast stress tests` |
+| `refactor`| Code change that neither fixes a bug nor adds a feature | `refactor(store): migrate in-memory mocks to pgx repository` |
+| `perf` | Performance improvements | `perf(canvas): memoize AgentNode props to prevent full canvas re-renders` |
+| `chore` | Build tasks, configs, dependency updates, tooling | `chore(deps): bump coder/websocket to v1.8.12` |
+| `ci` | Continuous Integration / deployment scripts | `ci(github): add automated go test workflow` |
+
+### 4.3 Standard Scopes
+
+Use concise, lowercase scopes matching project subsystems:
+- `mcp`: Model Context Protocol endpoints, tool definitions, schemas.
+- `hold`: HoldEngine, pause-and-answer channels, timeouts.
+- `ws`: WebSockets, room dispatching, presence, cursor sync.
+- `bridge`: Slack, webhooks, email outbound wake-up triggers.
+- `canvas`: React Flow board, custom nodes, pulse edges, auto-layout.
+- `inspector`: Thought stream, approval cards, direct chat drawer.
+- `store`: PostgreSQL migrations, sqlc queries, repository implementations.
+- `observability`: Prometheus metrics, OpenTelemetry, Sentry, log/slog.
+- `auth`: RBAC, token verification, session middleware.
+- `plans`: Execution plan documents in `plans/`.
+
+### 4.4 Golden Rules
+1. **Imperative mood**: Use `"add"`, `"implement"`, `"fix"`, `"prevent"`, NOT `"added"`, `"fixing"`, or `"adds"`.
+2. **No trailing period**: Keep the subject line concise (under 72 characters).
+3. **Lowercase subject**: Do not capitalize the first letter after the colon.
+4. **Link references**: Reference issue or plan numbers in the body or footer when applicable.
+

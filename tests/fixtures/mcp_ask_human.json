@@ -1,0 +1,13 @@
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "ask_human_question",
+    "arguments": {
+      "question": "Should I dispatch 5 cold outreach emails with pricing tier mentions?",
+      "options": ["Approve standard sequence", "Remove pricing mentions", "Cancel campaign"],
+      "reasoning_trace": "High-intent leads identified; pricing mention requires human sign-off."
+    }
+  }
+}
