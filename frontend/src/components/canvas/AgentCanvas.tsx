@@ -97,6 +97,7 @@ export function AgentCanvas() {
     workspaceId,
     currentUserId,
     currentUserName,
+    userRole,
     nodes: storeNodes,
     edges: storeEdges,
     setNodes: setStoreNodes,
@@ -119,7 +120,7 @@ export function AgentCanvas() {
   }, [storeEdges, setEdges]);
 
   const baseWsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
-  const websocketUrl = `${baseWsUrl}?user_id=${encodeURIComponent(currentUserId)}&user_name=${encodeURIComponent(currentUserName)}&workspace_id=${encodeURIComponent(workspaceId)}&role=write`;
+  const websocketUrl = `${baseWsUrl}?user_id=${encodeURIComponent(currentUserId)}&user_name=${encodeURIComponent(currentUserName)}&workspace_id=${encodeURIComponent(workspaceId)}&role=${userRole}`;
   const { sendCursor } = useMultiplayerWebSocket(websocketUrl);
 
   const onConnect = useCallback(
@@ -183,9 +184,12 @@ export function AgentCanvas() {
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
+        onNodesChange={userRole !== 'read' ? onNodesChange : undefined}
+        onEdgesChange={userRole !== 'read' ? onEdgesChange : undefined}
+        onConnect={userRole !== 'read' ? onConnect : undefined}
+        nodesDraggable={userRole !== 'read'}
+        nodesConnectable={userRole !== 'read'}
+        elementsSelectable={true}
         fitView
         className="bg-zinc-950"
       >

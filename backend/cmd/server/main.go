@@ -121,7 +121,7 @@ func main() {
 	bridgeDispatcher := bridge.NewDispatcher(slackBridge, webhookBridge, agentProviderRepo, outboundWebhookURL, webhookSecret)
 
 	mcpServer := mcp.NewServer(agentRepository, holdEngine, websocketHub)
-	workspaceHandler := handlers.NewWorkspaceHandler()
+	workspaceHandler := handlers.NewWorkspaceHandler(baseURL)
 	agentHandler := handlers.NewAgentHandler(baseURL)
 	if postgresStoreInstance, isPostgres := agentRepository.(*store.PostgresStore); isPostgres {
 		agentHandler.SetRepository(postgresStoreInstance)
@@ -151,7 +151,7 @@ func main() {
 	router.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Workspace-ID", "X-User-ID"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Workspace-ID", "X-User-ID", "X-User-Name", "X-User-Role"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))

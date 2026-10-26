@@ -20,18 +20,27 @@ func RegisterRoutes(rootRouter chi.Router, config RouterConfig) {
 	rootRouter.Route("/api/v1", func(apiRouter chi.Router) {
 		apiRouter.Use(middleware.Authenticate)
 
-		// Workspace management routes
-		apiRouter.Post("/workspaces", config.WorkspaceHandler.Create)
-		apiRouter.Post("/workspaces/invite", config.WorkspaceHandler.Invite)
+		// Public & Showcase endpoints (accessible without mutation roles)
+		apiRouter.Get("/workspaces/{id}/showcase", config.WorkspaceHandler.GetShowcase)
+		apiRouter.Post("/workspaces/{id}/showcase-link", config.WorkspaceHandler.GenerateShowcaseLink)
 
-		// Agent provisioning and canvas graph wiring routes
-		apiRouter.Post("/agents", config.AgentHandler.Create)
-		apiRouter.Post("/agents/edges", config.AgentHandler.ConnectEdge)
-		apiRouter.Post("/agents/{id}/steer", config.AgentHandler.Steer)
+		// Workspace Administration (Admin role required)
+		apiRouter.Group(func(adminRouter chi.Router) {
+			adminRouter.Use(middleware.RequireRole(nil, middleware.RoleAdmin))
+			adminRouter.Post("/workspaces", config.WorkspaceHandler.Create)
+			adminRouter.Post("/workspaces/invite", config.WorkspaceHandler.Invite)
+			adminRouter.Get("/workspaces/{id}/members", config.WorkspaceHandler.ListMembers)
+		})
 
-		// Human-in-the-loop approval decision routes
-		apiRouter.Post("/approvals/claim", config.ApprovalHandler.Claim)
-		apiRouter.Post("/approvals/release-claim", config.ApprovalHandler.ReleaseClaim)
-		apiRouter.Post("/approvals/resolve", config.ApprovalHandler.Resolve)
+		// Operations & Agent Orchestration (Write role required)
+		apiRouter.Group(func(writeRouter chi.Router) {
+			writeRouter.Use(middleware.RequireRole(nil, middleware.RoleWrite))
+			writeRouter.Post("/agents", config.AgentHandler.Create)
+			writeRouter.Post("/agents/edges", config.AgentHandler.ConnectEdge)
+			writeRouter.Post("/agents/{id}/steer", config.AgentHandler.Steer)
+			writeRouter.Post("/approvals/claim", config.ApprovalHandler.Claim)
+			writeRouter.Post("/approvals/release-claim", config.ApprovalHandler.ReleaseClaim)
+			writeRouter.Post("/approvals/resolve", config.ApprovalHandler.Resolve)
+		})
 	})
 }

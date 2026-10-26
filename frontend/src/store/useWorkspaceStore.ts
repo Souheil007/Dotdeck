@@ -108,6 +108,7 @@ interface WorkspaceState {
   closePairingModal: () => void;
   openCreateAgentModal: () => void;
   closeCreateAgentModal: () => void;
+  setUserRole: (role: 'admin' | 'write' | 'read') => void;
   setShareModalOpen: (open: boolean) => void;
   setHandoffPreview: (preview: HandoffPreview | null) => void;
 }
@@ -236,6 +237,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       closePairingModal: () => set({ isPairingModalOpen: false, pairingAgent: null, pairingSession: null }),
       openCreateAgentModal: () => set({ isCreateAgentModalOpen: true }),
       closeCreateAgentModal: () => set({ isCreateAgentModalOpen: false }),
+      setUserRole: (userRole) => set({ userRole }),
       setShareModalOpen: (isShareModalOpen) => set({ isShareModalOpen }),
       setHandoffPreview: (handoffPreview) => set({ handoffPreview }),
     };

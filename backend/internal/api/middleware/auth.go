@@ -28,30 +28,43 @@ func Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		userID := request.Header.Get("X-User-ID")
 		userName := request.Header.Get("X-User-Name")
+		userRole := request.Header.Get("X-User-Role")
 
 		if userID == "" {
 			// Development default fallback
 			userID = "dev-operator"
 			userName = "Alex Dev"
 		}
+		if userRole == "" {
+			userRole = "admin"
+		}
 
-		ctx := context.WithValue(request.Context(), UserIDKey, userID)
-		ctx = context.WithValue(ctx, UserNameKey, userName)
-		next.ServeHTTP(writer, request.WithContext(ctx))
+		userContext := context.WithValue(request.Context(), UserIDKey, userID)
+		userContext = context.WithValue(userContext, UserNameKey, userName)
+		userContext = context.WithValue(userContext, UserRoleKey, userRole)
+		next.ServeHTTP(writer, request.WithContext(userContext))
 	})
 }
 
 // GetUserID retrieves the authenticated operator identifier from the context.
-func GetUserID(ctx context.Context) string {
-	if val, ok := ctx.Value(UserIDKey).(string); ok {
+func GetUserID(requestContext context.Context) string {
+	if val, ok := requestContext.Value(UserIDKey).(string); ok {
 		return val
 	}
 	return ""
 }
 
 // GetUserName retrieves the authenticated operator display name from the context.
-func GetUserName(ctx context.Context) string {
-	if val, ok := ctx.Value(UserNameKey).(string); ok {
+func GetUserName(requestContext context.Context) string {
+	if val, ok := requestContext.Value(UserNameKey).(string); ok {
+		return val
+	}
+	return ""
+}
+
+// GetUserRole retrieves the authenticated operator role tier from the context.
+func GetUserRole(requestContext context.Context) string {
+	if val, ok := requestContext.Value(UserRoleKey).(string); ok {
 		return val
 	}
 	return ""
