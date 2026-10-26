@@ -121,7 +121,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         currentUserId: initialUser.userId,
         currentUserName: initialUser.userName,
         workspaceId: 'default-workspace',
-        userRole: 'write',
+        userRole: 'admin',
         nodes: [],
         edges: [],
         selectedAgentId: null,

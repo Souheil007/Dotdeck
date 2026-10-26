@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bot, Share2, Plus, Sparkles, Crown, Zap, Eye, ChevronDown } from 'lucide-react';
+import { Bot, Share2, Plus, Sparkles, Crown, Zap, Eye } from 'lucide-react';
 import { AgentCanvas } from './components/canvas/AgentCanvas';
 import { InspectorDrawer } from './components/inspector/InspectorDrawer';
 import { PairingWizard } from './components/modals/PairingWizard';
@@ -23,14 +23,17 @@ export function App() {
   } = useWorkspaceStore();
 
   const [isShowcase, setIsShowcase] = useState(false);
-  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
 
-  // Check URL parameters for public showcase mode
+  // Determine user role: workspace owner defaults to Admin; public showcase/observer link gives Read
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.has('showcase') || searchParams.get('role') === 'read') {
       setIsShowcase(true);
       setUserRole('read');
+    } else if (searchParams.get('role') === 'write') {
+      setUserRole('write');
+    } else {
+      setUserRole('admin');
     }
   }, [setUserRole]);
 
@@ -167,61 +170,13 @@ export function App() {
 
         {/* Right Controls */}
         <div className="flex items-center gap-3">
-          {/* RBAC Role Selector Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-mono font-medium transition-all ${currentRoleConfig.badgeClass} hover:opacity-90`}
-              title="Change your simulated workspace role"
-            >
-              <RoleIcon className="w-3 h-3" />
-              <span>{currentRoleConfig.label}</span>
-              <ChevronDown className="w-3 h-3 opacity-60" />
-            </button>
-
-            {isRoleDropdownOpen && (
-              <div className="absolute right-0 top-8 mt-1 w-44 rounded-xl bg-zinc-900 border border-zinc-800 p-1.5 shadow-2xl z-50 text-xs">
-                <span className="px-2 py-1 text-[10px] font-mono text-zinc-500 uppercase block">
-                  Simulate Role
-                </span>
-                <button
-                  onClick={() => {
-                    setUserRole('admin');
-                    setIsRoleDropdownOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left transition-colors ${
-                    userRole === 'admin' ? 'bg-amber-950/60 text-amber-300 font-semibold' : 'text-zinc-300 hover:bg-zinc-800'
-                  }`}
-                >
-                  <Crown className="w-3.5 h-3.5 text-amber-400" />
-                  <span>👑 Admin</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setUserRole('write');
-                    setIsRoleDropdownOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left transition-colors ${
-                    userRole === 'write' ? 'bg-indigo-950/60 text-indigo-300 font-semibold' : 'text-zinc-300 hover:bg-zinc-800'
-                  }`}
-                >
-                  <Zap className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>⚡ Operator</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setUserRole('read');
-                    setIsRoleDropdownOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left transition-colors ${
-                    userRole === 'read' ? 'bg-emerald-950/60 text-emerald-300 font-semibold' : 'text-zinc-300 hover:bg-zinc-800'
-                  }`}
-                >
-                  <Eye className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>👁️ Observer</span>
-                </button>
-              </div>
-            )}
+          {/* Workspace Role Badge */}
+          <div
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-mono font-medium ${currentRoleConfig.badgeClass}`}
+            title={`Your Workspace Role: ${currentRoleConfig.label}`}
+          >
+            <RoleIcon className="w-3 h-3" />
+            <span>{currentRoleConfig.label}</span>
           </div>
 
           {/* Teammate Presence Avatars */}
