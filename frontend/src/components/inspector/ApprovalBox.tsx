@@ -113,37 +113,37 @@ export function ApprovalBox({ approval }: ApprovalBoxProps) {
   };
 
   return (
-    <div className="p-4 rounded-xl bg-amber-950/20 border border-amber-600/40 text-xs shadow-lg relative overflow-hidden">
+    <div className="p-4 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-600/40 text-xs shadow-md relative overflow-hidden">
       {/* Header Banner */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-1.5 text-amber-400 font-semibold uppercase tracking-wider text-[11px]">
-          <AlertCircle className="w-4 h-4 shrink-0 text-amber-400 animate-pulse" />
+        <div className="flex items-center gap-1.5 text-amber-800 dark:text-amber-400 font-semibold uppercase tracking-wider text-[11px]">
+          <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400 animate-pulse" />
           <span>Action Gated Behind Authority</span>
         </div>
 
         {/* Lock Badges */}
         {isLockedByOther && (
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-zinc-800 text-[10px] text-zinc-300 border border-zinc-700">
-            <Lock className="w-3 h-3 text-amber-400" />
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-[10px] text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700">
+            <Lock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
             <span>{approval.lockedByName || 'Teammate'} is reviewing</span>
           </div>
         )}
 
         {isLockedByMe && (
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-950/80 text-[10px] text-indigo-300 border border-indigo-700">
-            <UserCheck className="w-3 h-3 text-indigo-400" />
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-indigo-950/80 text-[10px] text-blue-800 dark:text-indigo-300 border border-blue-300 dark:border-indigo-700">
+            <UserCheck className="w-3 h-3 text-blue-600 dark:text-indigo-400" />
             <span>You hold review lock</span>
           </div>
         )}
       </div>
 
       {/* Question & Reasoning Body */}
-      <div className="p-3 rounded-lg bg-zinc-950/80 border border-zinc-800/80 mb-3 space-y-2">
-        <p className="text-zinc-100 text-sm font-medium leading-relaxed">
+      <div className="p-3 rounded-lg bg-white dark:bg-zinc-950/80 border border-amber-200 dark:border-zinc-800/80 mb-3 space-y-2">
+        <p className="text-[#202124] dark:text-zinc-100 text-sm font-medium leading-relaxed">
           {approval.question}
         </p>
         {approval.reasoningTrace && (
-          <p className="text-zinc-400 italic text-[11px] border-l-2 border-amber-500/50 pl-2 mt-1.5 leading-relaxed">
+          <p className="text-[#5f6368] dark:text-zinc-400 italic text-[11px] border-l-2 border-amber-500 pl-2 mt-1.5 leading-relaxed">
             &ldquo;{approval.reasoningTrace}&rdquo;
           </p>
         )}
@@ -161,9 +161,9 @@ export function ApprovalBox({ approval }: ApprovalBoxProps) {
                 key={option}
                 disabled={!canOperate || isSubmitting}
                 onClick={() => handleResolve(true, option)}
-                className="px-2.5 py-1 rounded-md bg-zinc-900 border border-zinc-750 hover:bg-zinc-800 hover:border-zinc-600 disabled:opacity-40 text-zinc-200 font-medium text-xs transition-colors flex items-center gap-1"
+                className="px-2.5 py-1 rounded-md bg-white dark:bg-zinc-900 border border-zinc-250 dark:border-zinc-750 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:border-zinc-350 dark:hover:border-zinc-600 disabled:opacity-40 text-zinc-800 dark:text-zinc-200 font-medium text-xs transition-colors flex items-center gap-1 shadow-xs"
               >
-                <ShieldCheck className="w-3 h-3 text-emerald-400 shrink-0" />
+                <ShieldCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>{option}</span>
               </button>
             ))}
@@ -188,13 +188,13 @@ export function ApprovalBox({ approval }: ApprovalBoxProps) {
                 ? `${approval.lockedByName || 'Teammate'} is currently authoring a decision...`
                 : 'Type guidance or modified instruction...'
             }
-            className="flex-1 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-700/80 text-zinc-100 placeholder-zinc-500 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:opacity-50"
+            className="flex-1 px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700/80 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 disabled:opacity-50"
           />
           {customReply.trim() && (
             <button
               disabled={!canOperate || isSubmitting}
               onClick={() => handleResolve(true, customReply.trim())}
-              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium text-xs flex items-center gap-1 transition-colors shrink-0"
+              className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 disabled:opacity-50 text-white font-medium text-xs flex items-center gap-1 transition-colors shrink-0"
             >
               {isSubmitting ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -223,15 +223,15 @@ export function ApprovalBox({ approval }: ApprovalBoxProps) {
           <button
             disabled={!canOperate || isSubmitting}
             onClick={() => handleResolve(false, 'Rejected by operator')}
-            className="flex-1 py-1.5 rounded-lg bg-zinc-900 border border-zinc-700 hover:bg-zinc-800 disabled:opacity-50 text-zinc-200 font-medium text-xs flex items-center justify-center gap-1.5 transition-colors"
+            className="flex-1 py-1.5 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 text-zinc-700 dark:text-zinc-200 font-medium text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
           >
-            <X className="w-3.5 h-3.5 text-rose-400" />
+            <X className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400" />
             <span>Reject</span>
           </button>
         </div>
 
         {errorMessage && (
-          <p className="text-[11px] text-rose-400 pt-1 text-center font-mono">{errorMessage}</p>
+          <p className="text-[11px] text-rose-500 dark:text-rose-400 pt-1 text-center font-mono">{errorMessage}</p>
         )}
 
         {userRole === 'read' && (

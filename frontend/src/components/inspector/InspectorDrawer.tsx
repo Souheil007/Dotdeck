@@ -11,38 +11,38 @@ const statusConfig: Record<
 > = {
   unpaired: {
     label: 'Unpaired',
-    badgeClass: 'bg-zinc-800 text-zinc-400 border-zinc-700',
-    dotClass: 'bg-zinc-500',
+    badgeClass: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700',
+    dotClass: 'bg-zinc-400 dark:bg-zinc-500',
     icon: Bot,
   },
   resting: {
     label: 'Resting',
-    badgeClass: 'bg-blue-950/80 text-blue-300 border-blue-800',
-    dotClass: 'bg-blue-400',
+    badgeClass: 'bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+    dotClass: 'bg-blue-500 dark:bg-blue-400',
     icon: Clock,
   },
   scheduled: {
     label: 'Scheduled',
-    badgeClass: 'bg-cyan-950/80 text-cyan-300 border-cyan-800',
-    dotClass: 'bg-cyan-400',
+    badgeClass: 'bg-cyan-50 dark:bg-cyan-950/80 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800',
+    dotClass: 'bg-cyan-500 dark:bg-cyan-400',
     icon: Clock,
   },
   working: {
     label: 'Working',
-    badgeClass: 'bg-emerald-950/90 text-emerald-300 border-emerald-600',
-    dotClass: 'bg-emerald-400 animate-pulse',
+    badgeClass: 'bg-emerald-50 dark:bg-emerald-950/90 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-600',
+    dotClass: 'bg-emerald-500 dark:bg-emerald-400 animate-pulse',
     icon: Zap,
   },
   blocked_on_user: {
     label: 'Needs Authority',
-    badgeClass: 'bg-amber-950/90 text-amber-300 border-amber-500',
-    dotClass: 'bg-amber-400 animate-ping',
+    badgeClass: 'bg-amber-50 dark:bg-amber-950/90 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500',
+    dotClass: 'bg-amber-500 dark:bg-amber-400 animate-ping',
     icon: ShieldAlert,
   },
   failed: {
     label: 'Failed',
-    badgeClass: 'bg-rose-950/90 text-rose-300 border-rose-700',
-    dotClass: 'bg-rose-400',
+    badgeClass: 'bg-rose-50 dark:bg-rose-950/90 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-700',
+    dotClass: 'bg-rose-500 dark:bg-rose-400',
     icon: AlertCircle,
   },
 };
@@ -51,22 +51,22 @@ const providerConfig: Record<string, { label: string; icon: typeof Sparkles; col
   openai_dot: {
     label: 'OpenAI Dot',
     icon: Sparkles,
-    colorClass: 'text-emerald-400 bg-emerald-950/60 border-emerald-800/80',
+    colorClass: 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800/80',
   },
   grok_bot: {
     label: 'Grok Bot',
     icon: Flame,
-    colorClass: 'text-orange-400 bg-orange-950/60 border-orange-800/80',
+    colorClass: 'text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/60 border-orange-200 dark:border-orange-800/80',
   },
   meta_muse: {
     label: 'Meta Muse',
     icon: Globe,
-    colorClass: 'text-blue-400 bg-blue-950/60 border-blue-800/80',
+    colorClass: 'text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border-blue-200 dark:border-blue-800/80',
   },
   claude: {
     label: 'Claude Agent',
     icon: Cpu,
-    colorClass: 'text-amber-400 bg-amber-950/60 border-amber-800/80',
+    colorClass: 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800/80',
   },
 };
 
@@ -100,14 +100,14 @@ export function InspectorDrawer() {
   const providerInfo = providerConfig[agent.provider] || {
     label: agent.provider.replace('_', ' '),
     icon: Bot,
-    colorClass: 'text-zinc-400 bg-zinc-900 border-zinc-800',
+    colorClass: 'text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800',
   };
   const ProviderIcon = providerInfo.icon;
 
   return (
-    <aside className="fixed right-0 top-0 bottom-0 w-[420px] max-w-full bg-zinc-950/95 backdrop-blur-xl border-l border-zinc-800/90 z-40 flex flex-col shadow-2xl transition-all duration-300 ease-in-out">
+    <aside className="fixed right-0 top-0 bottom-0 w-[420px] max-w-full bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl border-l border-zinc-200 dark:border-zinc-800/90 z-40 flex flex-col shadow-2xl transition-all duration-300 ease-in-out">
       {/* Header */}
-      <div className="p-4 border-b border-zinc-800/80 bg-zinc-900/40">
+      <div className="p-4 border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/40">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <div
@@ -117,7 +117,7 @@ export function InspectorDrawer() {
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-zinc-100 truncate">{agent.name}</h3>
+                <h3 className="text-sm font-semibold text-[#202124] dark:text-zinc-100 truncate">{agent.name}</h3>
                 <span
                   className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${statusInfo.badgeClass}`}
                 >
@@ -125,13 +125,13 @@ export function InspectorDrawer() {
                   {statusInfo.label}
                 </span>
               </div>
-              <p className="text-xs text-zinc-400 truncate mt-0.5">{providerInfo.label}</p>
+              <p className="text-xs text-[#5f6368] dark:text-zinc-400 truncate mt-0.5">{providerInfo.label}</p>
             </div>
           </div>
 
           <button
             onClick={() => setSelectedAgentId(null)}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors shrink-0"
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors shrink-0"
             title="Close Inspector (Esc)"
           >
             <X className="w-4 h-4" />
@@ -139,11 +139,11 @@ export function InspectorDrawer() {
         </div>
 
         {agent.goal && (
-          <div className="mt-3 p-2.5 rounded-lg bg-zinc-900/70 border border-zinc-800/70 text-xs transition-all max-h-48 overflow-y-auto">
-            <span className="text-zinc-500 font-mono text-[10px] uppercase font-semibold tracking-wider block mb-1">
+          <div className="mt-3 p-2.5 rounded-lg bg-white dark:bg-zinc-900/70 border border-zinc-200 dark:border-zinc-800/70 text-xs transition-all max-h-48 overflow-y-auto">
+            <span className="text-zinc-400 dark:text-zinc-500 font-mono text-[10px] uppercase font-semibold tracking-wider block mb-1">
               Objective
             </span>
-            <p className="text-zinc-200 leading-relaxed break-words font-sans">
+            <p className="text-[#202124] dark:text-zinc-200 leading-relaxed break-words font-sans">
               {agent.goal}
             </p>
           </div>
@@ -151,19 +151,19 @@ export function InspectorDrawer() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-zinc-800/80 bg-zinc-900/30 text-xs font-medium">
+      <div className="flex border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/80 dark:bg-zinc-900/30 text-xs font-medium">
         <button
           onClick={() => setActiveTab('thoughts')}
           className={`flex-1 py-2.5 flex items-center justify-center gap-1.5 border-b-2 transition-colors ${
             activeTab === 'thoughts'
-              ? 'border-indigo-500 text-indigo-300 bg-zinc-900/60 font-semibold'
-              : 'border-transparent text-zinc-400 hover:text-zinc-200'
+              ? 'border-blue-600 dark:border-indigo-500 text-blue-600 dark:text-indigo-300 bg-white dark:bg-zinc-900/60 font-semibold'
+              : 'border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
           }`}
         >
           <Brain className="w-3.5 h-3.5" />
           <span>Thought Stream</span>
           {agentThoughts.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-zinc-800 text-[10px] text-zinc-300">
+            <span className="px-1.5 py-0.2 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[10px] text-zinc-600 dark:text-zinc-300">
               {agentThoughts.length}
             </span>
           )}
@@ -173,14 +173,14 @@ export function InspectorDrawer() {
           onClick={() => setActiveTab('approvals')}
           className={`flex-1 py-2.5 flex items-center justify-center gap-1.5 border-b-2 transition-colors ${
             activeTab === 'approvals'
-              ? 'border-amber-500 text-amber-300 bg-zinc-900/60 font-semibold'
-              : 'border-transparent text-zinc-400 hover:text-zinc-200'
+              ? 'border-amber-600 dark:border-amber-500 text-amber-600 dark:text-amber-300 bg-white dark:bg-zinc-900/60 font-semibold'
+              : 'border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
           }`}
         >
           <AlertCircle className="w-3.5 h-3.5" />
           <span>Approvals</span>
           {pendingApprovals.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-amber-950 text-amber-300 text-[10px] animate-pulse border border-amber-800">
+            <span className="px-1.5 py-0.2 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-[10px] animate-pulse border border-amber-300 dark:border-amber-800">
               {pendingApprovals.length}
             </span>
           )}
@@ -194,10 +194,10 @@ export function InspectorDrawer() {
         ) : (
           <div className="p-4 space-y-3 overflow-y-auto flex-1">
             {pendingApprovals.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center text-zinc-500">
-                <AlertCircle className="w-8 h-8 mb-2 stroke-1 text-zinc-600" />
-                <p className="text-xs font-medium text-zinc-400">No Pending Approvals</p>
-                <p className="text-[11px] text-zinc-600 mt-1 max-w-xs">
+              <div className="flex flex-col items-center justify-center py-12 text-center text-zinc-400 dark:text-zinc-500">
+                <AlertCircle className="w-8 h-8 mb-2 stroke-1 text-zinc-300 dark:text-zinc-600" />
+                <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">No Pending Approvals</p>
+                <p className="text-[11px] text-zinc-400 dark:text-zinc-600 mt-1 max-w-xs">
                   When this cloud agent hits an authority boundary, its question card will appear here for review.
                 </p>
               </div>

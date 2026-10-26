@@ -17,8 +17,9 @@ import '@xyflow/react/dist/style.css';
 import { AgentNode } from './nodes/AgentNode';
 import { PulseEdge } from './edges/PulseEdge';
 import { useWorkspaceStore, type AgentData } from '../../store/useWorkspaceStore';
+import { useThemeStore } from '../../store/useThemeStore';
 import { useMultiplayerWebSocket } from '../../hooks/useMultiplayerWebSocket';
-import { LayoutGrid, Sparkles, X, Code2 } from 'lucide-react';
+import { LayoutGrid, Sparkles, X, Code2, Bot, Plus } from 'lucide-react';
 
 const nodeTypes = {
   agentNode: AgentNode,
@@ -105,7 +106,10 @@ export function AgentCanvas() {
     cursors,
     handoffPreview,
     setHandoffPreview,
+    openCreateAgentModal,
   } = useWorkspaceStore();
+
+  const { theme } = useThemeStore();
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<AgentData>>(storeNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(storeEdges);
@@ -178,7 +182,7 @@ export function AgentCanvas() {
   );
 
   return (
-    <div className="relative w-full h-full bg-zinc-950 overflow-hidden" onMouseMove={handleMouseMove}>
+    <div className="relative w-full h-full bg-[#f8f9fa] dark:bg-[#07080b] overflow-hidden" onMouseMove={handleMouseMove}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -191,20 +195,43 @@ export function AgentCanvas() {
         nodesConnectable={userRole !== 'read'}
         elementsSelectable={true}
         fitView
-        className="bg-zinc-950"
+        className="bg-[#f8f9fa] dark:bg-[#07080b]"
       >
-        <Background color="#27272a" gap={22} size={1} />
-        <Controls className="!bg-zinc-900/90 !border-zinc-800 !text-zinc-200 fill-zinc-200 shadow-xl backdrop-blur-md">
+        <Background color={theme === 'dark' ? '#27272a' : '#dadce0'} gap={22} size={1} />
+        <Controls className="!bg-white/95 dark:!bg-zinc-900/90 !border-zinc-200 dark:!border-zinc-800 !text-zinc-700 dark:!text-zinc-200 fill-zinc-700 dark:fill-zinc-200 shadow-xl backdrop-blur-md rounded-xl overflow-hidden">
           <ControlButton onClick={handleTidyLayout} title="Tidy Canvas (Auto Layout)">
-            <LayoutGrid className="w-4 h-4 text-indigo-400 hover:text-indigo-300" />
+            <LayoutGrid className="w-4 h-4 text-blue-600 dark:text-indigo-400 hover:text-blue-700 dark:hover:text-indigo-300" />
           </ControlButton>
         </Controls>
         <MiniMap
-          nodeColor="#3f3f46"
-          maskColor="rgba(9, 9, 11, 0.75)"
-          className="!bg-zinc-900/80 !border-zinc-800 rounded-xl overflow-hidden shadow-2xl backdrop-blur-md"
+          nodeColor={theme === 'dark' ? '#3f3f46' : '#cbd5e1'}
+          maskColor={theme === 'dark' ? 'rgba(9, 9, 11, 0.75)' : 'rgba(240, 242, 245, 0.8)'}
+          className="!bg-white/95 dark:!bg-zinc-900/80 !border-zinc-200 dark:!border-zinc-800 rounded-xl overflow-hidden shadow-xl backdrop-blur-md"
         />
       </ReactFlow>
+
+      {/* Empty Canvas Call to Action */}
+      {nodes.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+          <div className="text-center p-8 max-w-sm rounded-2xl bg-white/95 dark:bg-zinc-900/95 border border-dashed border-zinc-300 dark:border-zinc-700 pointer-events-auto shadow-xl backdrop-blur-md">
+            <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-cyan-500/10 border border-blue-200 dark:border-cyan-500/30 flex items-center justify-center text-blue-600 dark:text-cyan-400 mx-auto mb-3">
+              <Bot className="w-6 h-6" />
+            </div>
+            <h3 className="font-bold text-sm text-[#202124] dark:text-white mb-1">Clean Switchboard</h3>
+            <p className="text-xs text-[#5f6368] dark:text-zinc-400 mb-4">
+              This workspace has zero agents. Add your first cloud agent to begin orchestrating.
+            </p>
+            <button
+              onClick={openCreateAgentModal}
+              disabled={userRole === 'read'}
+              className="py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 dark:bg-gradient-to-r dark:from-cyan-500 dark:to-blue-600 text-white font-semibold text-xs inline-flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add First Agent Node</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Teammate Cursors Overlay */}
       {Object.values(cursors)
@@ -236,39 +263,39 @@ export function AgentCanvas() {
       {/* Cross-Agent Synthesized Tool Handoff Preview Modal */}
       {handoffPreview && (
         <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-zinc-900 border border-zinc-800 shadow-2xl p-6 text-zinc-100 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-6 text-zinc-900 dark:text-zinc-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-indigo-950/80 border border-indigo-800/60 text-indigo-400">
+                <div className="p-2 rounded-lg bg-blue-50 dark:bg-indigo-950/80 border border-blue-200 dark:border-indigo-800/60 text-blue-600 dark:text-indigo-400">
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white tracking-tight">Synthesized MCP Delegation Tool</h3>
-                  <p className="text-xs font-mono text-indigo-400">{handoffPreview.toolName}</p>
+                  <h3 className="text-sm font-bold text-[#202124] dark:text-white tracking-tight">Synthesized MCP Delegation Tool</h3>
+                  <p className="text-xs font-mono text-blue-600 dark:text-indigo-400">{handoffPreview.toolName}</p>
                 </div>
               </div>
               <button
                 onClick={() => setHandoffPreview(null)}
-                className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-white transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="mt-4 space-y-3 text-xs">
-              <p className="text-zinc-300 leading-relaxed">
+              <p className="text-zinc-600 dark:text-zinc-300 leading-relaxed">
                 This dynamic tool was automatically compiled and mounted to the source agent's Model Context Protocol (MCP) tool schema when you wired the edge on the canvas.
               </p>
 
-              <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 font-mono text-[11px] text-zinc-300 space-y-2">
-                <div className="flex items-center justify-between text-zinc-500 pb-1 border-b border-zinc-800/80">
+              <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 font-mono text-[11px] text-zinc-700 dark:text-zinc-300 space-y-2">
+                <div className="flex items-center justify-between text-zinc-400 dark:text-zinc-500 pb-1 border-b border-zinc-200 dark:border-zinc-800/80">
                   <span className="flex items-center gap-1">
                     <Code2 className="w-3.5 h-3.5" />
                     TOOL DEFINITION CONTRACT
                   </span>
-                  <span className="text-emerald-400 font-semibold">Active</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Active</span>
                 </div>
-                <pre className="overflow-x-auto text-indigo-300">{`{
+                <pre className="overflow-x-auto text-blue-700 dark:text-indigo-300">{`{
   "name": "${handoffPreview.toolName}",
   "description": "Delegates execution to connected peer with mandatory thought telemetry",
   "inputSchema": {
@@ -287,7 +314,7 @@ export function AgentCanvas() {
             <div className="mt-5 flex justify-end">
               <button
                 onClick={() => setHandoffPreview(null)}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition-colors shadow-lg shadow-indigo-600/20"
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white font-medium text-xs transition-colors shadow-md shadow-blue-600/20"
               >
                 Done
               </button>

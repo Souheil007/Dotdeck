@@ -3,9 +3,122 @@
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply bg-zinc-950 text-zinc-100 font-sans;
+  :root {
+    /* Google Clean White Theme */
+    --google-bg: #f8f9fa;
+    --google-surface: #ffffff;
+    --google-card: #ffffff;
+    --google-border: #dadce0;
+    --google-text: #202124;
+    --google-secondary: #5f6368;
+    --google-blue: #1a73e8;
+    --google-green: #1e8e3e;
+    --google-amber: #f9ab00;
+    --google-red: #d93025;
   }
+
+  html.dark {
+    /* Google Clean Night Theme */
+    --google-bg: #131314;
+    --google-surface: #1e1f20;
+    --google-card: #282a2c;
+    --google-border: #3c4043;
+    --google-text: #e8eaed;
+    --google-secondary: #9aa0a6;
+    --google-blue: #8ab4f8;
+    --google-green: #81c995;
+    --google-amber: #fdd663;
+    --google-red: #f28b82;
+  }
+
+  body {
+    background-color: var(--google-bg);
+    color: var(--google-text);
+    @apply font-sans antialiased selection:bg-blue-500/20 selection:text-blue-500;
+  }
+}
+
+/* Adaptive panel styles based on light/dark mode */
+.google-panel {
+  background: var(--google-surface);
+  border: 1px solid var(--google-border);
+}
+
+.google-card {
+  background: var(--google-card);
+  border: 1px solid var(--google-border);
+  box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.08), 0 1px 3px 1px rgba(60, 64, 67, 0.06);
+}
+
+html.dark .google-card {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Signature AgentGrid Clean Blueprint Grid */
+.agentgrid-bg {
+  position: relative;
+  background-color: var(--google-bg);
+}
+
+.agentgrid-grid-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: 
+    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 25%, black 40%, transparent 95%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 25%, black 40%, transparent 95%);
+}
+
+html.dark .agentgrid-grid-overlay {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+}
+
+/* Cybernetic glassmorphism and subtle glowing borders */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid #dadce0;
+}
+
+html.dark .glass-panel {
+  background: rgba(30, 31, 32, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel-glow {
+  background: #ffffff;
+  border: 1px solid #dadce0;
+  box-shadow: 0 4px 20px -2px rgba(26, 115, 232, 0.12);
+}
+
+html.dark .glass-panel-glow {
+  background: rgba(40, 42, 44, 0.9);
+  border: 1px solid rgba(138, 180, 248, 0.25);
+  box-shadow: 0 0 25px -5px rgba(138, 180, 248, 0.15);
+}
+
+/* Custom sleek scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #dadce0;
+  border-radius: 9999px;
+}
+html.dark ::-webkit-scrollbar-thumb {
+  background: #3c4043;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #1a73e8;
 }
 
 @keyframes dash {
@@ -15,4 +128,27 @@
   to {
     stroke-dashoffset: 0;
   }
+}
+
+/* React Flow Controls Light/Dark Adaptive Theming */
+.react-flow__controls-button {
+  background: transparent !important;
+  border-bottom: 1px solid #dadce0 !important;
+  color: #5f6368 !important;
+  fill: #5f6368 !important;
+}
+.react-flow__controls-button:hover {
+  background: #f1f3f4 !important;
+  color: #1a73e8 !important;
+  fill: #1a73e8 !important;
+}
+html.dark .react-flow__controls-button {
+  border-bottom: 1px solid #3c4043 !important;
+  color: #9aa0a6 !important;
+  fill: #9aa0a6 !important;
+}
+html.dark .react-flow__controls-button:hover {
+  background: #282a2c !important;
+  color: #8ab4f8 !important;
+  fill: #8ab4f8 !important;
 }

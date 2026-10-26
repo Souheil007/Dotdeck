@@ -168,11 +168,11 @@ export function CreateAgentModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="relative w-full max-w-2xl rounded-2xl bg-zinc-950 border border-zinc-800 p-6 shadow-2xl my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="relative w-full max-w-2xl rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-6 shadow-2xl my-8 text-[#202124] dark:text-zinc-100">
         <button
           onClick={closeCreateAgentModal}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+          className="absolute top-4 right-4 p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
           title="Close (Esc)"
         >
           <X className="w-5 h-5" />
@@ -180,19 +180,19 @@ export function CreateAgentModal() {
 
         {/* Modal Header */}
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-2.5 rounded-xl bg-indigo-950/80 border border-indigo-700/50">
-            <Bot className="w-6 h-6 text-indigo-400" />
+          <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-indigo-950/80 border border-blue-200 dark:border-indigo-700/50">
+            <Bot className="w-6 h-6 text-blue-600 dark:text-indigo-400" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white">Add Closed Cloud Agent</h2>
-            <p className="text-xs text-zinc-400">
+            <h2 className="text-lg font-bold text-[#202124] dark:text-white">Add Closed Cloud Agent</h2>
+            <p className="text-xs text-[#5f6368] dark:text-zinc-400">
               Provision an autonomous Tier 3 cloud agent blueprint with remote MCP switchboard credentials.
             </p>
           </div>
         </div>
 
         {errorMessage && (
-          <div className="mb-4 p-3 rounded-lg bg-rose-950/80 border border-rose-800/80 text-rose-300 text-xs font-mono">
+          <div className="mb-4 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-800/80 text-rose-800 dark:text-rose-300 text-xs font-mono">
             {errorMessage}
           </div>
         )}
@@ -200,7 +200,7 @@ export function CreateAgentModal() {
         <form onSubmit={handleSubmit} className="space-y-5 text-xs">
           {/* Provider Selection */}
           <div>
-            <label className="block text-zinc-300 font-semibold mb-2">1. Select Cloud Agent Provider</label>
+            <label className="block text-[#202124] dark:text-zinc-300 font-semibold mb-2">1. Select Cloud Agent Provider</label>
             <div className="grid grid-cols-2 gap-3">
               {providerOptions.map((option) => {
                 const IconComponent = option.icon;
@@ -213,18 +213,18 @@ export function CreateAgentModal() {
                     className={`p-3 rounded-xl border text-left transition-all flex items-start gap-3 ${
                       isSelected
                         ? `${option.borderColor} ${option.bgColor} ring-1 ${option.borderColor}`
-                        : 'border-zinc-800/80 bg-zinc-900/40 hover:bg-zinc-900 hover:border-zinc-700'
+                        : 'border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/40 hover:bg-zinc-100 dark:hover:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700'
                     }`}
                   >
-                    <div className={`p-2 rounded-lg bg-zinc-950/80 border border-zinc-800 ${option.textColor}`}>
+                    <div className={`p-2 rounded-lg bg-white dark:bg-zinc-950/80 border border-zinc-200 dark:border-zinc-800 ${option.textColor}`}>
                       <IconComponent className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="font-semibold text-zinc-100 flex items-center gap-1.5">
+                      <div className="font-semibold text-[#202124] dark:text-zinc-100 flex items-center gap-1.5">
                         <span>{option.name}</span>
-                        {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />}
+                        {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-indigo-400" />}
                       </div>
-                      <p className="text-[11px] text-zinc-400 mt-0.5 leading-snug">{option.description}</p>
+                      <p className="text-[11px] text-[#5f6368] dark:text-zinc-400 mt-0.5 leading-snug">{option.description}</p>
                     </div>
                   </button>
                 );
@@ -235,33 +235,33 @@ export function CreateAgentModal() {
           {/* Name & Goal */}
           <div className="space-y-3">
             <div>
-              <label className="block text-zinc-300 font-semibold mb-1.5">2. Agent Identity & Name</label>
+              <label className="block text-[#202124] dark:text-zinc-300 font-semibold mb-1.5">2. Agent Identity & Name</label>
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(changeEvent) => setName(changeEvent.target.value)}
                 placeholder="e.g. Sales Prospecting Dot, Security Audit Bot"
-                className="w-full px-3.5 py-2.5 rounded-lg bg-zinc-900/90 border border-zinc-700 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-xs font-sans"
+                className="w-full px-3.5 py-2.5 rounded-lg bg-white dark:bg-zinc-900/90 border border-zinc-300 dark:border-zinc-700 text-[#202124] dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-indigo-500 text-xs font-sans"
               />
             </div>
 
             <div>
-              <label className="block text-zinc-300 font-semibold mb-1.5">3. Ongoing Mission & Goal</label>
+              <label className="block text-[#202124] dark:text-zinc-300 font-semibold mb-1.5">3. Ongoing Mission & Goal</label>
               <textarea
                 required
                 rows={3}
                 value={goal}
                 onChange={(changeEvent) => setGoal(changeEvent.target.value)}
                 placeholder="Define the primary operational objective this cloud agent will autonomously pursue..."
-                className="w-full px-3.5 py-2 rounded-lg bg-zinc-900/90 border border-zinc-700 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-xs font-sans leading-relaxed"
+                className="w-full px-3.5 py-2 rounded-lg bg-white dark:bg-zinc-900/90 border border-zinc-300 dark:border-zinc-700 text-[#202124] dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-indigo-500 text-xs font-sans leading-relaxed"
               />
             </div>
           </div>
 
           {/* Schedule */}
           <div>
-            <label className="block text-zinc-300 font-semibold mb-1.5 flex items-center gap-1.5">
+            <label className="block text-[#202124] dark:text-zinc-300 font-semibold mb-1.5 flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-zinc-400" />
               <span>4. Execution Schedule</span>
             </label>
@@ -271,8 +271,8 @@ export function CreateAgentModal() {
                 onClick={() => setSchedulePreset('none')}
                 className={`px-3 py-1.5 rounded-lg border font-medium transition-colors ${
                   schedulePreset === 'none'
-                    ? 'border-indigo-500 bg-indigo-950/60 text-indigo-300'
-                    : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-zinc-200'
+                    ? 'border-blue-600 dark:border-indigo-500 bg-blue-50 dark:bg-indigo-950/60 text-blue-700 dark:text-indigo-300 font-semibold'
+                    : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[#5f6368] dark:text-zinc-400 hover:text-black dark:hover:text-zinc-200'
                 }`}
               >
                 Event-driven / Handoffs Only
@@ -282,8 +282,8 @@ export function CreateAgentModal() {
                 onClick={() => setSchedulePreset('hourly')}
                 className={`px-3 py-1.5 rounded-lg border font-medium transition-colors ${
                   schedulePreset === 'hourly'
-                    ? 'border-indigo-500 bg-indigo-950/60 text-indigo-300'
-                    : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-zinc-200'
+                    ? 'border-blue-600 dark:border-indigo-500 bg-blue-50 dark:bg-indigo-950/60 text-blue-700 dark:text-indigo-300 font-semibold'
+                    : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[#5f6368] dark:text-zinc-400 hover:text-black dark:hover:text-zinc-200'
                 }`}
               >
                 Hourly (:00)
@@ -293,8 +293,8 @@ export function CreateAgentModal() {
                 onClick={() => setSchedulePreset('daily')}
                 className={`px-3 py-1.5 rounded-lg border font-medium transition-colors ${
                   schedulePreset === 'daily'
-                    ? 'border-indigo-500 bg-indigo-950/60 text-indigo-300'
-                    : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-zinc-200'
+                    ? 'border-blue-600 dark:border-indigo-500 bg-blue-50 dark:bg-indigo-950/60 text-blue-700 dark:text-indigo-300 font-semibold'
+                    : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[#5f6368] dark:text-zinc-400 hover:text-black dark:hover:text-zinc-200'
                 }`}
               >
                 Daily (9:00 AM)
@@ -304,8 +304,8 @@ export function CreateAgentModal() {
                 onClick={() => setSchedulePreset('custom')}
                 className={`px-3 py-1.5 rounded-lg border font-medium transition-colors ${
                   schedulePreset === 'custom'
-                    ? 'border-indigo-500 bg-indigo-950/60 text-indigo-300'
-                    : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-zinc-200'
+                    ? 'border-blue-600 dark:border-indigo-500 bg-blue-50 dark:bg-indigo-950/60 text-blue-700 dark:text-indigo-300 font-semibold'
+                    : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-[#5f6368] dark:text-zinc-400 hover:text-black dark:hover:text-zinc-200'
                 }`}
               >
                 Custom Cron
@@ -318,18 +318,18 @@ export function CreateAgentModal() {
                 value={customCron}
                 onChange={(changeEvent) => setCustomCron(changeEvent.target.value)}
                 placeholder="e.g. 0 */4 * * * (every 4 hours)"
-                className="w-full px-3.5 py-2 rounded-lg bg-zinc-900/90 border border-zinc-700 text-zinc-100 placeholder-zinc-500 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full px-3.5 py-2 rounded-lg bg-white dark:bg-zinc-900/90 border border-zinc-300 dark:border-zinc-700 text-[#202124] dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 font-mono text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-indigo-500"
               />
             )}
           </div>
 
           {/* Authority Constraints */}
           <div>
-            <label className="block text-zinc-300 font-semibold mb-1.5 flex items-center gap-1.5">
-              <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+            <label className="block text-[#202124] dark:text-zinc-300 font-semibold mb-1.5 flex items-center gap-1.5">
+              <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
               <span>5. Authority Constraints (45s Hold Gating)</span>
             </label>
-            <p className="text-[11px] text-zinc-500 mb-2">
+            <p className="text-[11px] text-[#5f6368] dark:text-zinc-500 mb-2">
               Actions triggering these rules will automatically pause execution for human operator sign-off.
             </p>
 
@@ -343,11 +343,11 @@ export function CreateAgentModal() {
                     onClick={() => toggleCommonRule(commonRule)}
                     className={`px-2.5 py-1 rounded-md border text-[11px] transition-colors flex items-center gap-1.5 ${
                       isSelected
-                        ? 'border-amber-600 bg-amber-950/40 text-amber-300'
-                        : 'border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:text-zinc-200'
+                        ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 font-medium'
+                        : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 text-[#5f6368] dark:text-zinc-400 hover:text-black dark:hover:text-zinc-200'
                     }`}
                   >
-                    <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-amber-400' : 'bg-zinc-600'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-amber-500' : 'bg-zinc-400 dark:bg-zinc-600'}`} />
                     <span>{commonRule}</span>
                   </button>
                 );
@@ -367,13 +367,13 @@ export function CreateAgentModal() {
                   }
                 }}
                 placeholder="Add bespoke authority rule..."
-                className="flex-1 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-100 placeholder-zinc-500 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                className="flex-1 px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 text-[#202124] dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
               />
               <button
                 type="button"
                 onClick={handleAddCustomRule}
                 disabled={!newRuleInput.trim()}
-                className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-zinc-200 font-medium text-xs flex items-center gap-1 transition-colors"
+                className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 border border-zinc-300 dark:border-zinc-700 disabled:opacity-50 text-zinc-700 dark:text-zinc-200 font-medium text-xs flex items-center gap-1 transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add</span>
@@ -386,13 +386,13 @@ export function CreateAgentModal() {
                 {authorityRules.map((rule) => (
                   <li
                     key={rule}
-                    className="flex items-center justify-between p-1.5 rounded bg-zinc-900/60 border border-zinc-800/80 text-[11px] text-zinc-300"
+                    className="flex items-center justify-between p-1.5 rounded bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800/80 text-[11px] text-[#202124] dark:text-zinc-300"
                   >
                     <span className="truncate mr-2">• {rule}</span>
                     <button
                       type="button"
                       onClick={() => handleRemoveRule(rule)}
-                      className="text-zinc-500 hover:text-rose-400 transition-colors p-0.5"
+                      className="text-zinc-400 hover:text-rose-500 transition-colors p-0.5"
                       title="Remove rule"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -404,18 +404,18 @@ export function CreateAgentModal() {
           </div>
 
           {/* Form Actions */}
-          <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-end gap-3">
+          <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800/80 flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={closeCreateAgentModal}
-              className="px-4 py-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors font-medium text-xs"
+              className="px-4 py-2 rounded-xl text-[#5f6368] dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors font-medium text-xs"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!name.trim() || !goal.trim() || isSubmitting}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold text-xs flex items-center gap-2 transition-colors shadow-lg shadow-indigo-600/20"
+              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold text-xs flex items-center gap-2 transition-colors shadow-md shadow-blue-600/20"
             >
               {isSubmitting ? (
                 <>

@@ -1,13 +1,27 @@
 import { useState, useEffect } from 'react';
-import { Bot, Share2, Plus, Sparkles, Crown, Zap, Eye } from 'lucide-react';
+import {
+  Share2,
+  Plus,
+  Sparkles,
+  Crown,
+  Zap,
+  Eye,
+  ArrowLeft,
+  ChevronDown,
+  Home,
+  LogOut,
+  FolderKanban,
+} from 'lucide-react';
 import { AgentCanvas } from './components/canvas/AgentCanvas';
 import { InspectorDrawer } from './components/inspector/InspectorDrawer';
 import { PairingWizard } from './components/modals/PairingWizard';
 import { CreateAgentModal } from './components/modals/CreateAgentModal';
 import { ShareModal } from './components/modals/ShareModal';
+import { LandingPage } from './components/home/LandingPage';
+import { WorkspaceDashboard } from './components/workspaces/WorkspaceDashboard';
+import { ThemeToggle } from './components/common/ThemeToggle';
 import { useWorkspaceStore } from './store/useWorkspaceStore';
-import type { Node, Edge } from '@xyflow/react';
-import type { AgentData } from './store/useWorkspaceStore';
+import { useAuthStore } from './store/useAuthStore';
 
 export function App() {
   const {
@@ -15,164 +29,178 @@ export function App() {
     userRole,
     setUserRole,
     nodes,
-    setNodes,
-    setEdges,
     setShareModalOpen,
     openCreateAgentModal,
     cursors,
+    workspaces,
+    activeWorkspaceId,
+    activeWorkspaceName,
+    switchWorkspace,
   } = useWorkspaceStore();
 
-  const [isShowcase, setIsShowcase] = useState(false);
+  const { isAuthenticated, user, logout } = useAuthStore();
 
-  // Determine user role: workspace owner defaults to Admin; public showcase/observer link gives Read
+  const [activeView, setActiveView] = useState<'landing' | 'dashboard' | 'canvas'>('landing');
+  const [isShowcase, setIsShowcase] = useState(false);
+  const [isWorkspaceSwitcherOpen, setIsWorkspaceSwitcherOpen] = useState(false);
+
+  // Initialize view and role based on URL params and authentication state
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.has('showcase') || searchParams.get('role') === 'read') {
       setIsShowcase(true);
       setUserRole('read');
-    } else if (searchParams.get('role') === 'write') {
-      setUserRole('write');
+      setActiveView('canvas');
+    } else if (searchParams.get('view') === 'canvas' || searchParams.has('workspace')) {
+      setActiveView('canvas');
+    } else if (searchParams.get('view') === 'dashboard' || isAuthenticated) {
+      setActiveView('dashboard');
     } else {
-      setUserRole('admin');
+      setActiveView('landing');
     }
-  }, [setUserRole]);
+  }, [isAuthenticated, setUserRole]);
 
-  // Populate sample multi-vendor fleet if canvas is empty
+  // Sync role with logged-in user if available and not showcase
   useEffect(() => {
-    if (nodes.length === 0) {
-      const demoNodes: Node<AgentData>[] = [
-        {
-          id: 'agent-1',
-          type: 'agentNode',
-          position: { x: 100, y: 150 },
-          data: {
-            id: 'agent-1',
-            name: 'Sales Research Dot',
-            provider: 'openai_dot',
-            goal: 'Scrape high-intent SaaS leads and extract corporate tech stacks.',
-            status: 'working',
-            currentThought: 'Analyzing Stripe documentation page for webhook signature format',
-            currentStep: 'Drafting outbound brief for Grok Copywriter',
-            lastRunStatus: 'success',
-            lastRunTime: '4m ago',
-          },
-        },
-        {
-          id: 'agent-2',
-          type: 'agentNode',
-          position: { x: 550, y: 80 },
-          data: {
-            id: 'agent-2',
-            name: 'Grok Copywriter',
-            provider: 'grok_bot',
-            goal: 'Draft tailored outreach sequences based on incoming technical dossiers.',
-            status: 'blocked_on_user',
-            currentThought: 'Generated 3 email variants; awaiting sign-off on pricing mention.',
-            lastRunStatus: 'success',
-            lastRunTime: '12m ago',
-          },
-        },
-        {
-          id: 'agent-3',
-          type: 'agentNode',
-          position: { x: 550, y: 320 },
-          data: {
-            id: 'agent-3',
-            name: 'Claude Compliance',
-            provider: 'claude',
-            goal: 'Verify outbound emails adhere to GDPR and company privacy policies.',
-            status: 'resting',
-            lastRunStatus: 'success',
-            lastRunTime: '1h ago',
-            nextScheduledTime: 'Tomorrow 9:00 AM',
-          },
-        },
-      ];
-
-      const demoEdges: Edge[] = [
-        {
-          id: 'edge-1-2',
-          source: 'agent-1',
-          target: 'agent-2',
-          type: 'pulseEdge',
-          data: { toolName: 'delegate_task_to_grok_copywriter' },
-        },
-        {
-          id: 'edge-2-3',
-          source: 'agent-2',
-          target: 'agent-3',
-          type: 'pulseEdge',
-          data: { toolName: 'delegate_task_to_claude_compliance' },
-        },
-      ];
-
-      setNodes(demoNodes);
-      setEdges(demoEdges);
+    if (user && !isShowcase) {
+      setUserRole(user.role);
     }
-  }, [nodes.length, setNodes, setEdges]);
+  }, [user, isShowcase, setUserRole]);
+
+  // Route: Landing View
+  if (activeView === 'landing') {
+    return (
+      <LandingPage
+        onEnterApp={() => setActiveView('dashboard')}
+        onOpenShowcase={() => {
+          setIsShowcase(true);
+          setUserRole('read');
+          setActiveView('canvas');
+        }}
+      />
+    );
+  }
+
+  // Route: Workspace Dashboard View
+  if (activeView === 'dashboard') {
+    return (
+      <WorkspaceDashboard
+        onSelectWorkspace={() => setActiveView('canvas')}
+        onGoToLanding={() => setActiveView('landing')}
+      />
+    );
+  }
 
   const roleBadgeConfig = {
-    admin: { label: 'Admin', icon: Crown, badgeClass: 'bg-amber-950/80 border-amber-700/80 text-amber-300' },
-    write: { label: 'Operator', icon: Zap, badgeClass: 'bg-indigo-950/80 border-indigo-700/80 text-indigo-300' },
-    read: { label: 'Observer', icon: Eye, badgeClass: 'bg-emerald-950/80 border-emerald-700/80 text-emerald-300' },
+    admin: {
+      label: 'Admin',
+      icon: Crown,
+      badgeClass: 'bg-amber-50 dark:bg-amber-950/80 border-amber-300 dark:border-amber-700/80 text-amber-800 dark:text-amber-300',
+    },
+    write: {
+      label: 'Operator',
+      icon: Zap,
+      badgeClass: 'bg-blue-50 dark:bg-indigo-950/80 border-blue-300 dark:border-indigo-700/80 text-blue-800 dark:text-indigo-300',
+    },
+    read: {
+      label: 'Observer',
+      icon: Eye,
+      badgeClass: 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-300 dark:border-emerald-700/80 text-emerald-800 dark:text-emerald-300',
+    },
   };
 
   const currentRoleConfig = roleBadgeConfig[userRole] || roleBadgeConfig.write;
   const RoleIcon = currentRoleConfig.icon;
 
   return (
-    <div className="relative w-screen h-screen flex flex-col bg-zinc-950 text-zinc-100 select-none overflow-hidden font-sans">
+    <div className="relative w-screen h-screen flex flex-col bg-[#f8f9fa] dark:bg-[#07080b] text-[#202124] dark:text-zinc-100 select-none overflow-hidden font-sans">
       {/* Public Showcase Banner */}
       {isShowcase && (
-        <div className="h-8 bg-gradient-to-r from-emerald-950 via-zinc-900 to-indigo-950 border-b border-emerald-700/60 px-4 flex items-center justify-between text-xs text-emerald-300 z-40 shrink-0">
+        <div className="h-8 bg-gradient-to-r from-emerald-100 via-white to-indigo-100 dark:from-emerald-950 dark:via-zinc-900 dark:to-indigo-950 border-b border-emerald-300 dark:border-emerald-700/60 px-4 flex items-center justify-between text-xs text-emerald-900 dark:text-emerald-300 z-40 shrink-0">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-ping" />
             <span className="font-semibold">Public Read-Only Showcase</span>
-            <span className="text-zinc-600">•</span>
-            <span className="text-[11px] text-zinc-400">Live 24/7 Cloud Agent Telemetry Feed</span>
+            <span className="text-zinc-400 dark:text-zinc-600">•</span>
+            <span className="text-[11px] text-zinc-600 dark:text-zinc-400">Live 24/7 Cloud Agent Telemetry Feed</span>
           </div>
           <button
             onClick={() => {
               window.history.replaceState({}, '', window.location.pathname);
               setIsShowcase(false);
               setUserRole('write');
+              setActiveView('dashboard');
             }}
-            className="text-[10px] underline hover:text-white font-mono transition-colors"
+            className="text-[10px] underline hover:text-black dark:hover:text-white font-mono transition-colors"
           >
-            Exit Showcase & Switch to Operator
+            Exit Showcase & Go to Dashboard
           </button>
         </div>
       )}
 
-      {/* Top Navigation */}
-      <header className="h-14 border-b border-zinc-800/80 px-4 flex items-center justify-between bg-zinc-950/85 backdrop-blur-md z-30 shrink-0">
+      {/* Top Command Bar & Switchboard Navigation */}
+      <header className="h-14 border-b border-zinc-200 dark:border-zinc-800/80 px-4 flex items-center justify-between bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md z-30 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <Bot className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <span className="font-bold text-sm tracking-tight text-white">Dotdeck</span>
-              <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400 font-mono">
-                SWITCHBOARD
-              </span>
-            </div>
+          {/* Back to Workspaces */}
+          <button
+            onClick={() => setActiveView('dashboard')}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white dark:bg-zinc-900/90 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white text-xs font-medium transition-colors shadow-sm"
+            title="Return to Workspace Hub"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Workspaces</span>
+          </button>
+
+          <span className="text-zinc-400 dark:text-zinc-700">/</span>
+
+          {/* Workspace Switcher Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setIsWorkspaceSwitcherOpen(!isWorkspaceSwitcherOpen)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-900/90 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-cyan-500/30 text-zinc-900 dark:text-white text-xs font-semibold shadow-sm transition-all"
+            >
+              <FolderKanban className="w-3.5 h-3.5 text-blue-600 dark:text-cyan-400" />
+              <span>{activeWorkspaceName || 'Active Workspace'}</span>
+              <ChevronDown className="w-3 h-3 text-zinc-400" />
+            </button>
+
+            {isWorkspaceSwitcherOpen && (
+              <div className="absolute top-full left-0 mt-1.5 w-64 rounded-xl bg-white dark:bg-[#131418] border border-zinc-200 dark:border-cyan-500/30 py-1 shadow-2xl z-50 text-xs">
+                <div className="px-3 py-1.5 text-[10px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+                  Select Workspace
+                </div>
+                {workspaces.map((ws) => (
+                  <button
+                    key={ws.id}
+                    onClick={() => {
+                      switchWorkspace(ws.id);
+                      setIsWorkspaceSwitcherOpen(false);
+                    }}
+                    className={`w-full px-3 py-2 text-left text-xs flex items-center justify-between hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-colors ${
+                      ws.id === activeWorkspaceId ? 'text-blue-600 dark:text-cyan-300 bg-blue-50 dark:bg-cyan-950/40 font-semibold' : 'text-zinc-700 dark:text-zinc-300'
+                    }`}
+                  >
+                    <span className="truncate">{ws.name}</span>
+                    <span className="text-[10px] font-mono text-zinc-400 dark:text-zinc-500">{ws.agentCount} bots</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="h-4 w-[1px] bg-zinc-800 mx-1" />
-
-          <div className="flex items-center gap-1.5 text-xs text-zinc-400">
-            <span className="font-medium text-zinc-200">Tier 3 Closed Cloud Fleet</span>
-            <span className="text-zinc-600">•</span>
-            <span className="text-[11px] text-emerald-400">3 Online</span>
+          <div className="hidden lg:flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 font-mono">
+            <span className="text-zinc-300 dark:text-zinc-700">•</span>
+            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{nodes.length} Agents Online</span>
           </div>
         </div>
 
         {/* Right Controls */}
         <div className="flex items-center gap-3">
+          {/* Theme Toggle Button */}
+          <ThemeToggle />
+
           {/* Workspace Role Badge */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-mono font-medium ${currentRoleConfig.badgeClass}`}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-mono font-medium shadow-sm ${currentRoleConfig.badgeClass}`}
             title={`Your Workspace Role: ${currentRoleConfig.label}`}
           >
             <RoleIcon className="w-3 h-3" />
@@ -181,8 +209,8 @@ export function App() {
 
           {/* Teammate Presence Avatars */}
           <div className="flex items-center -space-x-1.5 overflow-hidden">
-            <div className="w-6 h-6 rounded-full bg-indigo-500 ring-2 ring-zinc-950 flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
-              You
+            <div className="w-6 h-6 rounded-full bg-blue-600 dark:bg-cyan-600 ring-2 ring-white dark:ring-[#07080b] flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
+              {user ? user.avatar : 'You'}
             </div>
             {Object.values(cursors)
               .filter((teammateCursor) => teammateCursor.userId !== currentUserId)
@@ -190,7 +218,7 @@ export function App() {
                 <div
                   key={teammateCursor.userId}
                   style={{ backgroundColor: teammateCursor.color }}
-                  className="w-6 h-6 rounded-full ring-2 ring-zinc-950 flex items-center justify-center text-[10px] font-bold text-white shadow-sm"
+                  className="w-6 h-6 rounded-full ring-2 ring-white dark:ring-[#07080b] flex items-center justify-center text-[10px] font-bold text-white shadow-sm"
                   title={teammateCursor.userName}
                 >
                   {teammateCursor.userName.slice(0, 2).toUpperCase()}
@@ -200,26 +228,49 @@ export function App() {
 
           <button
             onClick={() => setShareModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 text-xs font-medium transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-900/90 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-medium transition-colors shadow-sm"
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span>Share</span>
+            <span className="hidden sm:inline">Share</span>
           </button>
 
           <button
             onClick={openCreateAgentModal}
             disabled={userRole === 'read'}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:hover:bg-indigo-600 text-white text-xs font-medium transition-colors shadow-sm"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 dark:bg-gradient-to-r dark:from-cyan-500 dark:to-blue-600 text-white text-xs font-semibold shadow-md shadow-blue-500/10 dark:shadow-cyan-500/20 disabled:opacity-40 transition-all"
             title={userRole === 'read' ? 'Read-only observer mode (Write permissions required)' : 'Add agent node'}
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Add Agent Node</span>
+            <span>Add Agent</span>
           </button>
+
+          {/* Landing quick button */}
+          <button
+            onClick={() => setActiveView('landing')}
+            title="Landing Home"
+            className="p-1.5 rounded-xl bg-white dark:bg-zinc-900/80 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors shadow-sm"
+          >
+            <Home className="w-4 h-4" />
+          </button>
+
+          {/* Sign Out */}
+          {isAuthenticated && (
+            <button
+              onClick={() => {
+                logout();
+                setActiveView('landing');
+              }}
+              title="Sign Out"
+              className="p-1.5 rounded-xl bg-white dark:bg-zinc-900/80 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors shadow-sm"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </header>
 
       {/* Main Canvas Area */}
-      <main className="flex-1 relative overflow-hidden">
+      <main className="flex-1 relative overflow-hidden bg-[#f8f9fa] dark:bg-[#07080b]">
         <AgentCanvas />
         <InspectorDrawer />
 
@@ -228,14 +279,14 @@ export function App() {
           href="https://github.com/Souheil007/Dotdeck"
           target="_blank"
           rel="noopener noreferrer"
-          className="fixed bottom-4 left-4 z-30 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-950/90 hover:bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-white shadow-2xl backdrop-blur-md transition-all text-xs group"
+          className="fixed bottom-4 left-4 z-30 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/90 dark:bg-zinc-950/90 hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-blue-400 dark:hover:border-cyan-500/40 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white shadow-lg backdrop-blur-md transition-all text-xs group"
           title="Dotdeck Open Source Repository"
         >
-          <div className="w-5 h-5 rounded-lg bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
+          <div className="w-5 h-5 rounded-lg bg-blue-600 dark:bg-gradient-to-tr dark:from-cyan-500 dark:to-blue-600 flex items-center justify-center text-white shrink-0 group-hover:scale-110 transition-transform">
             <Sparkles className="w-3 h-3" />
           </div>
           <span className="font-medium text-[11px]">
-            Powered by <strong className="text-white font-semibold">Dotdeck</strong> — Build Your Fleet
+            Powered by <strong className="text-zinc-900 dark:text-white font-semibold">Dotdeck</strong> — Build Your Fleet
           </span>
         </a>
       </main>

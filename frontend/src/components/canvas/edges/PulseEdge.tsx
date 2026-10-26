@@ -62,12 +62,12 @@ export const PulseEdge = memo(({
                 payload: data?.payload,
               });
             }}
-            className="group px-3 py-1 rounded-full bg-zinc-950/90 border border-indigo-500/40 hover:border-indigo-400 text-[11px] font-mono text-indigo-300 hover:text-white hover:bg-zinc-900 transition-all shadow-lg flex items-center gap-1.5 backdrop-blur-md cursor-pointer select-none ring-1 ring-white/5"
+            className="group px-3 py-1 rounded-full bg-white/95 dark:bg-zinc-950/90 border border-indigo-300 dark:border-indigo-500/40 hover:border-indigo-500 dark:hover:border-indigo-400 text-[11px] font-mono text-indigo-700 dark:text-indigo-300 hover:text-indigo-900 dark:hover:text-white hover:bg-indigo-50/50 dark:hover:bg-zinc-900 transition-all shadow-md flex items-center gap-1.5 backdrop-blur-md cursor-pointer select-none ring-1 ring-black/5 dark:ring-white/5"
             title="Inspect synthesized MCP cross-agent tool"
           >
-            <Sparkles className="w-3 h-3 text-indigo-400 group-hover:text-indigo-300 transition-colors animate-pulse" />
+            <Sparkles className="w-3 h-3 text-indigo-500 dark:text-indigo-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors animate-pulse" />
             <span className="font-semibold">{toolName}</span>
-            <ArrowRight className="w-3 h-3 text-zinc-500 group-hover:translate-x-0.5 transition-transform" />
+            <ArrowRight className="w-3 h-3 text-zinc-400 dark:text-zinc-500 group-hover:translate-x-0.5 transition-transform" />
           </button>
         </div>
       </EdgeLabelRenderer>

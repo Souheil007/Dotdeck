@@ -47,6 +47,18 @@ export interface TeammateCursor {
   positionY: number;
 }
 
+export interface WorkspaceItem {
+  id: string;
+  name: string;
+  description: string;
+  providers: ('openai_dot' | 'grok_bot' | 'meta_muse' | 'claude')[];
+  agentCount: number;
+  activeApprovalsCount: number;
+  membersCount: number;
+  lastActive: string;
+  role: 'admin' | 'write' | 'read';
+}
+
 export interface HandoffPreview {
   edgeId: string;
   toolName: string;
@@ -75,6 +87,9 @@ interface WorkspaceState {
   currentUserId: string;
   currentUserName: string;
   workspaceId: string;
+  workspaces: WorkspaceItem[];
+  activeWorkspaceId: string;
+  activeWorkspaceName: string;
   userRole: 'admin' | 'write' | 'read';
   nodes: Node<AgentData>[];
   edges: Edge[];
@@ -111,16 +126,57 @@ interface WorkspaceState {
   setUserRole: (role: 'admin' | 'write' | 'read') => void;
   setShareModalOpen: (open: boolean) => void;
   setHandoffPreview: (preview: HandoffPreview | null) => void;
+  switchWorkspace: (workspaceId: string) => void;
+  createWorkspace: (name: string, description: string) => WorkspaceItem;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(
   persist(
     (set) => {
       const initialUser = getOrCreateSessionUser();
+      const defaultWorkspaces: WorkspaceItem[] = [
+        {
+          id: 'ws-prod-sales',
+          name: 'Enterprise Outbound Swarm',
+          description: 'Orchestrates OpenAI web research to Grok bespoke email copy with Claude compliance guardrails.',
+          providers: ['openai_dot', 'grok_bot', 'claude'],
+          agentCount: 3,
+          activeApprovalsCount: 1,
+          membersCount: 4,
+          lastActive: '2m ago',
+          role: 'admin',
+        },
+        {
+          id: 'ws-secops',
+          name: 'SecOps Vulnerability Fleet',
+          description: 'Automated infrastructure reconnaissance via Meta Muse VM checking with Claude auditing.',
+          providers: ['meta_muse', 'claude'],
+          agentCount: 2,
+          activeApprovalsCount: 0,
+          membersCount: 2,
+          lastActive: '45m ago',
+          role: 'admin',
+        },
+        {
+          id: 'ws-support',
+          name: 'Customer Support Tier 3',
+          description: 'High-touch ticket triage with 45s human authorization hold on financial refunds.',
+          providers: ['openai_dot', 'claude'],
+          agentCount: 2,
+          activeApprovalsCount: 0,
+          membersCount: 3,
+          lastActive: '2h ago',
+          role: 'write',
+        },
+      ];
+
       return {
         currentUserId: initialUser.userId,
         currentUserName: initialUser.userName,
-        workspaceId: 'default-workspace',
+        workspaceId: 'ws-prod-sales',
+        workspaces: defaultWorkspaces,
+        activeWorkspaceId: 'ws-prod-sales',
+        activeWorkspaceName: 'Enterprise Outbound Swarm',
         userRole: 'admin',
         nodes: [],
         edges: [],
@@ -142,8 +198,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           edges: [...state.edges.filter((existingEdge) => existingEdge.id !== edge.id), edge],
         })),
       addAgentNode: (agent, position) =>
-        set((state) => ({
-          nodes: [
+        set((state) => {
+          const updatedNodes = [
             ...state.nodes.filter((node) => node.id !== agent.id),
             {
               id: agent.id,
@@ -154,8 +210,15 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               },
               data: agent,
             },
-          ],
-        })),
+          ];
+          const updatedWorkspaces = state.workspaces.map((w) =>
+            w.id === state.activeWorkspaceId ? { ...w, agentCount: updatedNodes.length } : w
+          );
+          return {
+            nodes: updatedNodes,
+            workspaces: updatedWorkspaces,
+          };
+        }),
       updateNodePosition: (nodeId, position) =>
         set((state) => ({
           nodes: state.nodes.map((node) =>
@@ -240,13 +303,172 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       setUserRole: (userRole) => set({ userRole }),
       setShareModalOpen: (isShareModalOpen) => set({ isShareModalOpen }),
       setHandoffPreview: (handoffPreview) => set({ handoffPreview }),
+
+      switchWorkspace: (workspaceId) =>
+        set((state) => {
+          const target = state.workspaces.find((w) => w.id === workspaceId);
+          if (!target) return state;
+
+          let targetNodes: Node<AgentData>[] = [];
+          let targetEdges: Edge[] = [];
+
+          if (workspaceId === 'ws-prod-sales') {
+            targetNodes = [
+              {
+                id: 'agent-1',
+                type: 'agentNode',
+                position: { x: 100, y: 150 },
+                data: {
+                  id: 'agent-1',
+                  name: 'Sales Research Dot',
+                  provider: 'openai_dot',
+                  goal: 'Scrape high-intent SaaS leads and extract corporate tech stacks.',
+                  status: 'working',
+                  currentThought: 'Analyzing Stripe documentation page for webhook signature format',
+                  currentStep: 'Drafting outbound brief for Grok Copywriter',
+                  lastRunStatus: 'success',
+                  lastRunTime: '4m ago',
+                },
+              },
+              {
+                id: 'agent-2',
+                type: 'agentNode',
+                position: { x: 550, y: 80 },
+                data: {
+                  id: 'agent-2',
+                  name: 'Grok Copywriter',
+                  provider: 'grok_bot',
+                  goal: 'Draft tailored outreach sequences based on incoming technical dossiers.',
+                  status: 'blocked_on_user',
+                  currentThought: 'Generated 3 email variants; awaiting sign-off on pricing mention.',
+                  lastRunStatus: 'success',
+                  lastRunTime: '12m ago',
+                },
+              },
+              {
+                id: 'agent-3',
+                type: 'agentNode',
+                position: { x: 550, y: 320 },
+                data: {
+                  id: 'agent-3',
+                  name: 'Claude Compliance',
+                  provider: 'claude',
+                  goal: 'Verify outbound emails adhere to GDPR and company privacy policies.',
+                  status: 'resting',
+                  lastRunStatus: 'success',
+                  lastRunTime: '1h ago',
+                  nextScheduledTime: 'Tomorrow 9:00 AM',
+                },
+              },
+            ];
+
+            targetEdges = [
+              {
+                id: 'edge-1-2',
+                source: 'agent-1',
+                target: 'agent-2',
+                type: 'pulseEdge',
+                data: { toolName: 'delegate_task_to_grok_copywriter' },
+              },
+              {
+                id: 'edge-2-3',
+                source: 'agent-2',
+                target: 'agent-3',
+                type: 'pulseEdge',
+                data: { toolName: 'delegate_task_to_claude_compliance' },
+              },
+            ];
+          } else if (workspaceId === 'ws-secops') {
+            targetNodes = [
+              {
+                id: 'sec-1',
+                type: 'agentNode',
+                position: { x: 120, y: 180 },
+                data: {
+                  id: 'sec-1',
+                  name: 'Meta Muse Recon',
+                  provider: 'meta_muse',
+                  goal: 'Port scan perimeter infrastructure and flag open ingress points.',
+                  status: 'working',
+                  currentThought: 'Running syn scan against public cloud CIDR blocks',
+                  currentStep: 'Summarizing CVE vulnerabilities',
+                  lastRunStatus: 'success',
+                  lastRunTime: '18m ago',
+                },
+              },
+              {
+                id: 'sec-2',
+                type: 'agentNode',
+                position: { x: 580, y: 180 },
+                data: {
+                  id: 'sec-2',
+                  name: 'Claude Auditor',
+                  provider: 'claude',
+                  goal: 'Audit security logs and enforce CIS benchmark compliance.',
+                  status: 'resting',
+                  lastRunStatus: 'success',
+                  lastRunTime: '30m ago',
+                },
+              },
+            ];
+
+            targetEdges = [
+              {
+                id: 'edge-sec-1-2',
+                source: 'sec-1',
+                target: 'sec-2',
+                type: 'pulseEdge',
+                data: { toolName: 'delegate_task_to_claude_auditor' },
+              },
+            ];
+          }
+
+          return {
+            workspaceId: target.id,
+            activeWorkspaceId: target.id,
+            activeWorkspaceName: target.name,
+            userRole: target.role,
+            nodes: targetNodes,
+            edges: targetEdges,
+            selectedAgentId: null,
+          };
+        }),
+
+      createWorkspace: (name, description) => {
+        const newId = `ws-${Date.now()}`;
+        const newWorkspace: WorkspaceItem = {
+          id: newId,
+          name,
+          description: description || 'Clean autonomous agent workspace.',
+          providers: [],
+          agentCount: 0,
+          activeApprovalsCount: 0,
+          membersCount: 1,
+          lastActive: 'Just now',
+          role: 'admin',
+        };
+
+        set((state) => ({
+          workspaces: [newWorkspace, ...state.workspaces],
+          workspaceId: newId,
+          activeWorkspaceId: newId,
+          activeWorkspaceName: name,
+          userRole: 'admin',
+          nodes: [],
+          edges: [],
+          selectedAgentId: null,
+        }));
+
+        return newWorkspace;
+      },
     };
   },
     {
-      name: 'dotdeck-canvas-state',
+      name: 'dotdeck-workspaces-store',
       partialize: (state) => ({
-        nodes: state.nodes,
-        edges: state.edges,
+        workspaces: state.workspaces,
+        activeWorkspaceId: state.activeWorkspaceId,
+        activeWorkspaceName: state.activeWorkspaceName,
       }),
     }
   )

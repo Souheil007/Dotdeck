@@ -19,6 +19,8 @@ flowchart TD
     P02 --> P08["Plan 08: Agent Pairing Wizard & Blueprints"]
     P05 --> P09["Plan 09: Workspace Collaboration & RBAC"]
     P04 & P07 & P08 & P09 --> P10["Plan 10: E2E Verification & Production Hardening"]
+    P10 --> P11["Plan 11: AgentGrid Homepage, Auth & Workspace Hub"]
+    P11 --> P12["Plan 12: Strategic Pivot to HITL Execution Gateway"]
 ```
 
 ---
@@ -37,10 +39,12 @@ flowchart TD
 | **08** | [plan-08-agent-pairing-wizard-and-blueprints.md](file:///C:/GithubProjects/Dotdeck/plans/plan-08-agent-pairing-wizard-and-blueprints.md) | 60s bootstrap prompt generator, heartbeat detector | Completed [x] |
 | **09** | [plan-09-workspace-collaboration-and-rbac.md](file:///C:/GithubProjects/Dotdeck/plans/plan-09-workspace-collaboration-and-rbac.md) | Multi-tenancy, member roles (Admin/Write/Read), showcase link | Completed [x] |
 | **10** | [plan-10-end-to-end-verification-and-production-hardening.md](file:///C:/GithubProjects/Dotdeck/plans/plan-10-end-to-end-verification-and-production-hardening.md) | E2E mock agent simulation, Docker Compose validation, tests | Completed [x] |
+| **11** | [plan-11-homepage-auth-and-workspace-management.md](file:///C:/GithubProjects/Dotdeck/plans/plan-11-homepage-auth-and-workspace-management.md) | AgentGrid-inspired homepage, auth modal, workspace hub | Completed [x] |
+| **12** | [plan-12-strategic-pivot-hitl-governance-gateway.md](file:///C:/GithubProjects/Dotdeck/plans/plan-12-strategic-pivot-hitl-governance-gateway.md) | Headless HITL gateway, declarative policy engine, Slack callbacks | Upcoming [ ] |
 
 ---
 
 ## Execution Rules
-1. Work through plans **sequentially (01 through 10)**.
+1. Work through plans **sequentially (01 through 12)**.
 2. Mark tasks and plans as `In Progress [x]` while actively working and `Completed [x]` when passing DoD.
 3. Always ensure Go Google-Style docstrings and strict naming conventions are preserved.
