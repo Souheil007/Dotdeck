@@ -21,13 +21,49 @@ type MemoryStore struct {
 	edges      map[string][]mcp.EdgeContext // source_agent_id -> edges
 }
 
-// NewMemoryStore initializes an empty in-memory store.
+// NewMemoryStore initializes an in-memory store pre-seeded with development agents.
 func NewMemoryStore() *MemoryStore {
-	return &MemoryStore{
+	storeInstance := &MemoryStore{
 		agents: make(map[string]*mcp.AgentContext),
 		byID:   make(map[string]*mcp.AgentContext),
 		edges:  make(map[string][]mcp.EdgeContext),
 	}
+
+	// Seed development fleet matching canvas demo nodes
+	storeInstance.SaveAgent("dev-token-123", &mcp.AgentContext{
+		ID:          "agent-1",
+		WorkspaceID: "default-workspace",
+		Name:        "Sales Research Dot",
+		Provider:    "openai_dot",
+		Status:      "working",
+	})
+	storeInstance.SaveAgent("dev-token-456", &mcp.AgentContext{
+		ID:          "agent-2",
+		WorkspaceID: "default-workspace",
+		Name:        "Grok Copywriter",
+		Provider:    "grok_bot",
+		Status:      "blocked_on_user",
+	})
+	storeInstance.SaveAgent("dev-token-789", &mcp.AgentContext{
+		ID:          "agent-3",
+		WorkspaceID: "default-workspace",
+		Name:        "Claude Compliance",
+		Provider:    "claude",
+		Status:      "resting",
+	})
+
+	storeInstance.AddEdge("agent-1", mcp.EdgeContext{
+		TargetAgentID:   "agent-2",
+		TargetAgentName: "Grok Copywriter",
+		ToolName:        "delegate_task_to_grok_copywriter",
+	})
+	storeInstance.AddEdge("agent-2", mcp.EdgeContext{
+		TargetAgentID:   "agent-3",
+		TargetAgentName: "Claude Compliance",
+		ToolName:        "delegate_task_to_claude_compliance",
+	})
+
+	return storeInstance
 }
 
 // SaveAgent registers or updates an agent descriptor in the lookup cache.

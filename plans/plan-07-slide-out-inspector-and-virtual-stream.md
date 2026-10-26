@@ -1,6 +1,6 @@
 # Plan 07: Slide-Out Inspector & Virtual Stream
 
-**Status:** Upcoming [ ]
+**Status:** Completed [x]
 
 ## Objective
 Create the slide-out inspector drawer featuring a virtualized step-by-step reasoning feed, interactive approval resolution cards with operator locking, and direct wake-up chat steering.
@@ -9,26 +9,26 @@ Create the slide-out inspector drawer featuring a virtualized step-by-step reaso
 
 ## Deliverables
 
-- [ ] **1. Slide-Out Inspector Drawer (`frontend/src/components/inspector/InspectorDrawer.tsx`)**
-  - [ ] Implement responsive right-side drawer keeping the canvas visible on the left.
-  - [ ] Support tabbed switching between `Thought Stream` and `Approvals`.
-  - [ ] Display live agent status badge, provider details, and quick close toggle.
+- [x] **1. Slide-Out Inspector Drawer (`frontend/src/components/inspector/InspectorDrawer.tsx`)**
+  - [x] Implement responsive right-side drawer keeping the canvas visible on the left.
+  - [x] Support tabbed switching between `Thought Stream` and `Approvals`.
+  - [x] Display live agent status badge, provider details, and quick close toggle.
 
-- [ ] **2. Virtualized Reasoning Stream (`frontend/src/components/inspector/ThoughtStream.tsx`)**
-  - [ ] Integrate `@tanstack/react-virtual` for DOM recycling across thousands of historical steps.
-  - [ ] Render step index, timestamp, formatted analytical hypothesis, and next planned action.
-  - [ ] Group thoughts by execution run with expandable collapsible run headers.
+- [x] **2. Virtualized Reasoning Stream (`frontend/src/components/inspector/ThoughtStream.tsx`)**
+  - [x] Integrate `@tanstack/react-virtual` for DOM recycling across thousands of historical steps.
+  - [x] Render step index, timestamp, formatted analytical hypothesis, and next planned action.
+  - [x] Group thoughts by execution run with expandable collapsible run headers.
 
-- [ ] **3. Interactive Approval Resolution Box (`frontend/src/components/inspector/ApprovalBox.tsx`)**
-  - [ ] Display question, rationale, and clickable quick-choice option pills.
-  - [ ] Display operator locking indicator: `"Sarah is reviewing this approval"`.
-  - [ ] Provide one-click `[Approve]`, `[Reject]`, and custom modified instruction inputs.
-  - [ ] Wire submit button to call `POST /api/v1/approvals/resolve`.
+- [x] **3. Interactive Approval Resolution Box (`frontend/src/components/inspector/ApprovalBox.tsx`)**
+  - [x] Display question, rationale, and clickable quick-choice option pills.
+  - [x] Display operator locking indicator: `"Sarah is reviewing this approval"`.
+  - [x] Provide one-click `[Approve]`, `[Reject]`, and custom modified instruction inputs.
+  - [x] Wire submit button to call `POST /api/v1/approvals/resolve`.
 
-- [ ] **4. Direct Steering Chat Box (`frontend/src/components/inspector/ChatBox.tsx`)**
-  - [ ] Text bar allowing operators with `write` role to dispatch prompts directly to agents.
-  - [ ] Show loading state and dispatch confirmations.
-  - [ ] Disable input when in read-only observer mode.
+- [x] **4. Direct Steering Chat Box (`frontend/src/components/inspector/ChatBox.tsx`)**
+  - [x] Text bar allowing operators with `write` role to dispatch prompts directly to agents.
+  - [x] Show loading state and dispatch confirmations.
+  - [x] Disable input when in read-only observer mode.
 
 ---
 
