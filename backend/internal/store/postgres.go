@@ -262,6 +262,28 @@ func (store *PostgresStore) CreateEdge(requestContext context.Context, edge doma
 	return &resultEdge, nil
 }
 
+// DeleteEdge removes a directed edge between two agents in postgres.
+func (store *PostgresStore) DeleteEdge(requestContext context.Context, workspaceID, sourceAgentID, targetAgentID string) error {
+	workspaceUUID, parseWorkspaceError := stringToUUID(workspaceID)
+	if parseWorkspaceError != nil {
+		return parseWorkspaceError
+	}
+	sourceUUID, parseSourceError := stringToUUID(sourceAgentID)
+	if parseSourceError != nil {
+		return parseSourceError
+	}
+	targetUUID, parseTargetError := stringToUUID(targetAgentID)
+	if parseTargetError != nil {
+		return parseTargetError
+	}
+
+	return store.queries.DeleteEdge(requestContext, db.DeleteEdgeParams{
+		WorkspaceID:   workspaceUUID,
+		SourceAgentID: sourceUUID,
+		TargetAgentID: targetUUID,
+	})
+}
+
 // CreateApproval records a pending human approval decision payload.
 func (store *PostgresStore) CreateApproval(requestContext context.Context, approval domain.ApprovalRequest) (*domain.ApprovalRequest, error) {
 	workspaceUUID, parseWorkspaceError := stringToUUID(approval.WorkspaceID)

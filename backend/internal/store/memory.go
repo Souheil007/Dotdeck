@@ -101,6 +101,22 @@ func (store *MemoryStore) CreateEdge(requestContext context.Context, edge domain
 	return &edge, nil
 }
 
+// DeleteEdge removes a directed delegation link between two agents.
+func (store *MemoryStore) DeleteEdge(requestContext context.Context, workspaceID, sourceAgentID, targetAgentID string) error {
+	store.storeMutex.Lock()
+	defer store.storeMutex.Unlock()
+
+	edgesList := store.edges[sourceAgentID]
+	var updatedEdges []mcp.EdgeContext
+	for _, edgeItem := range edgesList {
+		if edgeItem.TargetAgentID != targetAgentID {
+			updatedEdges = append(updatedEdges, edgeItem)
+		}
+	}
+	store.edges[sourceAgentID] = updatedEdges
+	return nil
+}
+
 // GetAgentByToken retrieves an active agent matching the URL authorization token.
 func (store *MemoryStore) GetAgentByToken(token string) (*mcp.AgentContext, error) {
 	store.storeMutex.RLock()

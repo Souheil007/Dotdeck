@@ -107,6 +107,7 @@ interface WorkspaceState {
   setNodes: (nodes: Node<AgentData>[]) => void;
   setEdges: (edges: Edge[]) => void;
   addEdgeToWorkspace: (edge: Edge) => void;
+  removeEdgeFromWorkspace: (edgeId: string) => void;
   addAgentNode: (agent: AgentData, position?: { x: number; y: number }) => void;
   updateNodePosition: (nodeId: string, position: { x: number; y: number }) => void;
   updateNodeStatus: (agentId: string, status: AgentStatus) => void;
@@ -197,6 +198,10 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         set((state) => ({
           edges: [...state.edges.filter((existingEdge) => existingEdge.id !== edge.id), edge],
         })),
+      removeEdgeFromWorkspace: (edgeId) =>
+        set((state) => ({
+          edges: state.edges.filter((existingEdge) => existingEdge.id !== edgeId),
+        })),
       addAgentNode: (agent, position) =>
         set((state) => {
           const updatedNodes = [
@@ -205,8 +210,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               id: agent.id,
               type: 'agentNode',
               position: position || {
-                x: 150 + (state.nodes.length % 3) * 280,
-                y: 100 + Math.floor(state.nodes.length / 3) * 220,
+                x: 120 + (state.nodes.length % 3) * 440,
+                y: 120 + Math.floor(state.nodes.length / 3) * 320,
               },
               data: agent,
             },

@@ -39,6 +39,10 @@ func (repo *mockAgentSteeringRepository) CreateEdge(requestContext context.Conte
 	return &edge, nil
 }
 
+func (repo *mockAgentSteeringRepository) DeleteEdge(requestContext context.Context, workspaceID, sourceAgentID, targetAgentID string) error {
+	return nil
+}
+
 func (repo *mockAgentSteeringRepository) UpdateStatus(agentID, status string) error {
 	repo.updatedStatus = status
 	return nil

@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect } from 'react';
 import {
   ReactFlow,
   Background,
@@ -8,9 +8,11 @@ import {
   useEdgesState,
   addEdge,
   ControlButton,
+  ConnectionMode,
   type Connection,
   type Node,
   type Edge,
+  type EdgeChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -86,8 +88,8 @@ function calculateAutoLayout(nodes: Node<AgentData>[], edges: { source: string; 
     return {
       ...nodeItem,
       position: {
-        x: 80 + depth * 420,
-        y: 80 + indexInLayer * 240,
+        x: 100 + depth * 460,
+        y: 100 + indexInLayer * 300,
       },
     };
   });
@@ -103,6 +105,7 @@ export function AgentCanvas() {
     edges: storeEdges,
     setNodes: setStoreNodes,
     addEdgeToWorkspace,
+    removeEdgeFromWorkspace,
     cursors,
     handoffPreview,
     setHandoffPreview,
@@ -115,11 +118,11 @@ export function AgentCanvas() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(storeEdges);
 
   // Synchronize state when store updates from multiplayer events
-  useMemo(() => {
+  useEffect(() => {
     setNodes(storeNodes);
   }, [storeNodes, setNodes]);
 
-  useMemo(() => {
+  useEffect(() => {
     setEdges(storeEdges);
   }, [storeEdges, setEdges]);
 
@@ -127,19 +130,55 @@ export function AgentCanvas() {
   const websocketUrl = `${baseWsUrl}?user_id=${encodeURIComponent(currentUserId)}&user_name=${encodeURIComponent(currentUserName)}&workspace_id=${encodeURIComponent(workspaceId)}&role=${userRole}`;
   const { sendCursor } = useMultiplayerWebSocket(websocketUrl);
 
+  const handleEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      if (userRole === 'read') return;
+      onEdgesChange(changes);
+      changes.forEach((change) => {
+        if (change.type === 'remove') {
+          removeEdgeFromWorkspace(change.id);
+          const targetEdge = storeEdges.find((edgeItem) => edgeItem.id === change.id);
+          if (targetEdge) {
+            const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+            fetch(`${backendUrl}/api/v1/agents/edges`, {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                workspace_id: workspaceId,
+                source_agent_id: targetEdge.source,
+                target_agent_id: targetEdge.target,
+              }),
+            }).catch(() => {});
+          }
+        }
+      });
+    },
+    [onEdgesChange, removeEdgeFromWorkspace, storeEdges, userRole, workspaceId]
+  );
+
   const onConnect = useCallback(
     async (params: Connection) => {
       if (!params.source || !params.target) return;
+      if (params.source === params.target) return; // Prevent self-connection
+
+      // Prevent duplicate connections in same direction
+      const isDuplicate = storeEdges.some(
+        (edgeItem) => edgeItem.source === params.source && edgeItem.target === params.target
+      );
+      if (isDuplicate) return;
 
       const targetNode = storeNodes.find((nodeItem) => nodeItem.id === params.target);
       const targetName = targetNode?.data?.name || 'peer';
       const sanitizedName = targetName.toLowerCase().replace(/[^a-z0-9]/g, '_');
       const synthesizedToolName = `delegate_task_to_${sanitizedName}`;
 
+      const edgeId = `edge-${params.source}-${params.target}-${Date.now()}`;
       const newEdge: Edge = {
-        id: `edge-${params.source}-${params.target}`,
+        id: edgeId,
         source: params.source,
         target: params.target,
+        sourceHandle: params.sourceHandle,
+        targetHandle: params.targetHandle,
         type: 'pulseEdge',
         data: { toolName: synthesizedToolName },
       };
@@ -165,7 +204,7 @@ export function AgentCanvas() {
         // Fall back gracefully in offline or standalone demo mode
       }
     },
-    [storeNodes, setEdges, addEdgeToWorkspace, workspaceId]
+    [storeNodes, storeEdges, setEdges, addEdgeToWorkspace, workspaceId]
   );
 
   const handleTidyLayout = useCallback(() => {
@@ -189,12 +228,17 @@ export function AgentCanvas() {
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodesChange={userRole !== 'read' ? onNodesChange : undefined}
-        onEdgesChange={userRole !== 'read' ? onEdgesChange : undefined}
+        onEdgesChange={handleEdgesChange}
         onConnect={userRole !== 'read' ? onConnect : undefined}
+        connectionMode={ConnectionMode.Loose}
+        connectionRadius={40}
         nodesDraggable={userRole !== 'read'}
         nodesConnectable={userRole !== 'read'}
         elementsSelectable={true}
+        deleteKeyCode={['Backspace', 'Delete']}
         fitView
+        fitViewOptions={{ padding: 0.35, includeHiddenNodes: false }}
+        defaultViewport={{ x: 80, y: 80, zoom: 0.85 }}
         className="bg-[#f8f9fa] dark:bg-[#07080b]"
       >
         <Background color={theme === 'dark' ? '#27272a' : '#dadce0'} gap={22} size={1} />

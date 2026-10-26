@@ -37,6 +37,7 @@ func RegisterRoutes(rootRouter chi.Router, config RouterConfig) {
 			writeRouter.Use(middleware.RequireRole(nil, middleware.RoleWrite))
 			writeRouter.Post("/agents", config.AgentHandler.Create)
 			writeRouter.Post("/agents/edges", config.AgentHandler.ConnectEdge)
+			writeRouter.Delete("/agents/edges", config.AgentHandler.DisconnectEdge)
 			writeRouter.Post("/agents/{id}/steer", config.AgentHandler.Steer)
 			writeRouter.Post("/approvals/claim", config.ApprovalHandler.Claim)
 			writeRouter.Post("/approvals/release-claim", config.ApprovalHandler.ReleaseClaim)

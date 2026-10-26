@@ -25,6 +25,7 @@ type AgentSteeringRepository interface {
 	GetAgentByID(requestContext context.Context, agentID string) (*domain.Agent, error)
 	CreateAgent(requestContext context.Context, agent domain.Agent) (*domain.Agent, error)
 	CreateEdge(requestContext context.Context, edge domain.Edge) (*domain.Edge, error)
+	DeleteEdge(requestContext context.Context, workspaceID, sourceAgentID, targetAgentID string) error
 	UpdateStatus(agentID, status string) error
 	RecordThought(agentID string, step int, trace, nextStep, tool string, payload interface{}) error
 }
@@ -168,6 +169,32 @@ func (handler *AgentHandler) ConnectEdge(writer http.ResponseWriter, request *ht
 	}
 
 	response.JSON(writer, http.StatusCreated, edgeRecord)
+}
+
+// EdgeDisconnectPayload defines the payload for tearing down a canvas link.
+type EdgeDisconnectPayload struct {
+	WorkspaceID   string `json:"workspace_id"`
+	SourceAgentID string `json:"source_agent_id"`
+	TargetAgentID string `json:"target_agent_id"`
+}
+
+// DisconnectEdge removes a canvas edge between two agent nodes and tears down the synthesized tool.
+func (handler *AgentHandler) DisconnectEdge(writer http.ResponseWriter, request *http.Request) {
+	var payload EdgeDisconnectPayload
+	if decodeError := json.NewDecoder(request.Body).Decode(&payload); decodeError != nil {
+		response.Error(writer, http.StatusBadRequest, "invalid request payload")
+		return
+	}
+
+	if handler.repository != nil {
+		_ = handler.repository.DeleteEdge(request.Context(), payload.WorkspaceID, payload.SourceAgentID, payload.TargetAgentID)
+	}
+
+	response.JSON(writer, http.StatusOK, map[string]string{
+		"status": "disconnected",
+		"source": payload.SourceAgentID,
+		"target": payload.TargetAgentID,
+	})
 }
 
 // AgentSteerPayload defines the operator instruction dispatched to steer a cloud agent.
