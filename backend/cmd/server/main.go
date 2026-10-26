@@ -17,7 +17,7 @@ import (
 	"github.com/go-chi/cors"
 
 	"github.com/Souheil007/Dotdeck/backend/internal/api"
-	"github.com/Souheil007/Dotdeck/backend/internal/api/middleware"
+	"github.com/Souheil007/Dotdeck/backend/internal/api/handlers"
 	"github.com/Souheil007/Dotdeck/backend/internal/mcp"
 	"github.com/Souheil007/Dotdeck/backend/internal/observability"
 	"github.com/Souheil007/Dotdeck/backend/internal/store"
@@ -55,9 +55,9 @@ func main() {
 	go wsHub.Run()
 
 	mcpServer := mcp.NewServer(memStore, holdEngine, wsHub)
-	workspaceHandler := api.NewWorkspaceHandler()
-	agentHandler := api.NewAgentHandler(baseURL)
-	approvalHandler := api.NewApprovalHandler(holdEngine)
+	workspaceHandler := handlers.NewWorkspaceHandler()
+	agentHandler := handlers.NewAgentHandler(baseURL)
+	approvalHandler := handlers.NewApprovalHandler(holdEngine)
 
 	router := chi.NewRouter()
 
@@ -112,20 +112,11 @@ func main() {
 		wsHub.ServeWebSocket(writer, request, userID, userName, role, workspaceID)
 	})
 
-	// REST API v1
-	router.Route("/api/v1", func(apiRouter chi.Router) {
-		apiRouter.Use(middleware.Authenticate)
-
-		// Workspaces
-		apiRouter.Post("/workspaces", workspaceHandler.Create)
-		apiRouter.Post("/workspaces/invite", workspaceHandler.Invite)
-
-		// Agents & Canvas Edges
-		apiRouter.Post("/agents", agentHandler.Create)
-		apiRouter.Post("/agents/edges", agentHandler.ConnectEdge)
-
-		// Human Approvals
-		apiRouter.Post("/approvals/resolve", approvalHandler.Resolve)
+	// Register versioned REST API routes
+	api.RegisterRoutes(router, api.RouterConfig{
+		WorkspaceHandler: workspaceHandler,
+		AgentHandler:     agentHandler,
+		ApprovalHandler:  approvalHandler,
 	})
 
 	serverInstance := &http.Server{
@@ -138,23 +129,23 @@ func main() {
 
 	go func() {
 		slog.Info("Dotdeck switchboard listening", "port", port, "url", baseURL)
-		if err := serverInstance.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			slog.Error("server failed", "error", err)
+		if serveError := serverInstance.ListenAndServe(); serveError != nil && serveError != http.ErrServerClosed {
+			slog.Error("server failed", "error", serveError)
 			os.Exit(1)
 		}
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+	quitSignal := make(chan os.Signal, 1)
+	signal.Notify(quitSignal, syscall.SIGINT, syscall.SIGTERM)
+	<-quitSignal
 
 	slog.Info("Shutting down Dotdeck server gracefully...")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	defer tracerCleanup(ctx)
+	shutdownContext, cancelShutdown := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelShutdown()
+	defer tracerCleanup(shutdownContext)
 
-	if err := serverInstance.Shutdown(ctx); err != nil {
-		slog.Error("forced server shutdown", "error", err)
+	if shutdownError := serverInstance.Shutdown(shutdownContext); shutdownError != nil {
+		slog.Error("forced server shutdown", "error", shutdownError)
 	}
 	slog.Info("Server stopped cleanly")
 }

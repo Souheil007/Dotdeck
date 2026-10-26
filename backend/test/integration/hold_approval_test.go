@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/Souheil007/Dotdeck/backend/internal/api"
+	"github.com/Souheil007/Dotdeck/backend/internal/api/handlers"
 	"github.com/Souheil007/Dotdeck/backend/internal/mcp"
 	"github.com/Souheil007/Dotdeck/backend/internal/store"
 	"github.com/Souheil007/Dotdeck/backend/internal/ws"
@@ -37,7 +37,7 @@ func TestMCPHoldAndResolveIntegration(testingT *testing.T) {
 	memStore.SaveAgent(agentToken, agentCtx)
 
 	mcpServer := mcp.NewServer(memStore, holdEngine, wsHub)
-	approvalHandler := api.NewApprovalHandler(holdEngine)
+	approvalHandler := handlers.NewApprovalHandler(holdEngine)
 
 	router := chi.NewRouter()
 	router.Mount("/mcp", http.StripPrefix("/mcp", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -54,7 +54,7 @@ func TestMCPHoldAndResolveIntegration(testingT *testing.T) {
 		Body       map[string]interface{}
 		Err        error
 	}
-	resChan := make(chan agentResult, 1)
+	resultChan := make(chan agentResult, 1)
 
 	go func() {
 		payload := map[string]interface{}{
@@ -70,25 +70,25 @@ func TestMCPHoldAndResolveIntegration(testingT *testing.T) {
 			},
 		}
 		data, _ := json.Marshal(payload)
-		resp, err := http.Post(testServer.URL+"/mcp/"+agentToken, "application/json", bytes.NewReader(data))
-		if err != nil {
-			resChan <- agentResult{Err: err}
+		response, postError := http.Post(testServer.URL+"/mcp/"+agentToken, "application/json", bytes.NewReader(data))
+		if postError != nil {
+			resultChan <- agentResult{Err: postError}
 			return
 		}
-		defer resp.Body.Close()
+		defer response.Body.Close()
 
-		var resBody map[string]interface{}
-		_ = json.NewDecoder(resp.Body).Decode(&resBody)
-		resChan <- agentResult{StatusCode: resp.StatusCode, Body: resBody}
+		var responseBody map[string]interface{}
+		_ = json.NewDecoder(response.Body).Decode(&responseBody)
+		resultChan <- agentResult{StatusCode: response.StatusCode, Body: responseBody}
 	}()
 
 	select {
-	case res := <-resChan:
-		if res.Err != nil {
-			testingT.Fatalf("agent HTTP request failed: %v", res.Err)
+	case outcome := <-resultChan:
+		if outcome.Err != nil {
+			testingT.Fatalf("agent HTTP request failed: %v", outcome.Err)
 		}
-		if res.StatusCode != http.StatusOK {
-			testingT.Errorf("expected HTTP 200, got %d", res.StatusCode)
+		if outcome.StatusCode != http.StatusOK {
+			testingT.Errorf("expected HTTP 200, got %d", outcome.StatusCode)
 		}
 	case <-time.After(2 * time.Second):
 		testingT.Fatal("timed out waiting for agent tool call response")
