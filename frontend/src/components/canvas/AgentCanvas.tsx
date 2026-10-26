@@ -207,6 +207,14 @@ export function AgentCanvas() {
     [storeNodes, storeEdges, setEdges, addEdgeToWorkspace, workspaceId]
   );
 
+  const isValidConnection = useCallback(
+    (connection: Connection | Edge) => {
+      // Disallow connecting to self
+      return connection.source !== connection.target;
+    },
+    []
+  );
+
   const handleTidyLayout = useCallback(() => {
     const organizedNodes = calculateAutoLayout(nodes, edges);
     setNodes(organizedNodes);
@@ -230,8 +238,10 @@ export function AgentCanvas() {
         onNodesChange={userRole !== 'read' ? onNodesChange : undefined}
         onEdgesChange={handleEdgesChange}
         onConnect={userRole !== 'read' ? onConnect : undefined}
+        isValidConnection={isValidConnection}
         connectionMode={ConnectionMode.Loose}
-        connectionRadius={40}
+        connectionRadius={20}
+        connectionLineStyle={{ stroke: '#3b82f6', strokeWidth: 2.5 }}
         nodesDraggable={userRole !== 'read'}
         nodesConnectable={userRole !== 'read'}
         elementsSelectable={true}
