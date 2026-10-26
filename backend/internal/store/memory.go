@@ -81,6 +81,26 @@ func (store *MemoryStore) AddEdge(sourceID string, edge mcp.EdgeContext) {
 	store.edges[sourceID] = append(store.edges[sourceID], edge)
 }
 
+// CreateEdge satisfies the repository interface by registering a directed edge on the canvas.
+func (store *MemoryStore) CreateEdge(requestContext context.Context, edge domain.Edge) (*domain.Edge, error) {
+	store.storeMutex.Lock()
+	defer store.storeMutex.Unlock()
+
+	targetName := edge.TargetAgentID
+	if targetAgent, exists := store.byID[edge.TargetAgentID]; exists {
+		targetName = targetAgent.Name
+	}
+
+	edgeContext := mcp.EdgeContext{
+		TargetAgentID:   edge.TargetAgentID,
+		TargetAgentName: targetName,
+		ToolName:        edge.ToolName,
+	}
+
+	store.edges[edge.SourceAgentID] = append(store.edges[edge.SourceAgentID], edgeContext)
+	return &edge, nil
+}
+
 // GetAgentByToken retrieves an active agent matching the URL authorization token.
 func (store *MemoryStore) GetAgentByToken(token string) (*mcp.AgentContext, error) {
 	store.storeMutex.RLock()

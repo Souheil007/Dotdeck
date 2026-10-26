@@ -24,6 +24,7 @@ import (
 type AgentSteeringRepository interface {
 	GetAgentByID(requestContext context.Context, agentID string) (*domain.Agent, error)
 	CreateAgent(requestContext context.Context, agent domain.Agent) (*domain.Agent, error)
+	CreateEdge(requestContext context.Context, edge domain.Edge) (*domain.Edge, error)
 	UpdateStatus(agentID, status string) error
 	RecordThought(agentID string, step int, trace, nextStep, tool string, payload interface{}) error
 }
@@ -157,6 +158,13 @@ func (handler *AgentHandler) ConnectEdge(writer http.ResponseWriter, request *ht
 		TargetAgentID: payload.TargetAgentID,
 		ToolName:      synthesizedToolName,
 		CreatedAt:     time.Now().UTC(),
+	}
+
+	if handler.repository != nil {
+		createdEdge, createError := handler.repository.CreateEdge(request.Context(), edgeRecord)
+		if createError == nil && createdEdge != nil {
+			edgeRecord = *createdEdge
+		}
 	}
 
 	response.JSON(writer, http.StatusCreated, edgeRecord)

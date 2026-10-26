@@ -15,11 +15,11 @@ type AgentProviderRepository interface {
 
 // Dispatcher coordinates multi-channel wake-up triggers across Slack and Webhooks.
 type Dispatcher struct {
-	slackBridge        *SlackBridge
-	webhookBridge      *WebhookBridge
-	repository         AgentProviderRepository
-	defaultWebhookURL  string
-	defaultSecret      string
+	slackBridge       *SlackBridge
+	webhookBridge     *WebhookBridge
+	repository        AgentProviderRepository
+	defaultWebhookURL string
+	defaultSecret     string
 }
 
 // NewDispatcher initializes a unified wake-up bridge manager.

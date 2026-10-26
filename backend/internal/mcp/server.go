@@ -80,22 +80,28 @@ type sseSession struct {
 	messages  chan JSONRPCResponse
 }
 
+// MaxPayloadBytes limits incoming request bodies to 512 KB to prevent payload exhaustion attacks.
+const MaxPayloadBytes = 512 * 1024
+
 // Server handles inbound JSON-RPC 2.0 over HTTP and Server-Sent Events (SSE) for cloud agents.
 type Server struct {
-	repository  AgentRepository
-	holdEngine  *HoldEngine
-	broadcaster EventBroadcaster
-	sessionLock sync.RWMutex
-	sessions    map[string]*sseSession
+	repository        AgentRepository
+	holdEngine        *HoldEngine
+	broadcaster       EventBroadcaster
+	sessionLock       sync.RWMutex
+	sessions          map[string]*sseSession
+	delegationLock    sync.Mutex
+	delegationHistory map[string][]time.Time
 }
 
 // NewServer configures an MCP endpoint dispatcher for registered cloud agents.
 func NewServer(repository AgentRepository, holdEngine *HoldEngine, broadcaster EventBroadcaster) *Server {
 	return &Server{
-		repository:  repository,
-		holdEngine:  holdEngine,
-		broadcaster: broadcaster,
-		sessions:    make(map[string]*sseSession),
+		repository:        repository,
+		holdEngine:        holdEngine,
+		broadcaster:       broadcaster,
+		sessions:          make(map[string]*sseSession),
+		delegationHistory: make(map[string][]time.Time),
 	}
 }
 
@@ -120,6 +126,9 @@ func (server *Server) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 		http.Error(writer, `{"jsonrpc":"2.0","error":{"code":-32600,"message":"unrecognized or expired agent token"}}`, http.StatusNotFound)
 		return
 	}
+
+	// Protect against payload exhaustion attacks
+	request.Body = http.MaxBytesReader(writer, request.Body, MaxPayloadBytes)
 
 	// Handle Webhook Check-in fallback for browser or webhook-only agents (e.g. Meta Muse)
 	if actionSubpath == "checkin" && request.Method == http.MethodPost {
@@ -488,6 +497,25 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 	default:
 		// Check for dynamic cross-agent delegation tools: delegate_task_to_<peer>
 		if strings.HasPrefix(callArguments.Name, "delegate_task_") {
+			// Enforce runaway cyclic loop guardrail
+			if server.CheckDelegationLoop(agentContext.ID) {
+				_ = server.repository.UpdateStatus(agentContext.ID, "blocked_on_user")
+				server.broadcaster.Broadcast(agentContext.WorkspaceID, "RATE_LIMIT_GUARD", map[string]interface{}{
+					"agent_id":    agentContext.ID,
+					"tool_called": callArguments.Name,
+					"reason":      "Runaway cyclic delegation loop detected (exceeded 5 delegations within 10m window without human review). Execution suspended.",
+					"timestamp":   time.Now().UTC(),
+				})
+				return JSONRPCResponse{
+					JSONRPC: "2.0",
+					ID:      rpcRequest.ID,
+					Error: &RPCErrorDetail{
+						Code:    RPCInvalidRequest,
+						Message: "Runaway delegation loop detected: agent exceeded 5 peer handoffs without operator interaction. Guardrail activated.",
+					},
+				}
+			}
+
 			reasoningTrace, _ := callArguments.Arguments["current_reasoning_trace"].(string)
 			instructionsText, _ := callArguments.Arguments["instructions"].(string)
 			artifactPayload := callArguments.Arguments["payload"]
@@ -543,4 +571,35 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 			},
 		}
 	}
+}
+
+// CheckDelegationLoop inspects recent delegation frequency and halts runaway cyclic messaging.
+func (server *Server) CheckDelegationLoop(agentID string) bool {
+	server.delegationLock.Lock()
+	defer server.delegationLock.Unlock()
+
+	currentTime := time.Now().UTC()
+	windowCutoff := currentTime.Add(-10 * time.Minute)
+
+	var recentEvents []time.Time
+	for _, timestampItem := range server.delegationHistory[agentID] {
+		if timestampItem.After(windowCutoff) {
+			recentEvents = append(recentEvents, timestampItem)
+		}
+	}
+
+	if len(recentEvents) >= 5 {
+		server.delegationHistory[agentID] = recentEvents
+		return true
+	}
+
+	server.delegationHistory[agentID] = append(recentEvents, currentTime)
+	return false
+}
+
+// ResetDelegationHistory clears the runaway counter after a human operator intervenes.
+func (server *Server) ResetDelegationHistory(agentID string) {
+	server.delegationLock.Lock()
+	defer server.delegationLock.Unlock()
+	delete(server.delegationHistory, agentID)
 }

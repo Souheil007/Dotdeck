@@ -441,3 +441,102 @@ func TestMCPServerSSEEndpointEmission(testingT *testing.T) {
 		testingT.Errorf("expected SSE stream to emit endpoint event with session_id, got: %s", responseBody)
 	}
 }
+
+// TestMCPServerRunawayDelegationGuardrail validates that cyclic delegations beyond 5 times in 10 minutes trigger RATE_LIMIT_GUARD.
+func TestMCPServerRunawayDelegationGuardrail(testingTarget *testing.T) {
+	mockRepo := newMockRepository()
+	agentToken := "delegation-loop-token"
+	agentID := "agent-loop-source"
+	mockRepo.agents[agentToken] = &AgentContext{
+		ID:          agentID,
+		WorkspaceID: "ws-loop",
+		Name:        "Looper Dot",
+		Provider:    "openai_dot",
+		Status:      "working",
+	}
+
+	broadcaster := &mockBroadcaster{}
+	holdEngine := NewHoldEngine()
+	mcpServer := NewServer(mockRepo, holdEngine, broadcaster)
+
+	// First 5 delegations should succeed (status: handoff_queued)
+	for iterationIndex := 0; iterationIndex < 5; iterationIndex++ {
+		payload := JSONRPCRequest{
+			JSONRPC: "2.0",
+			ID:      iterationIndex + 1,
+			Method:  "tools/call",
+			Params: json.RawMessage(`{
+				"name": "delegate_task_to_peer",
+				"arguments": {
+					"instructions": "Process cyclic batch data",
+					"current_reasoning_trace": "Iteration delegation step"
+				}
+			}`),
+		}
+
+		serializedPayload, _ := json.Marshal(payload)
+		request := httptest.NewRequest(http.MethodPost, "/mcp/"+agentToken, bytes.NewReader(serializedPayload))
+		recorder := httptest.NewRecorder()
+
+		mcpServer.ServeHTTP(recorder, request)
+
+		if recorder.Code != http.StatusOK {
+			testingTarget.Fatalf("expected HTTP 200 on iteration %d, got %d", iterationIndex, recorder.Code)
+		}
+
+		var rpcResponse JSONRPCResponse
+		_ = json.Unmarshal(recorder.Body.Bytes(), &rpcResponse)
+		if rpcResponse.Error != nil {
+			testingTarget.Fatalf("expected success on iteration %d, got error: %v", iterationIndex, rpcResponse.Error.Message)
+		}
+	}
+
+	// The 6th delegation within the window MUST be blocked by the runaway loop guardrail
+	payloadSixth := JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      6,
+		Method:  "tools/call",
+		Params: json.RawMessage(`{
+			"name": "delegate_task_to_peer",
+			"arguments": {
+				"instructions": "Exceeding limit batch",
+				"current_reasoning_trace": "Blocked iteration"
+			}
+		}`),
+	}
+
+	serializedSixth, _ := json.Marshal(payloadSixth)
+	requestSixth := httptest.NewRequest(http.MethodPost, "/mcp/"+agentToken, bytes.NewReader(serializedSixth))
+	recorderSixth := httptest.NewRecorder()
+
+	mcpServer.ServeHTTP(recorderSixth, requestSixth)
+
+	var rpcResponseSixth JSONRPCResponse
+	_ = json.Unmarshal(recorderSixth.Body.Bytes(), &rpcResponseSixth)
+
+	if rpcResponseSixth.Error == nil {
+		testingTarget.Fatalf("expected 6th delegation to trigger runaway loop error, got success: %v", rpcResponseSixth.Result)
+	}
+
+	if !strings.Contains(rpcResponseSixth.Error.Message, "Runaway delegation loop detected") {
+		testingTarget.Errorf("expected error message to mention runaway loop, got: %s", rpcResponseSixth.Error.Message)
+	}
+
+	// Verify RATE_LIMIT_GUARD was broadcasted to canvas
+	foundGuardEvent := false
+	for _, eventItem := range broadcaster.events {
+		if eventItem == "RATE_LIMIT_GUARD" {
+			foundGuardEvent = true
+			break
+		}
+	}
+
+	if !foundGuardEvent {
+		testingTarget.Errorf("expected RATE_LIMIT_GUARD event broadcasted to canvas, events were: %v", broadcaster.events)
+	}
+
+	// Verify agent status flipped to blocked_on_user
+	if mockRepo.status[agentID] != "blocked_on_user" {
+		testingTarget.Errorf("expected agent status blocked_on_user, got: %s", mockRepo.status[agentID])
+	}
+}

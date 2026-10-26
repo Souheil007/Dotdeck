@@ -164,6 +164,13 @@ npm install
 npm run dev
 ```
 
+#### Cloud Agent Fleet Simulator
+Simulate an end-to-end multi-agent workflow (OpenAI Dot & Grok Bot pairing, real-time reasoning emission, hold-and-resolve human approval, and dynamic peer delegation):
+```bash
+cd backend
+go run test/simulator/main.go
+```
+
 ---
 
 ## Engineering Standards & Plans

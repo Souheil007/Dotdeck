@@ -12,11 +12,11 @@ import (
 
 // DefaultPoolConfig provides production-tuned connection limits for the Go switchboard.
 type DefaultPoolConfig struct {
-	MaxConnections     int32
-	MinConnections     int32
-	MaxConnectionIdle  time.Duration
-	MaxConnectionLife  time.Duration
-	HealthCheckPeriod  time.Duration
+	MaxConnections    int32
+	MinConnections    int32
+	MaxConnectionIdle time.Duration
+	MaxConnectionLife time.Duration
+	HealthCheckPeriod time.Duration
 }
 
 // DefaultConfig defines the default sizing parameters matching the System Design Specification.

@@ -36,7 +36,7 @@ flowchart TD
 | **07** | [plan-07-slide-out-inspector-and-virtual-stream.md](file:///C:/GithubProjects/Dotdeck/plans/plan-07-slide-out-inspector-and-virtual-stream.md) | Slide-out drawer, `@tanstack/react-virtual` log stream | Completed [x] |
 | **08** | [plan-08-agent-pairing-wizard-and-blueprints.md](file:///C:/GithubProjects/Dotdeck/plans/plan-08-agent-pairing-wizard-and-blueprints.md) | 60s bootstrap prompt generator, heartbeat detector | Completed [x] |
 | **09** | [plan-09-workspace-collaboration-and-rbac.md](file:///C:/GithubProjects/Dotdeck/plans/plan-09-workspace-collaboration-and-rbac.md) | Multi-tenancy, member roles (Admin/Write/Read), showcase link | Completed [x] |
-| **10** | [plan-10-end-to-end-verification-and-production-hardening.md](file:///C:/GithubProjects/Dotdeck/plans/plan-10-end-to-end-verification-and-production-hardening.md) | E2E mock agent simulation, Docker Compose validation, tests | Upcoming `[ ]` |
+| **10** | [plan-10-end-to-end-verification-and-production-hardening.md](file:///C:/GithubProjects/Dotdeck/plans/plan-10-end-to-end-verification-and-production-hardening.md) | E2E mock agent simulation, Docker Compose validation, tests | Completed [x] |
 
 ---
 
