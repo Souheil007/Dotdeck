@@ -23,10 +23,11 @@ Build outbound wake-up bridge connectors (Slack threads, HMAC-signed webhooks, a
   - [ ] Wire `POST /api/v1/approvals/resolve` to check if the held MCP connection had already timed out.
   - [ ] If timed out, automatically trigger the agent's configured wake-up bridge (Slack or webhook) with the human's approved answer.
 
-- [ ] **4. Direct Steering REST API (`backend/internal/api/agents.go`)**
+- [ ] **4. Direct Steering REST API (`backend/internal/api/handlers/agents.go` & `routes.go`)**
   - [ ] Implement `POST /api/v1/agents/{id}/steer` accepting operator instructions from the chat inspector.
   - [ ] Dispatch prompt through the wake-up bridge to wake the target agent immediately.
   - [ ] Record human steering message in audit logs.
+  - [ ] Return standardized JSON via `pkg/response`.
 
 ---
 

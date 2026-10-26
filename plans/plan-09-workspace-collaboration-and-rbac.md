@@ -14,10 +14,11 @@ Implement multi-user workspace collaboration with granular Role-Based Access Con
   - [ ] Protect mutation routes (`POST /agents`, `POST /agents/edges`, `POST /approvals/resolve`) behind `RequireRole(RoleWrite)`.
   - [ ] Protect member management and billing routes behind `RequireRole(RoleAdmin)`.
 
-- [ ] **2. Teammate Invitation & Member Management (`backend/internal/api/workspaces.go`)**
+- [ ] **2. Teammate Invitation & Member Management (`backend/internal/api/handlers/workspaces.go`)**
   - [ ] Implement `POST /api/v1/workspaces/invite` assigning email and role.
   - [ ] Generate invitation tokens with expiration.
   - [ ] List active members with roles in workspace settings.
+  - [ ] Return standardized JSON via `pkg/response`.
 
 - [ ] **3. UI Permission Gating**
   - [ ] Adapt canvas for read-only observers: disable node dragging, connection wire drawing, and deletion.

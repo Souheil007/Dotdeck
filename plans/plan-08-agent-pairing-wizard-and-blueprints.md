@@ -14,7 +14,7 @@ Build the 60-second "Blueprint-to-Paired" onboarding wizard, generating tailored
   - [ ] Configure Goal, Schedule (e.g., cron or "Every day at 9 AM"), and Authority Rules.
   - [ ] Call `POST /api/v1/agents` to provision the database record and token.
 
-- [ ] **2. Vendor-Specific Bootstrap Prompt Generator (`backend/internal/api/agents.go`)**
+- [ ] **2. Vendor-Specific Bootstrap Prompt Generator (`backend/internal/api/handlers/agents.go`)**
   - [ ] Generate prompt tailored to the provider's instruction format:
     - OpenAI Dots: 8-part instruction framework (Goal, Scope, Standards, Authority, Telemetry).
     - Grok Bots: Cloud Computer instructions with tool-calling conventions.
