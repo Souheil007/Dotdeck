@@ -19,13 +19,25 @@ import (
 	"github.com/Souheil007/Dotdeck/backend/internal/api"
 	"github.com/Souheil007/Dotdeck/backend/internal/api/middleware"
 	"github.com/Souheil007/Dotdeck/backend/internal/mcp"
+	"github.com/Souheil007/Dotdeck/backend/internal/observability"
 	"github.com/Souheil007/Dotdeck/backend/internal/store"
 	"github.com/Souheil007/Dotdeck/backend/internal/ws"
 )
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	env := os.Getenv("APP_ENV")
+	if env == "" {
+		env = "development"
+	}
+
+	logger := observability.InitLogger(env)
 	slog.SetDefault(logger)
+
+	// Initialize Observability subsystem (Prometheus, OTel, Sentry)
+	observability.InitMetrics()
+	_, tracerCleanup := observability.InitTracer()
+	sentryCleanup := observability.InitSentry(os.Getenv("SENTRY_DSN"), env)
+	defer sentryCleanup()
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -67,6 +79,9 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status":"healthy","service":"dotdeck-switchboard"}`))
 	})
+
+	// Prometheus Metrics Endpoint
+	r.Handle("/metrics", observability.Handler())
 
 	// MCP Multi-Tenant Endpoint (/mcp/{token})
 	r.Mount("/mcp", http.StripPrefix("/mcp", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -136,6 +151,7 @@ func main() {
 	slog.Info("Shutting down Dotdeck server gracefully...")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	defer tracerCleanup(ctx)
 
 	if err := srv.Shutdown(ctx); err != nil {
 		slog.Error("forced server shutdown", "error", err)
