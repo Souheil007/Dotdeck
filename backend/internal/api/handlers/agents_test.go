@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -27,6 +28,11 @@ func (repo *mockAgentSteeringRepository) GetAgentByID(requestContext context.Con
 		return repo.agentRecord, nil
 	}
 	return nil, errors.New("agent not found")
+}
+
+func (repo *mockAgentSteeringRepository) CreateAgent(requestContext context.Context, agent domain.Agent) (*domain.Agent, error) {
+	repo.agentRecord = &agent
+	return &agent, nil
 }
 
 func (repo *mockAgentSteeringRepository) UpdateStatus(agentID, status string) error {
@@ -175,5 +181,32 @@ func TestAgentHandlerCreateAndConnectEdge(testingTarget *testing.T) {
 
 	if recorderEdge.Code != http.StatusCreated {
 		testingTarget.Fatalf("expected HTTP 201 for edge connect, got %d", recorderEdge.Code)
+	}
+}
+
+// TestVendorSpecificBootstrapPrompt validates that each cloud vendor gets an instruction prompt tailored to its API and protocol.
+func TestVendorSpecificBootstrapPrompt(testingTarget *testing.T) {
+	testCases := []struct {
+		provider        domain.Provider
+		expectedKeyword string
+	}{
+		{provider: domain.ProviderOpenAIDot, expectedKeyword: "8. MULTI-AGENT CANVAS COLLABORATION"},
+		{provider: domain.ProviderGrokBot, expectedKeyword: "GROK CLOUD COMPUTER AGENT DIRECTIVE"},
+		{provider: domain.ProviderMetaMuse, expectedKeyword: "META MUSE SECURE VM DIRECTIVE"},
+		{provider: domain.ProviderClaude, expectedKeyword: "ANTHROPIC CLAUDE SYSTEM PROMPT"},
+	}
+
+	for _, testCase := range testCases {
+		agent := domain.Agent{
+			Name:           "Vendor Bot",
+			Provider:       testCase.provider,
+			Goal:           "Test autonomous execution",
+			AuthorityRules: []string{"Require human confirmation for deletions"},
+		}
+
+		promptText := generateBootstrapPrompt(agent, "http://localhost:8080/mcp/token-abc")
+		if !strings.Contains(promptText, testCase.expectedKeyword) {
+			testingTarget.Errorf("expected provider %q prompt to contain %q, but got:\n%s", testCase.provider, testCase.expectedKeyword, promptText)
+		}
 	}
 }

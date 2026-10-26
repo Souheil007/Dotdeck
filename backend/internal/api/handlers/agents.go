@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -19,9 +20,10 @@ import (
 	"github.com/Souheil007/Dotdeck/backend/pkg/response"
 )
 
-// AgentSteeringRepository abstracts persistence operations required for operator steering.
+// AgentSteeringRepository abstracts persistence operations required for agent creation and operator steering.
 type AgentSteeringRepository interface {
 	GetAgentByID(requestContext context.Context, agentID string) (*domain.Agent, error)
+	CreateAgent(requestContext context.Context, agent domain.Agent) (*domain.Agent, error)
 	UpdateStatus(agentID, status string) error
 	RecordThought(agentID string, step int, trace, nextStep, tool string, payload interface{}) error
 }
@@ -106,6 +108,17 @@ func (handler *AgentHandler) Create(writer http.ResponseWriter, request *http.Re
 		PositionY:      payload.PositionY,
 		CreatedAt:      nowTimestamp,
 		UpdatedAt:      nowTimestamp,
+	}
+
+	if handler.repository != nil {
+		createdRecord, createError := handler.repository.CreateAgent(request.Context(), agentRecord)
+		if createError == nil && createdRecord != nil {
+			agentRecord = *createdRecord
+		}
+	}
+
+	if handler.broadcaster != nil {
+		handler.broadcaster.Broadcast(payload.WorkspaceID, "AGENT_CREATED", agentRecord)
 	}
 
 	mcpEndpointURL := fmt.Sprintf("%s/mcp/%s", handler.baseURL, tokenString)
@@ -230,6 +243,137 @@ func (handler *AgentHandler) Steer(writer http.ResponseWriter, request *http.Req
 }
 
 func generateBootstrapPrompt(agent domain.Agent, mcpEndpointURL string) string {
+	switch agent.Provider {
+	case domain.ProviderOpenAIDot:
+		return generateOpenAIDotPrompt(agent, mcpEndpointURL)
+	case domain.ProviderGrokBot:
+		return generateGrokBotPrompt(agent, mcpEndpointURL)
+	case domain.ProviderMetaMuse:
+		return generateMetaMusePrompt(agent, mcpEndpointURL)
+	case domain.ProviderClaude:
+		return generateClaudePrompt(agent, mcpEndpointURL)
+	default:
+		return generateDefaultPrompt(agent, mcpEndpointURL)
+	}
+}
+
+func formatAuthorityRules(rulesList []string) string {
+	if len(rulesList) == 0 {
+		return "None specified. Request human approval for any high-impact actions."
+	}
+	var formattedBuilder strings.Builder
+	for ruleIndex, ruleItem := range rulesList {
+		formattedBuilder.WriteString(fmt.Sprintf("%d. %s\n", ruleIndex+1, ruleItem))
+	}
+	return formattedBuilder.String()
+}
+
+func generateOpenAIDotPrompt(agent domain.Agent, endpointURL string) string {
+	return fmt.Sprintf(`### 1. IDENTITY & ROLE
+You are %s, an autonomous cloud agent orchestrated via the Dotdeck Switchboard.
+You operate as a closed cloud worker paired into a real-time collaborative fleet.
+
+### 2. CORE OBJECTIVE
+%s
+
+### 3. OPERATING SCOPE & BOUNDARIES
+Execute your mission using available remote tools. Respect all security perimeters and authority gates.
+
+### 4. OUTPUT & REASONING STANDARDS
+Deliver clear, high-signal artifacts. Document hypotheses and deductions step-by-step.
+
+### 5. REMOTE MCP SWITCHBOARD ENDPOINT
+Connect your Model Context Protocol client to:
+%s
+
+### 6. MANDATORY TELEMETRY STANDARD
+At every reasoning milestone or before executing tool invocations, you MUST call:
+report_thought_step(reasoning_trace, next_planned_step)
+
+### 7. HUMAN-IN-THE-LOOP AUTHORITY RULES
+You MUST suspend execution and invoke human review via ask_human_question(question, reasoning_trace) whenever you encounter:
+%s
+
+### 8. MULTI-AGENT CANVAS COLLABORATION
+When delegating work to peers on the Dotdeck canvas, invoke the synthesized delegate_task_* tools. Provide structured payloads and concise context.`,
+		agent.Name,
+		agent.Goal,
+		endpointURL,
+		formatAuthorityRules(agent.AuthorityRules),
+	)
+}
+
+func generateGrokBotPrompt(agent domain.Agent, endpointURL string) string {
+	return fmt.Sprintf(`### GROK CLOUD COMPUTER AGENT DIRECTIVE: %s
+
+## PRIMARY OBJECTIVE:
+%s
+
+## REMOTE MCP SWITCHBOARD ENDPOINT:
+%s
+
+## EXECUTION & REASONING PROTOCOL:
+1. Initialize your session by calling initialize() immediately upon start.
+2. Every analytical breakthrough or planned sub-step MUST be broadcast using report_thought_step(reasoning_trace, next_planned_step).
+3. If an action crosses the following authority constraints, you MUST halt and call ask_human_question(question, reasoning_trace):
+%s
+4. Use delegate_task_* tools to route structured payloads to downstream connected canvas agents.`,
+		agent.Name,
+		agent.Goal,
+		endpointURL,
+		formatAuthorityRules(agent.AuthorityRules),
+	)
+}
+
+func generateMetaMusePrompt(agent domain.Agent, endpointURL string) string {
+	return fmt.Sprintf(`### META MUSE SECURE VM DIRECTIVE: %s
+
+## MISSION:
+%s
+
+## SWITCHBOARD ENDPOINT:
+%s
+
+## CHECK-IN WEBHOOK FALLBACK:
+If MCP SSE streaming is unavailable in your environment, submit thought updates and state changes via POST to:
+%s/checkin
+
+## AUTHORITY CONSTRAINTS:
+%s
+
+## COLLABORATION INSTRUCTIONS:
+Emit report_thought_step telemetry before running complex routines. Escalate edge cases to workspace operators using ask_human_question.`,
+		agent.Name,
+		agent.Goal,
+		endpointURL,
+		endpointURL,
+		formatAuthorityRules(agent.AuthorityRules),
+	)
+}
+
+func generateClaudePrompt(agent domain.Agent, endpointURL string) string {
+	return fmt.Sprintf(`### ANTHROPIC CLAUDE SYSTEM PROMPT: %s
+
+You are operating within the Dotdeck Tier 3 Closed Cloud Switchboard.
+Remote MCP Endpoint: %s
+
+## CORE MISSION & GOAL:
+%s
+
+## MANDATORY BEHAVIORAL CONSTRAINTS:
+1. Always maintain high reasoning density and telemetry transparency.
+2. Emit intermediate deduction milestones using report_thought_step(reasoning_trace, next_planned_step).
+3. Whenever an action conflicts with the following authority boundary, trigger ask_human_question(question, reasoning_trace) and wait for human operator sign-off (up to 45 seconds synchronous hold):
+%s
+4. Dispatch tasks across the canvas topology using available dynamic delegate_task_* tools.`,
+		agent.Name,
+		endpointURL,
+		agent.Goal,
+		formatAuthorityRules(agent.AuthorityRules),
+	)
+}
+
+func generateDefaultPrompt(agent domain.Agent, endpointURL string) string {
 	return fmt.Sprintf(`### ROLE & IDENTITY: %s
 You are connected to the Dotdeck Collaborative Agent Switchboard via remote MCP.
 Endpoint URL: %s
@@ -243,7 +387,12 @@ Endpoint URL: %s
 3. Use delegate_task_* tools to pass structured artifacts to your connected peers on the Dotdeck canvas.
 
 ### AUTHORITY CONSTRAINTS:
-%v`, agent.Name, mcpEndpointURL, agent.Goal, agent.AuthorityRules)
+%s`,
+		agent.Name,
+		endpointURL,
+		agent.Goal,
+		formatAuthorityRules(agent.AuthorityRules),
+	)
 }
 
 func sanitizeIdentifier(inputIdentifier string) string {

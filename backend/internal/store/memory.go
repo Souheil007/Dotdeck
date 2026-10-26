@@ -118,6 +118,25 @@ func (store *MemoryStore) GetAgentByID(requestContext context.Context, agentID s
 	}, nil
 }
 
+// CreateAgent registers a newly provisioned agent in the in-memory lookup maps.
+func (store *MemoryStore) CreateAgent(requestContext context.Context, agent domain.Agent) (*domain.Agent, error) {
+	store.storeMutex.Lock()
+	defer store.storeMutex.Unlock()
+
+	agentContext := &mcp.AgentContext{
+		ID:          agent.ID,
+		WorkspaceID: agent.WorkspaceID,
+		Name:        agent.Name,
+		Provider:    string(agent.Provider),
+		Status:      string(agent.Status),
+	}
+
+	store.agents[agent.Token] = agentContext
+	store.byID[agent.ID] = agentContext
+
+	return &agent, nil
+}
+
 // UpdateStatus adjusts the agent state badge across the Dotdeck live canvas.
 func (store *MemoryStore) UpdateStatus(agentID, status string) error {
 	store.storeMutex.Lock()

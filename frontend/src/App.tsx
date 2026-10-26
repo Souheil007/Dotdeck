@@ -3,6 +3,7 @@ import { Bot, Share2, Plus } from 'lucide-react';
 import { AgentCanvas } from './components/canvas/AgentCanvas';
 import { InspectorDrawer } from './components/inspector/InspectorDrawer';
 import { PairingWizard } from './components/modals/PairingWizard';
+import { CreateAgentModal } from './components/modals/CreateAgentModal';
 import { ShareModal } from './components/modals/ShareModal';
 import { useWorkspaceStore } from './store/useWorkspaceStore';
 import type { Node, Edge } from '@xyflow/react';
@@ -15,7 +16,7 @@ export function App() {
     setNodes,
     setEdges,
     setShareModalOpen,
-    openPairingModal,
+    openCreateAgentModal,
     cursors,
   } = useWorkspaceStore();
 
@@ -149,15 +150,7 @@ export function App() {
           </button>
 
           <button
-            onClick={() =>
-              openPairingModal({
-                id: 'new-agent-' + Math.random().toString().slice(2, 6),
-                name: 'New Cloud Agent',
-                provider: 'openai_dot',
-                goal: 'Collaborate with the active workspace fleet.',
-                status: 'unpaired',
-              })
-            }
+            onClick={openCreateAgentModal}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-colors shadow-sm"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -173,6 +166,7 @@ export function App() {
       </main>
 
       {/* Modals */}
+      <CreateAgentModal />
       <PairingWizard />
       <ShareModal />
     </div>

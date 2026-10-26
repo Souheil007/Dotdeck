@@ -84,12 +84,15 @@ interface WorkspaceState {
   cursors: Record<string, TeammateCursor>;
   isPairingModalOpen: boolean;
   pairingAgent: AgentData | null;
+  pairingSession: { agent: AgentData; mcpUrl: string; bootstrapPrompt: string } | null;
+  isCreateAgentModalOpen: boolean;
   isShareModalOpen: boolean;
   handoffPreview: HandoffPreview | null;
 
   setNodes: (nodes: Node<AgentData>[]) => void;
   setEdges: (edges: Edge[]) => void;
   addEdgeToWorkspace: (edge: Edge) => void;
+  addAgentNode: (agent: AgentData, position?: { x: number; y: number }) => void;
   updateNodePosition: (nodeId: string, position: { x: number; y: number }) => void;
   updateNodeStatus: (agentId: string, status: AgentStatus) => void;
   updateNodeThought: (agentId: string, thought: string, nextStep: string) => void;
@@ -101,8 +104,10 @@ interface WorkspaceState {
   removeCursor: (userId: string) => void;
   setQuestionLock: (approvalId: string, userId: string, userName: string) => void;
   unlockQuestion: (approvalId: string) => void;
-  openPairingModal: (agent: AgentData) => void;
+  openPairingModal: (agent: AgentData, mcpUrl?: string, bootstrapPrompt?: string) => void;
   closePairingModal: () => void;
+  openCreateAgentModal: () => void;
+  closeCreateAgentModal: () => void;
   setShareModalOpen: (open: boolean) => void;
   setHandoffPreview: (preview: HandoffPreview | null) => void;
 }
@@ -124,6 +129,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         cursors: {},
         isPairingModalOpen: false,
         pairingAgent: null,
+        pairingSession: null,
+        isCreateAgentModalOpen: false,
         isShareModalOpen: false,
         handoffPreview: null,
 
@@ -132,6 +139,21 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       addEdgeToWorkspace: (edge) =>
         set((state) => ({
           edges: [...state.edges.filter((existingEdge) => existingEdge.id !== edge.id), edge],
+        })),
+      addAgentNode: (agent, position) =>
+        set((state) => ({
+          nodes: [
+            ...state.nodes.filter((node) => node.id !== agent.id),
+            {
+              id: agent.id,
+              type: 'agentNode',
+              position: position || {
+                x: 150 + (state.nodes.length % 3) * 280,
+                y: 100 + Math.floor(state.nodes.length / 3) * 220,
+              },
+              data: agent,
+            },
+          ],
         })),
       updateNodePosition: (nodeId, position) =>
         set((state) => ({
@@ -203,8 +225,17 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             },
           };
         }),
-      openPairingModal: (pairingAgent) => set({ isPairingModalOpen: true, pairingAgent }),
-      closePairingModal: () => set({ isPairingModalOpen: false, pairingAgent: null }),
+      openPairingModal: (pairingAgent, mcpUrl, bootstrapPrompt) =>
+        set({
+          isPairingModalOpen: true,
+          pairingAgent,
+          pairingSession: mcpUrl
+            ? { agent: pairingAgent, mcpUrl, bootstrapPrompt: bootstrapPrompt || '' }
+            : null,
+        }),
+      closePairingModal: () => set({ isPairingModalOpen: false, pairingAgent: null, pairingSession: null }),
+      openCreateAgentModal: () => set({ isCreateAgentModalOpen: true }),
+      closeCreateAgentModal: () => set({ isCreateAgentModalOpen: false }),
       setShareModalOpen: (isShareModalOpen) => set({ isShareModalOpen }),
       setHandoffPreview: (handoffPreview) => set({ handoffPreview }),
     };
