@@ -4,6 +4,8 @@ import { useWorkspaceStore } from '../store/useWorkspaceStore';
 export function useMultiplayerWebSocket(websocketUrl: string) {
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
+  const backoffDelayRef = useRef<number>(500);
+  const lastCursorSendRef = useRef<number>(0);
 
   const {
     updateNodeStatus,
@@ -11,6 +13,7 @@ export function useMultiplayerWebSocket(websocketUrl: string) {
     addThoughtStep,
     addApproval,
     updateCursor,
+    removeCursor,
     setQuestionLock,
     unlockQuestion,
   } = useWorkspaceStore();
@@ -19,6 +22,10 @@ export function useMultiplayerWebSocket(websocketUrl: string) {
     try {
       const activeSocket = new WebSocket(websocketUrl);
       socketRef.current = activeSocket;
+
+      activeSocket.onopen = () => {
+        backoffDelayRef.current = 500;
+      };
 
       activeSocket.onmessage = (messageEvent) => {
         try {
@@ -63,6 +70,26 @@ export function useMultiplayerWebSocket(websocketUrl: string) {
               });
               break;
 
+            case 'PRESENCE_SNAPSHOT':
+              if (Array.isArray(payload)) {
+                payload.forEach((cursorItem) => {
+                  updateCursor({
+                    userId: cursorItem.user_id,
+                    userName: cursorItem.user_name,
+                    color: cursorItem.color || '#3b82f6',
+                    positionX: cursorItem.position_x,
+                    positionY: cursorItem.position_y,
+                  });
+                });
+              }
+              break;
+
+            case 'PRESENCE_LEAVE':
+              if (payload.user_id) {
+                removeCursor(payload.user_id);
+              }
+              break;
+
             case 'QUESTION_LOCKED':
               setQuestionLock(payload.approval_id, payload.user_id, payload.user_name);
               break;
@@ -77,12 +104,30 @@ export function useMultiplayerWebSocket(websocketUrl: string) {
       };
 
       activeSocket.onclose = () => {
-        reconnectTimeoutRef.current = window.setTimeout(connect, 2000);
+        const nextDelay = Math.min(backoffDelayRef.current * 1.5, 10000);
+        backoffDelayRef.current = nextDelay;
+        reconnectTimeoutRef.current = window.setTimeout(connect, backoffDelayRef.current);
+      };
+
+      activeSocket.onerror = () => {
+        activeSocket.close();
       };
     } catch {
-      reconnectTimeoutRef.current = window.setTimeout(connect, 3000);
+      const nextDelay = Math.min(backoffDelayRef.current * 1.5, 10000);
+      backoffDelayRef.current = nextDelay;
+      reconnectTimeoutRef.current = window.setTimeout(connect, backoffDelayRef.current);
     }
-  }, [websocketUrl, updateNodeStatus, updateNodeThought, addThoughtStep, addApproval, updateCursor, setQuestionLock, unlockQuestion]);
+  }, [
+    websocketUrl,
+    updateNodeStatus,
+    updateNodeThought,
+    addThoughtStep,
+    addApproval,
+    updateCursor,
+    removeCursor,
+    setQuestionLock,
+    unlockQuestion,
+  ]);
 
   useEffect(() => {
     connect();
@@ -93,6 +138,12 @@ export function useMultiplayerWebSocket(websocketUrl: string) {
   }, [connect]);
 
   const sendCursor = useCallback((coordinateX: number, coordinateY: number) => {
+    const nowTimestamp = Date.now();
+    if (nowTimestamp - lastCursorSendRef.current < 100) {
+      return; // 10 Hz throttle
+    }
+    lastCursorSendRef.current = nowTimestamp;
+
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       socketRef.current.send(
         JSON.stringify({

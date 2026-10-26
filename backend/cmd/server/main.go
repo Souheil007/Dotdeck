@@ -73,6 +73,8 @@ func main() {
 	}
 
 	holdEngine := mcp.NewHoldEngine()
+	websocketHub := websocket.NewHub()
+	go websocketHub.Run()
 
 	// Initialize Redis Pub/Sub cluster mesh if REDIS_URL configured
 	redisURL := os.Getenv("REDIS_URL")
@@ -84,14 +86,16 @@ func main() {
 			redisAdapter = mcp.NewRedisHoldAdapter(redisClient)
 			holdEngine.SetPublisher(redisAdapter)
 			redisAdapter.StartListening(context.Background(), holdEngine)
+
+			redisHubAdapter := websocket.NewRedisHubAdapter(redisClient)
+			websocketHub.SetPublisher(redisHubAdapter)
+			redisHubAdapter.StartListening(context.Background(), websocketHub)
+
 			slog.Info("Connected to Redis Pub/Sub cluster mesh")
 		} else {
 			slog.Warn("Failed to parse REDIS_URL", "error", redisParseError)
 		}
 	}
-
-	websocketHub := websocket.NewHub()
-	go websocketHub.Run()
 
 	// Initialize Outbound Wake-Up Bridges (Slack & Webhooks)
 	slackWebhookURL := os.Getenv("SLACK_WEBHOOK_URL")

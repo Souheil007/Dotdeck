@@ -7,6 +7,29 @@ import (
 	"time"
 )
 
+var defaultAvatarColors = []string{
+	"#3b82f6", // Blue
+	"#10b981", // Emerald
+	"#f59e0b", // Amber
+	"#ef4444", // Red
+	"#8b5cf6", // Purple
+	"#ec4899", // Pink
+	"#06b6d4", // Cyan
+	"#84cc16", // Lime
+}
+
+// AssignUserColor deterministically selects a vibrant avatar color from a user identifier.
+func AssignUserColor(userID string) string {
+	hashValue := 0
+	for _, runeValue := range userID {
+		hashValue = int(runeValue) + ((hashValue << 5) - hashValue)
+	}
+	if hashValue < 0 {
+		hashValue = -hashValue
+	}
+	return defaultAvatarColors[hashValue%len(defaultAvatarColors)]
+}
+
 // Cursor represents an operator's real-time coordinate position on the canvas.
 type Cursor struct {
 	UserID    string    `json:"user_id"`
@@ -42,12 +65,16 @@ func (tracker *PresenceTracker) UpdateCursor(workspaceID string, cursor Cursor) 
 		workspaceCursors = make(map[string]Cursor)
 		tracker.cursorCache[workspaceID] = workspaceCursors
 	}
-	cursor.UpdatedAt = time.Now()
+	if cursor.Color == "" {
+		cursor.Color = AssignUserColor(cursor.UserID)
+	}
+	cursor.UpdatedAt = time.Now().UTC()
 	workspaceCursors[cursor.UserID] = cursor
 }
 
-// RemoveUser cleans up cursor coordinates and released locks when an operator disconnects.
-func (tracker *PresenceTracker) RemoveUser(workspaceID, userID string) {
+// RemoveUser cleans up cursor coordinates and releases locks when an operator disconnects,
+// returning the list of approval IDs that were unblocked.
+func (tracker *PresenceTracker) RemoveUser(workspaceID, userID string) []string {
 	tracker.trackerMutex.Lock()
 	defer tracker.trackerMutex.Unlock()
 
@@ -58,11 +85,32 @@ func (tracker *PresenceTracker) RemoveUser(workspaceID, userID string) {
 		}
 	}
 
+	var unlockedApprovals []string
 	for approvalID, lockedByUserID := range tracker.lockCache {
 		if lockedByUserID == userID {
 			delete(tracker.lockCache, approvalID)
+			unlockedApprovals = append(unlockedApprovals, approvalID)
 		}
 	}
+
+	return unlockedApprovals
+}
+
+// GetWorkspaceCursors returns snapshot copies of all active cursors in a workspace.
+func (tracker *PresenceTracker) GetWorkspaceCursors(workspaceID string) []Cursor {
+	tracker.trackerMutex.RLock()
+	defer tracker.trackerMutex.RUnlock()
+
+	workspaceCursors, exists := tracker.cursorCache[workspaceID]
+	if !exists {
+		return nil
+	}
+
+	cursorList := make([]Cursor, 0, len(workspaceCursors))
+	for _, cursorInstance := range workspaceCursors {
+		cursorList = append(cursorList, cursorInstance)
+	}
+	return cursorList
 }
 
 // TryLockApproval grants an exclusive question-editing lock to prevent duplicate human replies.
