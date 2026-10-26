@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/Souheil007/Dotdeck/backend/internal/api"
 	"github.com/Souheil007/Dotdeck/backend/internal/api/handlers"
@@ -48,13 +49,32 @@ func main() {
 		baseURL = fmt.Sprintf("http://localhost:%s", port)
 	}
 
-	// Initialize core engine components
-	memStore := store.NewMemoryStore()
+	// Initialize storage engine: PostgreSQL if DATABASE_URL configured, otherwise MemoryStore
+	databaseURL := os.Getenv("DATABASE_URL")
+	var agentRepository mcp.AgentRepository
+	var databasePool *pgxpool.Pool
+
+	if databaseURL != "" {
+		poolInstance, poolError := store.NewPool(context.Background(), databaseURL)
+		if poolError != nil {
+			slog.Warn("PostgreSQL connection failed, using in-memory store", "error", poolError)
+			agentRepository = store.NewMemoryStore()
+		} else {
+			slog.Info("Connected to PostgreSQL successfully")
+			databasePool = poolInstance
+			agentRepository = store.NewPostgresStore(databasePool)
+			defer databasePool.Close()
+		}
+	} else {
+		slog.Info("DATABASE_URL not set; operating with in-memory store")
+		agentRepository = store.NewMemoryStore()
+	}
+
 	holdEngine := mcp.NewHoldEngine()
 	websocketHub := websocket.NewHub()
 	go websocketHub.Run()
 
-	mcpServer := mcp.NewServer(memStore, holdEngine, websocketHub)
+	mcpServer := mcp.NewServer(agentRepository, holdEngine, websocketHub)
 	workspaceHandler := handlers.NewWorkspaceHandler()
 	agentHandler := handlers.NewAgentHandler(baseURL)
 	approvalHandler := handlers.NewApprovalHandler(holdEngine)
@@ -74,10 +94,18 @@ func main() {
 		MaxAge:           300,
 	}))
 
-	// Health check
+	// Health check with database connectivity status
 	router.Get("/health", func(writer http.ResponseWriter, request *http.Request) {
+		databaseStatus := "in-memory"
+		if databasePool != nil {
+			if pingError := store.PingDatabase(request.Context(), databasePool); pingError != nil {
+				databaseStatus = "unhealthy"
+			} else {
+				databaseStatus = "connected"
+			}
+		}
 		writer.Header().Set("Content-Type", "application/json")
-		writer.Write([]byte(`{"status":"healthy","service":"dotdeck-switchboard"}`))
+		fmt.Fprintf(writer, `{"status":"healthy","service":"dotdeck-switchboard","database":"%s"}`, databaseStatus)
 	})
 
 	// Prometheus Metrics Endpoint

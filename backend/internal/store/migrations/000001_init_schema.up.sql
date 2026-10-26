@@ -1,4 +1,4 @@
--- Dotdeck Core Multi-Tenant Database Schema
+-- Dotdeck Core Multi-Tenant Database Schema with Range Partitioning
 
 CREATE TABLE IF NOT EXISTS workspaces (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -45,18 +45,29 @@ CREATE TABLE IF NOT EXISTS agent_edges (
     UNIQUE(workspace_id, source_agent_id, target_agent_id)
 );
 
+-- Thought Events with Monthly Range Partitioning
 CREATE TABLE IF NOT EXISTS thought_events (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID NOT NULL DEFAULT gen_random_uuid(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     agent_id UUID NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
     run_id VARCHAR(64) NOT NULL DEFAULT '',
     step_index INT NOT NULL DEFAULT 0,
-    thought_trace TEXT NOT NULL,
+    reasoning_trace TEXT NOT NULL,
     next_planned_step TEXT NOT NULL DEFAULT '',
     tool_called VARCHAR(255) NOT NULL DEFAULT '',
     tool_payload JSONB,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (created_at, id)
+) PARTITION BY RANGE (created_at);
+
+-- Monthly partitions for near-term milestones and default partition fallback
+CREATE TABLE IF NOT EXISTS thought_events_2026_10 PARTITION OF thought_events
+    FOR VALUES FROM ('2026-10-01 00:00:00+00') TO ('2026-11-01 00:00:00+00');
+CREATE TABLE IF NOT EXISTS thought_events_2026_11 PARTITION OF thought_events
+    FOR VALUES FROM ('2026-11-01 00:00:00+00') TO ('2026-12-01 00:00:00+00');
+CREATE TABLE IF NOT EXISTS thought_events_2026_12 PARTITION OF thought_events
+    FOR VALUES FROM ('2026-12-01 00:00:00+00') TO ('2027-01-01 00:00:00+00');
+CREATE TABLE IF NOT EXISTS thought_events_default PARTITION OF thought_events DEFAULT;
 
 CREATE TABLE IF NOT EXISTS approvals (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -64,9 +75,10 @@ CREATE TABLE IF NOT EXISTS approvals (
     agent_id UUID NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
     question TEXT NOT NULL,
     options JSONB NOT NULL DEFAULT '[]'::jsonb,
+    reasoning_trace TEXT NOT NULL DEFAULT '',
     status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'timed_out')),
     resolved_by VARCHAR(255),
-    resolved_answer TEXT,
+    answer TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     resolved_at TIMESTAMPTZ
 );
@@ -76,4 +88,5 @@ CREATE INDEX IF NOT EXISTS idx_agents_workspace ON agents(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_agents_token ON agents(token);
 CREATE INDEX IF NOT EXISTS idx_agent_edges_workspace ON agent_edges(workspace_id);
 CREATE INDEX IF NOT EXISTS idx_thought_events_agent ON thought_events(agent_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_thought_events_workspace ON thought_events(workspace_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_approvals_workspace_status ON approvals(workspace_id, status);
