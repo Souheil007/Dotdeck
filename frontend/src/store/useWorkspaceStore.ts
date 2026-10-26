@@ -42,8 +42,8 @@ export interface TeammateCursor {
   userId: string;
   userName: string;
   color: string;
-  x: number;
-  y: number;
+  positionX: number;
+  positionY: number;
 }
 
 interface WorkspaceState {
@@ -93,16 +93,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   setEdges: (edges) => set({ edges }),
   updateNodeStatus: (agentId, status) =>
     set((state) => ({
-      nodes: state.nodes.map((n) =>
-        n.id === agentId ? { ...n, data: { ...n.data, status } } : n
+      nodes: state.nodes.map((node) =>
+        node.id === agentId ? { ...node, data: { ...node.data, status } } : node
       ),
     })),
   updateNodeThought: (agentId, currentThought, currentStep) =>
     set((state) => ({
-      nodes: state.nodes.map((n) =>
-        n.id === agentId
-          ? { ...n, data: { ...n.data, currentThought, currentStep, status: 'working' } }
-          : n
+      nodes: state.nodes.map((node) =>
+        node.id === agentId
+          ? { ...node, data: { ...node.data, currentThought, currentStep, status: 'working' } }
+          : node
       ),
     })),
   setSelectedAgentId: (selectedAgentId) => set({ selectedAgentId }),

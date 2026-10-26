@@ -45,14 +45,14 @@ func NewClient(hub *Hub, conn *websocket.Conn, userID, userName, role, workspace
 }
 
 // ReadPump reads incoming messages from the WebSocket connection until closed.
-func (c *Client) ReadPump(ctx context.Context) {
+func (client *Client) ReadPump(ctx context.Context) {
 	defer func() {
-		c.hub.Unregister(c)
-		c.conn.Close(websocket.StatusNormalClosure, "disconnecting")
+		client.hub.Unregister(client)
+		client.conn.Close(websocket.StatusNormalClosure, "disconnecting")
 	}()
 
 	for {
-		_, data, err := c.conn.Read(ctx)
+		_, data, err := client.conn.Read(ctx)
 		if err != nil {
 			break
 		}
@@ -62,21 +62,21 @@ func (c *Client) ReadPump(ctx context.Context) {
 			continue
 		}
 
-		c.hub.HandleClientMessage(c, msg)
+		client.hub.HandleClientMessage(client, msg)
 	}
 }
 
 // WritePump flushes queued outbound messages down the WebSocket stream.
-func (c *Client) WritePump(ctx context.Context) {
+func (client *Client) WritePump(ctx context.Context) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer func() {
 		ticker.Stop()
-		c.conn.Close(websocket.StatusNormalClosure, "writing finished")
+		client.conn.Close(websocket.StatusNormalClosure, "writing finished")
 	}()
 
 	for {
 		select {
-		case msg, ok := <-c.send:
+		case msg, ok := <-client.send:
 			if !ok {
 				return
 			}
@@ -86,7 +86,7 @@ func (c *Client) WritePump(ctx context.Context) {
 			}
 
 			writeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-			err = c.conn.Write(writeCtx, websocket.MessageText, data)
+			err = client.conn.Write(writeCtx, websocket.MessageText, data)
 			cancel()
 			if err != nil {
 				return
@@ -94,7 +94,7 @@ func (c *Client) WritePump(ctx context.Context) {
 
 		case <-ticker.C:
 			pingCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-			err := c.conn.Ping(pingCtx)
+			err := client.conn.Ping(pingCtx)
 			cancel()
 			if err != nil {
 				return

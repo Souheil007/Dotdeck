@@ -20,18 +20,18 @@ func NewApprovalHandler(holdEngine *mcp.HoldEngine) *ApprovalHandler {
 }
 
 // Resolve applies the human operator's choice to a pending approval and unblocks the agent.
-func (h *ApprovalHandler) Resolve(w http.ResponseWriter, r *http.Request) {
+func (handler *ApprovalHandler) Resolve(writer http.ResponseWriter, request *http.Request) {
 	var body struct {
 		ApprovalID string `json:"approval_id"`
 		Approved   bool   `json:"approved"`
 		Answer     string `json:"answer"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, `{"error":"invalid request payload"}`, http.StatusBadRequest)
+	if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+		http.Error(writer, `{"error":"invalid request payload"}`, http.StatusBadRequest)
 		return
 	}
 
-	operatorID := middleware.GetUserID(r.Context())
+	operatorID := middleware.GetUserID(request.Context())
 	if operatorID == "" {
 		operatorID = "anonymous-operator"
 	}
@@ -43,13 +43,13 @@ func (h *ApprovalHandler) Resolve(w http.ResponseWriter, r *http.Request) {
 		ResolvedAt: time.Now().UTC(),
 	}
 
-	if err := h.holdEngine.Resolve(body.ApprovalID, decision); err != nil {
-		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusGone)
+	if err := handler.holdEngine.Resolve(body.ApprovalID, decision); err != nil {
+		http.Error(writer, `{"error":"`+err.Error()+`"}`, http.StatusGone)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	writer.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(writer).Encode(map[string]interface{}{
 		"status":      "resolved",
 		"approval_id": body.ApprovalID,
 		"decision":    decision,

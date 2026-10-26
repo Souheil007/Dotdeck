@@ -12,8 +12,8 @@ type Cursor struct {
 	UserID    string    `json:"user_id"`
 	UserName  string    `json:"user_name"`
 	Color     string    `json:"color"`
-	X         float64   `json:"x"`
-	Y         float64   `json:"y"`
+	PositionX float64   `json:"position_x"`
+	PositionY float64   `json:"position_y"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
@@ -33,57 +33,57 @@ func NewPresenceTracker() *PresenceTracker {
 }
 
 // UpdateCursor saves the latest screen coordinates for an operator in a workspace.
-func (p *PresenceTracker) UpdateCursor(workspaceID string, cursor Cursor) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+func (tracker *PresenceTracker) UpdateCursor(workspaceID string, cursor Cursor) {
+	tracker.mu.Lock()
+	defer tracker.mu.Unlock()
 
-	room, exists := p.cursors[workspaceID]
+	room, exists := tracker.cursors[workspaceID]
 	if !exists {
 		room = make(map[string]Cursor)
-		p.cursors[workspaceID] = room
+		tracker.cursors[workspaceID] = room
 	}
 	cursor.UpdatedAt = time.Now()
 	room[cursor.UserID] = cursor
 }
 
 // RemoveUser cleans up cursor coordinates and released locks when an operator disconnects.
-func (p *PresenceTracker) RemoveUser(workspaceID, userID string) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+func (tracker *PresenceTracker) RemoveUser(workspaceID, userID string) {
+	tracker.mu.Lock()
+	defer tracker.mu.Unlock()
 
-	if room, exists := p.cursors[workspaceID]; exists {
+	if room, exists := tracker.cursors[workspaceID]; exists {
 		delete(room, userID)
 		if len(room) == 0 {
-			delete(p.cursors, workspaceID)
+			delete(tracker.cursors, workspaceID)
 		}
 	}
 
-	for approvalID, lockedBy := range p.locks {
+	for approvalID, lockedBy := range tracker.locks {
 		if lockedBy == userID {
-			delete(p.locks, approvalID)
+			delete(tracker.locks, approvalID)
 		}
 	}
 }
 
 // TryLockApproval grants an exclusive question-editing lock to prevent duplicate human replies.
-func (p *PresenceTracker) TryLockApproval(approvalID, userID string) bool {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+func (tracker *PresenceTracker) TryLockApproval(approvalID, userID string) bool {
+	tracker.mu.Lock()
+	defer tracker.mu.Unlock()
 
-	holder, held := p.locks[approvalID]
+	holder, held := tracker.locks[approvalID]
 	if held && holder != userID {
 		return false
 	}
-	p.locks[approvalID] = userID
+	tracker.locks[approvalID] = userID
 	return true
 }
 
 // ReleaseApproval clears the edit lock on an answered or dismissed approval question.
-func (p *PresenceTracker) ReleaseApproval(approvalID, userID string) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+func (tracker *PresenceTracker) ReleaseApproval(approvalID, userID string) {
+	tracker.mu.Lock()
+	defer tracker.mu.Unlock()
 
-	if holder, held := p.locks[approvalID]; held && holder == userID {
-		delete(p.locks, approvalID)
+	if holder, held := tracker.locks[approvalID]; held && holder == userID {
+		delete(tracker.locks, approvalID)
 	}
 }

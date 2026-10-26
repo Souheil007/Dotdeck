@@ -55,7 +55,20 @@ export function AgentNode({ data, selected }: AgentNodeProps): JSX.Element {
 
 Consistency across backend, frontend, database, and MCP boundaries is critical for reliable cross-vendor orchestration.
 
-### 2.1 Backend (Go)
+### 2.1 The Explicit & Non-Confusing Naming Rule (Mandatory)
+- **High-Clarity Naming**: Every module, struct, interface, function, and variable name must be clear, unambiguous, understandable, and self-documenting. Never use cryptic abbreviations or vague names.
+- **Strict Prohibition of Single-Character Names**: 
+  - **NEVER** use single-character identifiers for variables, function arguments, loop counters, struct receivers, or imported packages.
+  - Forbidden: `w`, `r`, `e`, `c`, `s`, `h`, `p`, `n`, `i`, `x`, `y`, `m`, `t`.
+  - Required Replacements:
+    - HTTP handler writer: `responseWriter` or `writer` (never `w`).
+    - HTTP handler request: `request` (never `r`).
+    - Struct receivers: `engine`, `hub`, `server`, `store`, `client`, `bridge` (never `e`, `h`, `s`, `c`, `b`).
+    - Loop & iteration variables: `node`, `edge`, `cursor`, `index`, `step` (never `n`, `e`, `c`, `i`, `s`).
+    - Events & Errors: `event`, `err` (never `e`).
+    - Coordinates: `coordX`, `coordY` or `positionX`, `positionY` (never `x`, `y`).
+
+### 2.2 Backend (Go)
 
 | Category | Convention | Examples | Anti-patterns |
 | :--- | :--- | :--- | :--- |
@@ -65,27 +78,29 @@ Consistency across backend, frontend, database, and MCP boundaries is critical f
 | **Methods / Funcs** | PascalCase (exported), camelCase (unexported) | `DispatchEvent`, `resolveHandoff` | `Dispatch_Event`, `Get_Data` |
 | **Errors** | `Err` prefix, PascalCase | `ErrApprovalTimeout`, `ErrAgentNotFound` | `AgentTimeoutError` |
 | **Constants / Enums**| PascalCase | `StateResting`, `StateWorking`, `RoleAdmin` | `STATE_RESTING`, `kState` |
-| **Receiver Names** | 1-2 letters matching type, uniform in package | `(e *Engine)`, `(h *Hub)`, `(s *Store)` | `(this *Engine)`, `(self *Hub)` |
+| **Receiver Names** | Full descriptive noun matching the type | `(engine *HoldEngine)`, `(hub *Hub)`, `(store *MemoryStore)` | `(e *HoldEngine)`, `(h *Hub)`, `(this *Hub)` |
+| **Variables & Args** | Descriptive names, minimum 2 characters | `responseWriter`, `request`, `timeout`, `agentID` | `w`, `r`, `t`, `id`, `p` |
 
-### 2.2 Frontend (TypeScript & React)
+### 2.3 Frontend (TypeScript & React)
 
-| Category | Convention | Examples |
-| :--- | :--- | :--- |
-| **Components** | PascalCase `.tsx` | `AgentCanvas.tsx`, `ThoughtStream.tsx`, `PulseEdge.tsx` |
-| **Custom Hooks** | `use` prefix, camelCase `.ts` | `useMultiplayerWS.ts`, `useAgentHandoff.ts` |
-| **Stores** | `use` prefix + `Store`, camelCase `.ts`| `useWorkspaceStore.ts`, `useApprovalStore.ts` |
-| **Utilities** | kebab-case or camelCase `.ts` | `format-duration.ts`, `crypto.ts` |
-| **Types / Interfaces** | PascalCase, no `I` prefix | `AgentPayload`, `CanvasEdgeData`, `ThoughtStep` |
-| **CSS Classes** | Tailwind utility classes | `bg-card ring-1 ring-border shadow-sm` |
+| Category | Convention | Examples | Anti-patterns |
+| :--- | :--- | :--- | :--- |
+| **Components** | PascalCase `.tsx` | `AgentCanvas.tsx`, `ThoughtStream.tsx`, `PulseEdge.tsx` | `agentCanvas.tsx` |
+| **Custom Hooks** | `use` prefix, camelCase `.ts` | `useMultiplayerWS.ts`, `useAgentHandoff.ts` | `MultiplayerWS.ts` |
+| **Stores** | `use` prefix + `Store`, camelCase `.ts`| `useWorkspaceStore.ts`, `useApprovalStore.ts` | `workspaceStore.ts` |
+| **Utilities** | kebab-case or camelCase `.ts` | `format-duration.ts`, `crypto.ts` | `Utils.ts` |
+| **Types / Interfaces** | PascalCase, no `I` prefix | `AgentPayload`, `CanvasEdgeData`, `ThoughtStep` | `IAgentPayload` |
+| **Iteration & Events**| Full descriptive nouns | `nodes.map((node) => ...)` / `(event) => ...` | `nodes.map((n) => ...)` / `(e) => ...` |
+| **Coordinates** | Descriptive positions | `coordX`, `coordY`, `clientX`, `clientY` | `x`, `y` |
 
-### 2.3 Database (PostgreSQL & SQLC)
+### 2.4 Database (PostgreSQL & SQLC)
 
 - **Tables**: Lowercase, plural, snake_case (`workspaces`, `workspace_members`, `agents`, `agent_edges`, `thought_events`, `approvals`).
 - **Columns**: Lowercase, singular, snake_case (`id`, `workspace_id`, `created_at`, `current_state`).
 - **Foreign Keys**: Target singular table name + `_id` (`workspace_id`, `source_agent_id`, `target_agent_id`).
 - **Indexes**: `idx_<table_name>_<column_name>` (`idx_thought_events_agent_id`).
 
-### 2.4 Real-Time & Protocol Names
+### 2.5 Real-Time & Protocol Names
 
 - **WebSocket Events**: Screaming snake_case (`AGENT_STATE_CHANGED`, `THOUGHT_EMITTED`, `APPROVAL_REQUESTED`, `PRESENCE_SYNC`).
 - **MCP Tool Names**: Lowercase snake_case (`report_thought_step`, `ask_human_question`, `delegate_task`).

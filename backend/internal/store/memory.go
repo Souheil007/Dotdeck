@@ -26,25 +26,25 @@ func NewMemoryStore() *MemoryStore {
 }
 
 // SaveAgent registers or updates an agent descriptor in the lookup cache.
-func (m *MemoryStore) SaveAgent(token string, agent *mcp.AgentContext) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.agents[token] = agent
-	m.byID[agent.ID] = agent
+func (store *MemoryStore) SaveAgent(token string, agent *mcp.AgentContext) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	store.agents[token] = agent
+	store.byID[agent.ID] = agent
 }
 
 // AddEdge registers a directed delegation link between two agents.
-func (m *MemoryStore) AddEdge(sourceID string, edge mcp.EdgeContext) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.edges[sourceID] = append(m.edges[sourceID], edge)
+func (store *MemoryStore) AddEdge(sourceID string, edge mcp.EdgeContext) {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	store.edges[sourceID] = append(store.edges[sourceID], edge)
 }
 
 // GetAgentByToken retrieves an active agent matching the URL authorization token.
-func (m *MemoryStore) GetAgentByToken(token string) (*mcp.AgentContext, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	agent, exists := m.agents[token]
+func (store *MemoryStore) GetAgentByToken(token string) (*mcp.AgentContext, error) {
+	store.mu.RLock()
+	defer store.mu.RUnlock()
+	agent, exists := store.agents[token]
 	if !exists {
 		return nil, nil
 	}
@@ -52,24 +52,24 @@ func (m *MemoryStore) GetAgentByToken(token string) (*mcp.AgentContext, error) {
 }
 
 // GetOutboundEdges returns all target agents wired downstream from the source agent.
-func (m *MemoryStore) GetOutboundEdges(agentID string) ([]mcp.EdgeContext, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.edges[agentID], nil
+func (store *MemoryStore) GetOutboundEdges(agentID string) ([]mcp.EdgeContext, error) {
+	store.mu.RLock()
+	defer store.mu.RUnlock()
+	return store.edges[agentID], nil
 }
 
 // UpdateStatus adjusts the agent state badge across the Dotdeck live canvas.
-func (m *MemoryStore) UpdateStatus(agentID, status string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if agent, exists := m.byID[agentID]; exists {
+func (store *MemoryStore) UpdateStatus(agentID, status string) error {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if agent, exists := store.byID[agentID]; exists {
 		agent.Status = status
 	}
 	return nil
 }
 
 // RecordThought saves an agent's analytical milestone for time-travel playback and virtual logs.
-func (m *MemoryStore) RecordThought(agentID string, step int, trace, nextStep, tool string, payload interface{}) error {
+func (store *MemoryStore) RecordThought(agentID string, step int, trace, nextStep, tool string, payload interface{}) error {
 	// Persisted for audit logging and timeline replay
 	return nil
 }

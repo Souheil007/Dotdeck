@@ -30,8 +30,8 @@ func NewSimulator(baseURL, token string) *CloudAgentSimulator {
 }
 
 // SendJSONRPC dispatches a JSON-RPC 2.0 tool call to the Dotdeck MCP endpoint.
-func (s *CloudAgentSimulator) SendJSONRPC(method string, params interface{}) (map[string]interface{}, error) {
-	url := fmt.Sprintf("%s/mcp/%s", s.BaseURL, s.AgentToken)
+func (simulator *CloudAgentSimulator) SendJSONRPC(method string, params interface{}) (map[string]interface{}, error) {
+	url := fmt.Sprintf("%s/mcp/%s", simulator.BaseURL, simulator.AgentToken)
 	reqBody := map[string]interface{}{
 		"jsonrpc": "2.0",
 		"id":      time.Now().UnixNano(),
@@ -44,7 +44,7 @@ func (s *CloudAgentSimulator) SendJSONRPC(method string, params interface{}) (ma
 		return nil, fmt.Errorf("marshalling request: %w", err)
 	}
 
-	resp, err := s.Client.Post(url, "application/json", bytes.NewReader(data))
+	resp, err := simulator.Client.Post(url, "application/json", bytes.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("posting to mcp endpoint: %w", err)
 	}
@@ -68,9 +68,9 @@ func (s *CloudAgentSimulator) SendJSONRPC(method string, params interface{}) (ma
 }
 
 // Initialize performs the MCP handshake.
-func (s *CloudAgentSimulator) Initialize() error {
-	fmt.Printf("[Simulator] Sending mcp.initialize to %s...\n", s.BaseURL)
-	res, err := s.SendJSONRPC("initialize", map[string]interface{}{
+func (simulator *CloudAgentSimulator) Initialize() error {
+	fmt.Printf("[Simulator] Sending mcp.initialize to %s...\n", simulator.BaseURL)
+	res, err := simulator.SendJSONRPC("initialize", map[string]interface{}{
 		"protocolVersion": "2024-11-05",
 	})
 	if err != nil {
@@ -81,9 +81,9 @@ func (s *CloudAgentSimulator) Initialize() error {
 }
 
 // ReportThought sends an analytical reasoning step to the live canvas.
-func (s *CloudAgentSimulator) ReportThought(step int, trace, nextStep string) error {
+func (simulator *CloudAgentSimulator) ReportThought(step int, trace, nextStep string) error {
 	fmt.Printf("[Simulator] Reporting thought step #%d: %s\n", step, trace)
-	_, err := s.SendJSONRPC("tools/call", map[string]interface{}{
+	_, err := simulator.SendJSONRPC("tools/call", map[string]interface{}{
 		"name": "report_thought_step",
 		"arguments": map[string]interface{}{
 			"step_index":        step,

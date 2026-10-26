@@ -20,7 +20,7 @@ import (
 
 // TestMCPHoldAndResolveIntegration verifies that a cloud agent tool call pausing for approval
 // is held open and immediately unblocked when an operator submits a decision via the REST API.
-func TestMCPHoldAndResolveIntegration(t *testing.T) {
+func TestMCPHoldAndResolveIntegration(testingT *testing.T) {
 	memStore := store.NewMemoryStore()
 	holdEngine := mcp.NewHoldEngine()
 	wsHub := ws.NewHub()
@@ -39,15 +39,15 @@ func TestMCPHoldAndResolveIntegration(t *testing.T) {
 	mcpServer := mcp.NewServer(memStore, holdEngine, wsHub)
 	approvalHandler := api.NewApprovalHandler(holdEngine)
 
-	r := chi.NewRouter()
-	r.Mount("/mcp", http.StripPrefix("/mcp", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		req.URL.Path = "/mcp" + req.URL.Path
-		mcpServer.ServeHTTP(w, req)
+	router := chi.NewRouter()
+	router.Mount("/mcp", http.StripPrefix("/mcp", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		request.URL.Path = "/mcp" + request.URL.Path
+		mcpServer.ServeHTTP(writer, request)
 	})))
-	r.Post("/api/v1/approvals/resolve", approvalHandler.Resolve)
+	router.Post("/api/v1/approvals/resolve", approvalHandler.Resolve)
 
-	ts := httptest.NewServer(r)
-	defer ts.Close()
+	testServer := httptest.NewServer(router)
+	defer testServer.Close()
 
 	type agentResult struct {
 		StatusCode int
@@ -70,7 +70,7 @@ func TestMCPHoldAndResolveIntegration(t *testing.T) {
 			},
 		}
 		data, _ := json.Marshal(payload)
-		resp, err := http.Post(ts.URL+"/mcp/"+agentToken, "application/json", bytes.NewReader(data))
+		resp, err := http.Post(testServer.URL+"/mcp/"+agentToken, "application/json", bytes.NewReader(data))
 		if err != nil {
 			resChan <- agentResult{Err: err}
 			return
@@ -85,12 +85,12 @@ func TestMCPHoldAndResolveIntegration(t *testing.T) {
 	select {
 	case res := <-resChan:
 		if res.Err != nil {
-			t.Fatalf("agent HTTP request failed: %v", res.Err)
+			testingT.Fatalf("agent HTTP request failed: %v", res.Err)
 		}
 		if res.StatusCode != http.StatusOK {
-			t.Errorf("expected HTTP 200, got %d", res.StatusCode)
+			testingT.Errorf("expected HTTP 200, got %d", res.StatusCode)
 		}
 	case <-time.After(2 * time.Second):
-		t.Fatal("timed out waiting for agent tool call response")
+		testingT.Fatal("timed out waiting for agent tool call response")
 	}
 }

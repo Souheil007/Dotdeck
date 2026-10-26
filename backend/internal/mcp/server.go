@@ -72,23 +72,23 @@ type JSONRPCResponse struct {
 }
 
 // ServeHTTP routes incoming agent requests identified by the agent URL token.
-func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	token := strings.TrimPrefix(r.URL.Path, "/mcp/")
+func (server *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	token := strings.TrimPrefix(request.URL.Path, "/mcp/")
 	token = strings.TrimSpace(token)
 	if token == "" {
-		http.Error(w, `{"error":"missing agent token"}`, http.StatusUnauthorized)
+		http.Error(writer, `{"error":"missing agent token"}`, http.StatusUnauthorized)
 		return
 	}
 
-	agent, err := s.repo.GetAgentByToken(token)
+	agent, err := server.repo.GetAgentByToken(token)
 	if err != nil || agent == nil {
-		http.Error(w, `{"error":"unrecognized or expired agent token"}`, http.StatusNotFound)
+		http.Error(writer, `{"error":"unrecognized or expired agent token"}`, http.StatusNotFound)
 		return
 	}
 
-	if r.Method == http.MethodGet {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+	if request.Method == http.MethodGet {
+		writer.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(writer).Encode(map[string]interface{}{
 			"status":   "active",
 			"agent_id": agent.ID,
 			"name":     agent.Name,
@@ -97,28 +97,28 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req JSONRPCRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"malformed json payload"}`, http.StatusBadRequest)
+	var rpcRequest JSONRPCRequest
+	if err := json.NewDecoder(request.Body).Decode(&rpcRequest); err != nil {
+		http.Error(writer, `{"error":"malformed json payload"}`, http.StatusBadRequest)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	resp := s.handleMethod(r, agent, req)
-	json.NewEncoder(w).Encode(resp)
+	writer.Header().Set("Content-Type", "application/json")
+	resp := server.handleMethod(request, agent, rpcRequest)
+	json.NewEncoder(writer).Encode(resp)
 }
 
-func (s *Server) handleMethod(r *http.Request, agent *AgentContext, req JSONRPCRequest) JSONRPCResponse {
-	switch req.Method {
+func (server *Server) handleMethod(request *http.Request, agent *AgentContext, rpcRequest JSONRPCRequest) JSONRPCResponse {
+	switch rpcRequest.Method {
 	case "initialize":
-		_ = s.repo.UpdateStatus(agent.ID, "resting")
-		s.broadcaster.Broadcast(agent.WorkspaceID, "AGENT_STATE_CHANGED", map[string]interface{}{
+		_ = server.repo.UpdateStatus(agent.ID, "resting")
+		server.broadcaster.Broadcast(agent.WorkspaceID, "AGENT_STATE_CHANGED", map[string]interface{}{
 			"agent_id": agent.ID,
 			"status":   "resting",
 		})
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
-			ID:      req.ID,
+			ID:      rpcRequest.ID,
 			Result: map[string]interface{}{
 				"protocolVersion": "2024-11-05",
 				"serverInfo": map[string]string{
@@ -132,7 +132,7 @@ func (s *Server) handleMethod(r *http.Request, agent *AgentContext, req JSONRPCR
 		}
 
 	case "tools/list":
-		edges, _ := s.repo.GetOutboundEdges(agent.ID)
+		edges, _ := server.repo.GetOutboundEdges(agent.ID)
 		tools := []ToolDefinition{
 			BuildTelemetryTool(),
 			BuildHumanApprovalTool(),
@@ -142,17 +142,17 @@ func (s *Server) handleMethod(r *http.Request, agent *AgentContext, req JSONRPCR
 		}
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
-			ID:      req.ID,
+			ID:      rpcRequest.ID,
 			Result:  map[string]interface{}{"tools": tools},
 		}
 
 	case "tools/call":
-		return s.handleToolCall(r, agent, req)
+		return server.handleToolCall(request, agent, rpcRequest)
 
 	default:
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
-			ID:      req.ID,
+			ID:      rpcRequest.ID,
 			Error:   map[string]interface{}{"code": -32601, "message": "method not supported"},
 		}
 	}
@@ -163,12 +163,12 @@ type toolCallParams struct {
 	Arguments map[string]interface{} `json:"arguments"`
 }
 
-func (s *Server) handleToolCall(r *http.Request, agent *AgentContext, req JSONRPCRequest) JSONRPCResponse {
+func (server *Server) handleToolCall(request *http.Request, agent *AgentContext, rpcRequest JSONRPCRequest) JSONRPCResponse {
 	var params toolCallParams
-	if err := json.Unmarshal(req.Params, &params); err != nil {
+	if err := json.Unmarshal(rpcRequest.Params, &params); err != nil {
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
-			ID:      req.ID,
+			ID:      rpcRequest.ID,
 			Error:   map[string]interface{}{"code": -32602, "message": "invalid arguments"},
 		}
 	}
@@ -178,10 +178,10 @@ func (s *Server) handleToolCall(r *http.Request, agent *AgentContext, req JSONRP
 		trace, _ := params.Arguments["reasoning_trace"].(string)
 		nextStep, _ := params.Arguments["next_planned_step"].(string)
 
-		_ = s.repo.UpdateStatus(agent.ID, "working")
-		_ = s.repo.RecordThought(agent.ID, 0, trace, nextStep, params.Name, nil)
+		_ = server.repo.UpdateStatus(agent.ID, "working")
+		_ = server.repo.RecordThought(agent.ID, 0, trace, nextStep, params.Name, nil)
 
-		s.broadcaster.Broadcast(agent.WorkspaceID, "THOUGHT_STEP_EMITTED", map[string]interface{}{
+		server.broadcaster.Broadcast(agent.WorkspaceID, "THOUGHT_STEP_EMITTED", map[string]interface{}{
 			"agent_id":          agent.ID,
 			"reasoning_trace":   trace,
 			"next_planned_step": nextStep,
@@ -190,7 +190,7 @@ func (s *Server) handleToolCall(r *http.Request, agent *AgentContext, req JSONRP
 
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
-			ID:      req.ID,
+			ID:      rpcRequest.ID,
 			Result:  map[string]interface{}{"status": "acknowledged"},
 		}
 
@@ -199,9 +199,9 @@ func (s *Server) handleToolCall(r *http.Request, agent *AgentContext, req JSONRP
 		trace, _ := params.Arguments["reasoning_trace"].(string)
 
 		decisionID := uuid.New().String()
-		_ = s.repo.UpdateStatus(agent.ID, "blocked_on_user")
+		_ = server.repo.UpdateStatus(agent.ID, "blocked_on_user")
 
-		s.broadcaster.Broadcast(agent.WorkspaceID, "APPROVAL_REQUESTED", map[string]interface{}{
+		server.broadcaster.Broadcast(agent.WorkspaceID, "APPROVAL_REQUESTED", map[string]interface{}{
 			"approval_id":     decisionID,
 			"agent_id":        agent.ID,
 			"question":        question,
@@ -218,12 +218,12 @@ func (s *Server) handleToolCall(r *http.Request, agent *AgentContext, req JSONRP
 			CreatedAt:      time.Now(),
 		}
 
-		result, err := s.holdEngine.Hold(r.Context(), decReq, 45*time.Second)
+		result, err := server.holdEngine.Hold(request.Context(), decReq, 45*time.Second)
 		if err != nil {
-			_ = s.repo.UpdateStatus(agent.ID, "resting")
+			_ = server.repo.UpdateStatus(agent.ID, "resting")
 			return JSONRPCResponse{
 				JSONRPC: "2.0",
-				ID:      req.ID,
+				ID:      rpcRequest.ID,
 				Result: map[string]interface{}{
 					"status":  "queued_for_review",
 					"message": "Human operator review pending. Task queued; you will be awoken upon decision.",
@@ -231,10 +231,10 @@ func (s *Server) handleToolCall(r *http.Request, agent *AgentContext, req JSONRP
 			}
 		}
 
-		_ = s.repo.UpdateStatus(agent.ID, "working")
+		_ = server.repo.UpdateStatus(agent.ID, "working")
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
-			ID:      req.ID,
+			ID:      rpcRequest.ID,
 			Result: map[string]interface{}{
 				"status":      "approved",
 				"user_answer": result.Answer,
@@ -248,7 +248,7 @@ func (s *Server) handleToolCall(r *http.Request, agent *AgentContext, req JSONRP
 			trace, _ := params.Arguments["current_reasoning_trace"].(string)
 			instructions, _ := params.Arguments["instructions"].(string)
 
-			s.broadcaster.Broadcast(agent.WorkspaceID, "HANDOFF_EMITTED", map[string]interface{}{
+			server.broadcaster.Broadcast(agent.WorkspaceID, "HANDOFF_EMITTED", map[string]interface{}{
 				"source_agent_id": agent.ID,
 				"tool_called":     params.Name,
 				"instructions":    instructions,
@@ -258,7 +258,7 @@ func (s *Server) handleToolCall(r *http.Request, agent *AgentContext, req JSONRP
 
 			return JSONRPCResponse{
 				JSONRPC: "2.0",
-				ID:      req.ID,
+				ID:      rpcRequest.ID,
 				Result: map[string]interface{}{
 					"status":  "handoff_queued",
 					"message": fmt.Sprintf("Delegation dispatched via Dotdeck switchboard."),
@@ -268,7 +268,7 @@ func (s *Server) handleToolCall(r *http.Request, agent *AgentContext, req JSONRP
 
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
-			ID:      req.ID,
+			ID:      rpcRequest.ID,
 			Error:   map[string]interface{}{"code": -32601, "message": "unknown tool"},
 		}
 	}

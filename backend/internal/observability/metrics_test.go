@@ -9,7 +9,7 @@ import (
 
 // TestMetricsHandler verifies that the Prometheus metrics endpoint responds with HTTP 200
 // and exposes Dotdeck custom metric names.
-func TestMetricsHandler(t *testing.T) {
+func TestMetricsHandler(testingT *testing.T) {
 	metrics := InitMetrics()
 	metrics.HeldApprovalsActive.WithLabelValues("ws-test").Set(3)
 	metrics.WSConnectedClients.WithLabelValues("ws-test").Set(5)
@@ -20,14 +20,14 @@ func TestMetricsHandler(t *testing.T) {
 	Handler().ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("expected HTTP 200 from /metrics, got %d", rec.Code)
+		testingT.Fatalf("expected HTTP 200 from /metrics, got %d", rec.Code)
 	}
 
 	body := rec.Body.String()
 	if !strings.Contains(body, "dotdeck_active_held_approvals") {
-		t.Errorf("expected metric 'dotdeck_active_held_approvals' in output")
+		testingT.Errorf("expected metric 'dotdeck_active_held_approvals' in output")
 	}
 	if !strings.Contains(body, "dotdeck_ws_connected_clients") {
-		t.Errorf("expected metric 'dotdeck_ws_connected_clients' in output")
+		testingT.Errorf("expected metric 'dotdeck_ws_connected_clients' in output")
 	}
 }

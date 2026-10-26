@@ -36,13 +36,13 @@ func NewWorkspaceHandler() *WorkspaceHandler {
 }
 
 // Create handles requests to initialize a new workspace for collaborative agent boards.
-func (h *WorkspaceHandler) Create(w http.ResponseWriter, r *http.Request) {
+func (handler *WorkspaceHandler) Create(writer http.ResponseWriter, request *http.Request) {
 	var body struct {
 		Name string `json:"name"`
 		Slug string `json:"slug"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, `{"error":"invalid request payload"}`, http.StatusBadRequest)
+	if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+		http.Error(writer, `{"error":"invalid request payload"}`, http.StatusBadRequest)
 		return
 	}
 
@@ -53,20 +53,20 @@ func (h *WorkspaceHandler) Create(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: time.Now().UTC(),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(ws)
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusCreated)
+	json.NewEncoder(writer).Encode(ws)
 }
 
 // Invite adds or updates an invited teammate's role within the target workspace.
-func (h *WorkspaceHandler) Invite(w http.ResponseWriter, r *http.Request) {
+func (handler *WorkspaceHandler) Invite(writer http.ResponseWriter, request *http.Request) {
 	var body struct {
 		WorkspaceID string `json:"workspace_id"`
 		Email       string `json:"email"`
 		Role        string `json:"role"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, `{"error":"invalid request payload"}`, http.StatusBadRequest)
+	if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+		http.Error(writer, `{"error":"invalid request payload"}`, http.StatusBadRequest)
 		return
 	}
 
@@ -79,6 +79,6 @@ func (h *WorkspaceHandler) Invite(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:   time.Now().UTC(),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(member)
+	writer.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(writer).Encode(member)
 }

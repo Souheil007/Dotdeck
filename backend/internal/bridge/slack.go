@@ -25,8 +25,8 @@ func NewSlackBridge(webhookURL string) *SlackBridge {
 }
 
 // WakeAgent notifies a Slack channel to wake a sleeping agent with new instructions.
-func (s *SlackBridge) WakeAgent(ctx context.Context, agentName, prompt string) error {
-	if s.webhookURL == "" {
+func (bridge *SlackBridge) WakeAgent(ctx context.Context, agentName, prompt string) error {
+	if bridge.webhookURL == "" {
 		return nil
 	}
 
@@ -39,13 +39,13 @@ func (s *SlackBridge) WakeAgent(ctx context.Context, agentName, prompt string) e
 		return fmt.Errorf("marshalling slack wake-up: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.webhookURL, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, bridge.webhookURL, bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("building slack request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := s.httpClient.Do(req)
+	resp, err := bridge.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("posting slack notification: %w", err)
 	}

@@ -33,13 +33,13 @@ export function AgentCanvas() {
   const { sendCursor } = useMultiplayerWS(wsUrl);
 
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge({ ...params, type: 'pulseEdge' }, eds)),
+    (params: Connection) => setEdges((currentEdges) => addEdge({ ...params, type: 'pulseEdge' }, currentEdges)),
     [setEdges]
   );
 
   const handleMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      sendCursor(e.clientX, e.clientY);
+    (mouseEvent: React.MouseEvent<HTMLDivElement>) => {
+      sendCursor(mouseEvent.clientX, mouseEvent.clientY);
     },
     [sendCursor]
   );
@@ -72,8 +72,8 @@ export function AgentCanvas() {
           key={cursor.userId}
           style={{
             position: 'absolute',
-            left: cursor.x,
-            top: cursor.y,
+            left: cursor.positionX,
+            top: cursor.positionY,
             pointerEvents: 'none',
             transform: 'translate(-2px, -2px)',
           }}

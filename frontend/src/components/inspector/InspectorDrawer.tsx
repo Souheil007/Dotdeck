@@ -11,12 +11,12 @@ export function InspectorDrawer() {
 
   if (!selectedAgentId) return null;
 
-  const agentNode = nodes.find((n) => n.id === selectedAgentId);
+  const agentNode = nodes.find((node) => node.id === selectedAgentId);
   if (!agentNode) return null;
 
   const agent = agentNode.data;
   const agentThoughts = thoughts[selectedAgentId] || [];
-  const pendingApprovals = Object.values(approvals).filter((a) => a.agentId === selectedAgentId);
+  const pendingApprovals = Object.values(approvals).filter((approvalItem) => approvalItem.agentId === selectedAgentId);
 
   return (
     <aside className="fixed right-0 top-0 bottom-0 w-96 bg-zinc-950/95 backdrop-blur-xl border-l border-zinc-800/80 z-40 flex flex-col shadow-2xl transition-transform duration-300">

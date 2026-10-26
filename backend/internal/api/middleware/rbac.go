@@ -27,31 +27,31 @@ type RoleResolver interface {
 // RequireRole ensures the requesting operator holds at least the required privilege tier.
 func RequireRole(resolver RoleResolver, minimumRole Role) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			userID := GetUserID(r.Context())
-			workspaceID := r.Header.Get("X-Workspace-ID")
+		return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			userID := GetUserID(request.Context())
+			workspaceID := request.Header.Get("X-Workspace-ID")
 			if workspaceID == "" {
-				workspaceID = r.URL.Query().Get("workspace_id")
+				workspaceID = request.URL.Query().Get("workspace_id")
 			}
 
 			// In development or if resolver is unconfigured, default to admin
 			role := RoleAdmin
 			if resolver != nil && workspaceID != "" {
-				resRole, err := resolver.ResolveRole(r.Context(), workspaceID, userID)
+				resRole, err := resolver.ResolveRole(request.Context(), workspaceID, userID)
 				if err != nil {
-					http.Error(w, `{"error":"unauthorized workspace access"}`, http.StatusForbidden)
+					http.Error(writer, `{"error":"unauthorized workspace access"}`, http.StatusForbidden)
 					return
 				}
 				role = resRole
 			}
 
 			if !isAuthorized(role, minimumRole) {
-				http.Error(w, `{"error":"insufficient permissions for this action"}`, http.StatusForbidden)
+				http.Error(writer, `{"error":"insufficient permissions for this action"}`, http.StatusForbidden)
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), UserRoleKey, string(role))
-			next.ServeHTTP(w, r.WithContext(ctx))
+			ctx := context.WithValue(request.Context(), UserRoleKey, string(role))
+			next.ServeHTTP(writer, request.WithContext(ctx))
 		})
 	}
 }

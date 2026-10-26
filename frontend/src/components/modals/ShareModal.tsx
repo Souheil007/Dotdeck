@@ -19,8 +19,8 @@ export function ShareModal() {
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
-  const handleInvite = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleInvite = (formEvent: React.FormEvent) => {
+    formEvent.preventDefault();
     if (!email.trim()) return;
     setInvited(true);
     setEmail('');
@@ -56,7 +56,7 @@ export function ShareModal() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(event) => setEmail(event.target.value)}
                 placeholder="colleague@agency.com"
                 className="w-full pl-9 pr-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-100 placeholder-zinc-500 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
@@ -64,7 +64,7 @@ export function ShareModal() {
 
             <select
               value={role}
-              onChange={(e) => setRole(e.target.value as 'write' | 'read')}
+              onChange={(changeEvent) => setRole(changeEvent.target.value as 'write' | 'read')}
               className="px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
               <option value="write">Operator (Write)</option>

@@ -47,8 +47,8 @@ func CaptureError(err error, tags map[string]string) {
 		return
 	}
 	sentry.WithScope(func(scope *sentry.Scope) {
-		for k, v := range tags {
-			scope.SetTag(k, v)
+		for tagKey, tagValue := range tags {
+			scope.SetTag(tagKey, tagValue)
 		}
 		sentry.CaptureException(err)
 	})

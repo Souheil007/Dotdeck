@@ -25,7 +25,7 @@ func NewWebhookBridge() *WebhookBridge {
 }
 
 // Dispatch posts a signed JSON payload to an external agent wake-up or audit endpoint.
-func (w *WebhookBridge) Dispatch(ctx context.Context, endpoint, secret string, eventType string, data interface{}) error {
+func (bridge *WebhookBridge) Dispatch(ctx context.Context, endpoint, secret string, eventType string, data interface{}) error {
 	envelope := map[string]interface{}{
 		"event":     eventType,
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
@@ -50,7 +50,7 @@ func (w *WebhookBridge) Dispatch(ctx context.Context, endpoint, secret string, e
 		req.Header.Set("X-Dotdeck-Signature", signature)
 	}
 
-	resp, err := w.httpClient.Do(req)
+	resp, err := bridge.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("executing webhook post: %w", err)
 	}

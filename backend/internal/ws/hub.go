@@ -28,51 +28,51 @@ func NewHub() *Hub {
 }
 
 // Run executes the hub event loop processing client connections and disconnections.
-func (h *Hub) Run() {
+func (hub *Hub) Run() {
 	for {
 		select {
-		case client := <-h.register:
-			h.mu.Lock()
-			room, exists := h.rooms[client.WorkspaceID]
+		case client := <-hub.register:
+			hub.mu.Lock()
+			room, exists := hub.rooms[client.WorkspaceID]
 			if !exists {
 				room = make(map[*Client]bool)
-				h.rooms[client.WorkspaceID] = room
+				hub.rooms[client.WorkspaceID] = room
 			}
 			room[client] = true
-			h.mu.Unlock()
+			hub.mu.Unlock()
 
-		case client := <-h.unregister:
-			h.mu.Lock()
-			if room, exists := h.rooms[client.WorkspaceID]; exists {
+		case client := <-hub.unregister:
+			hub.mu.Lock()
+			if room, exists := hub.rooms[client.WorkspaceID]; exists {
 				if _, ok := room[client]; ok {
 					delete(room, client)
 					close(client.send)
 				}
 				if len(room) == 0 {
-					delete(h.rooms, client.WorkspaceID)
+					delete(hub.rooms, client.WorkspaceID)
 				}
 			}
-			h.mu.Unlock()
-			h.presence.RemoveUser(client.WorkspaceID, client.UserID)
+			hub.mu.Unlock()
+			hub.presence.RemoveUser(client.WorkspaceID, client.UserID)
 		}
 	}
 }
 
 // Register adds a new client to the hub's pending registration pipeline.
-func (h *Hub) Register(c *Client) {
-	h.register <- c
+func (hub *Hub) Register(client *Client) {
+	hub.register <- client
 }
 
 // Unregister schedules client removal and stream teardown.
-func (h *Hub) Unregister(c *Client) {
-	h.unregister <- c
+func (hub *Hub) Unregister(client *Client) {
+	hub.unregister <- client
 }
 
 // Broadcast dispatches an event to every active client in the specified workspace.
-func (h *Hub) Broadcast(workspaceID, eventType string, payload interface{}) {
-	h.mu.RLock()
-	room, exists := h.rooms[workspaceID]
-	h.mu.RUnlock()
+func (hub *Hub) Broadcast(workspaceID, eventType string, payload interface{}) {
+	hub.mu.RLock()
+	room, exists := hub.rooms[workspaceID]
+	hub.mu.RUnlock()
 
 	if !exists {
 		return
@@ -83,8 +83,8 @@ func (h *Hub) Broadcast(workspaceID, eventType string, payload interface{}) {
 		Payload: payload,
 	}
 
-	h.mu.RLock()
-	defer h.mu.RUnlock()
+	hub.mu.RLock()
+	defer hub.mu.RUnlock()
 	for client := range room {
 		select {
 		case client.send <- msg:
@@ -95,58 +95,58 @@ func (h *Hub) Broadcast(workspaceID, eventType string, payload interface{}) {
 }
 
 // HandleClientMessage dispatches client actions like cursor movement or question locking.
-func (h *Hub) HandleClientMessage(c *Client, msg InboundMessage) {
+func (hub *Hub) HandleClientMessage(client *Client, msg InboundMessage) {
 	switch msg.Type {
 	case "CURSOR_MOVE":
 		var cur Cursor
 		if err := json.Unmarshal(msg.Payload, &cur); err == nil {
-			cur.UserID = c.UserID
-			cur.UserName = c.UserName
-			h.presence.UpdateCursor(c.WorkspaceID, cur)
-			h.Broadcast(c.WorkspaceID, "PRESENCE_SYNC", cur)
+			cur.UserID = client.UserID
+			cur.UserName = client.UserName
+			hub.presence.UpdateCursor(client.WorkspaceID, cur)
+			hub.Broadcast(client.WorkspaceID, "PRESENCE_SYNC", cur)
 		}
 
 	case "LOCK_QUESTION":
-		var p struct {
+		var payload struct {
 			ApprovalID string `json:"approval_id"`
 		}
-		if err := json.Unmarshal(msg.Payload, &p); err == nil && c.Role != "read" {
-			if h.presence.TryLockApproval(p.ApprovalID, c.UserID) {
-				h.Broadcast(c.WorkspaceID, "QUESTION_LOCKED", map[string]string{
-					"approval_id": p.ApprovalID,
-					"user_id":     c.UserID,
-					"user_name":   c.UserName,
+		if err := json.Unmarshal(msg.Payload, &payload); err == nil && client.Role != "read" {
+			if hub.presence.TryLockApproval(payload.ApprovalID, client.UserID) {
+				hub.Broadcast(client.WorkspaceID, "QUESTION_LOCKED", map[string]string{
+					"approval_id": payload.ApprovalID,
+					"user_id":     client.UserID,
+					"user_name":   client.UserName,
 				})
 			}
 		}
 
 	case "UNLOCK_QUESTION":
-		var p struct {
+		var payload struct {
 			ApprovalID string `json:"approval_id"`
 		}
-		if err := json.Unmarshal(msg.Payload, &p); err == nil {
-			h.presence.ReleaseApproval(p.ApprovalID, c.UserID)
-			h.Broadcast(c.WorkspaceID, "QUESTION_UNLOCKED", map[string]string{
-				"approval_id": p.ApprovalID,
-				"user_id":     c.UserID,
+		if err := json.Unmarshal(msg.Payload, &payload); err == nil {
+			hub.presence.ReleaseApproval(payload.ApprovalID, client.UserID)
+			hub.Broadcast(client.WorkspaceID, "QUESTION_UNLOCKED", map[string]string{
+				"approval_id": payload.ApprovalID,
+				"user_id":     client.UserID,
 			})
 		}
 	}
 }
 
 // ServeWebSocket upgrades the HTTP connection and starts client pumps.
-func (h *Hub) ServeWebSocket(w http.ResponseWriter, r *http.Request, userID, userName, role, workspaceID string) {
-	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+func (hub *Hub) ServeWebSocket(writer http.ResponseWriter, request *http.Request, userID, userName, role, workspaceID string) {
+	conn, err := websocket.Accept(writer, request, &websocket.AcceptOptions{
 		OriginPatterns: []string{"*"},
 	})
 	if err != nil {
 		return
 	}
 
-	client := NewClient(h, conn, userID, userName, role, workspaceID)
-	h.Register(client)
+	client := NewClient(hub, conn, userID, userName, role, workspaceID)
+	hub.Register(client)
 
-	ctx := r.Context()
+	ctx := request.Context()
 	go client.WritePump(ctx)
 	client.ReadPump(ctx)
 }

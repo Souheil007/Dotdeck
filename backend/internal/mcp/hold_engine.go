@@ -62,7 +62,7 @@ func NewHoldEngine() *HoldEngine {
 // Hold registers a decision request and pauses the caller until resolved, cancelled, or timed out.
 //
 // The default ceiling is 45 seconds to safely precede cloud provider tool-call deadlines.
-func (h *HoldEngine) Hold(ctx context.Context, req DecisionRequest, timeout time.Duration) (*DecisionResult, error) {
+func (engine *HoldEngine) Hold(ctx context.Context, req DecisionRequest, timeout time.Duration) (*DecisionResult, error) {
 	if timeout <= 0 {
 		timeout = 45 * time.Second
 	}
@@ -74,14 +74,14 @@ func (h *HoldEngine) Hold(ctx context.Context, req DecisionRequest, timeout time
 		expireAt: time.Now().Add(timeout),
 	}
 
-	h.mu.Lock()
-	h.pending[req.ID] = slot
-	h.mu.Unlock()
+	engine.mu.Lock()
+	engine.pending[req.ID] = slot
+	engine.mu.Unlock()
 
 	defer func() {
-		h.mu.Lock()
-		delete(h.pending, req.ID)
-		h.mu.Unlock()
+		engine.mu.Lock()
+		delete(engine.pending, req.ID)
+		engine.mu.Unlock()
 	}()
 
 	select {
@@ -95,10 +95,10 @@ func (h *HoldEngine) Hold(ctx context.Context, req DecisionRequest, timeout time
 }
 
 // Resolve delivers the operator verdict to the waiting agent channel.
-func (h *HoldEngine) Resolve(id string, result DecisionResult) error {
-	h.mu.RLock()
-	slot, exists := h.pending[id]
-	h.mu.RUnlock()
+func (engine *HoldEngine) Resolve(approvalID string, result DecisionResult) error {
+	engine.mu.RLock()
+	slot, exists := engine.pending[approvalID]
+	engine.mu.RUnlock()
 
 	if !exists {
 		return ErrApprovalNotFound
@@ -114,11 +114,11 @@ func (h *HoldEngine) Resolve(id string, result DecisionResult) error {
 }
 
 // Claim marks an in-flight approval request as locked by a specific operator to prevent double-replies.
-func (h *HoldEngine) Claim(id, operatorID string) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
+func (engine *HoldEngine) Claim(approvalID, operatorID string) error {
+	engine.mu.Lock()
+	defer engine.mu.Unlock()
 
-	slot, exists := h.pending[id]
+	slot, exists := engine.pending[approvalID]
 	if !exists {
 		return ErrApprovalNotFound
 	}

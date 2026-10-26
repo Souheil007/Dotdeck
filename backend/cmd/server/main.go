@@ -59,14 +59,14 @@ func main() {
 	agentHandler := api.NewAgentHandler(baseURL)
 	approvalHandler := api.NewApprovalHandler(holdEngine)
 
-	r := chi.NewRouter()
+	router := chi.NewRouter()
 
 	// Global HTTP middleware
-	r.Use(chimiddleware.RequestID)
-	r.Use(chimiddleware.RealIP)
-	r.Use(chimiddleware.Logger)
-	r.Use(chimiddleware.Recoverer)
-	r.Use(cors.Handler(cors.Options{
+	router.Use(chimiddleware.RequestID)
+	router.Use(chimiddleware.RealIP)
+	router.Use(chimiddleware.Logger)
+	router.Use(chimiddleware.Recoverer)
+	router.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Workspace-ID", "X-User-ID"},
@@ -75,26 +75,26 @@ func main() {
 	}))
 
 	// Health check
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"status":"healthy","service":"dotdeck-switchboard"}`))
+	router.Get("/health", func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("Content-Type", "application/json")
+		writer.Write([]byte(`{"status":"healthy","service":"dotdeck-switchboard"}`))
 	})
 
 	// Prometheus Metrics Endpoint
-	r.Handle("/metrics", observability.Handler())
+	router.Handle("/metrics", observability.Handler())
 
 	// MCP Multi-Tenant Endpoint (/mcp/{token})
-	r.Mount("/mcp", http.StripPrefix("/mcp", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r.URL.Path = "/mcp" + r.URL.Path
-		mcpServer.ServeHTTP(w, r)
+	router.Mount("/mcp", http.StripPrefix("/mcp", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		request.URL.Path = "/mcp" + request.URL.Path
+		mcpServer.ServeHTTP(writer, request)
 	})))
 
 	// Real-Time Multiplayer WebSocket Endpoint
-	r.Get("/ws", func(w http.ResponseWriter, r *http.Request) {
-		userID := r.URL.Query().Get("user_id")
-		userName := r.URL.Query().Get("user_name")
-		workspaceID := r.URL.Query().Get("workspace_id")
-		role := r.URL.Query().Get("role")
+	router.Get("/ws", func(writer http.ResponseWriter, request *http.Request) {
+		userID := request.URL.Query().Get("user_id")
+		userName := request.URL.Query().Get("user_name")
+		workspaceID := request.URL.Query().Get("workspace_id")
+		role := request.URL.Query().Get("role")
 
 		if userID == "" {
 			userID = "dev-user"
@@ -109,11 +109,11 @@ func main() {
 			role = "write"
 		}
 
-		wsHub.ServeWebSocket(w, r, userID, userName, role, workspaceID)
+		wsHub.ServeWebSocket(writer, request, userID, userName, role, workspaceID)
 	})
 
 	// REST API v1
-	r.Route("/api/v1", func(apiRouter chi.Router) {
+	router.Route("/api/v1", func(apiRouter chi.Router) {
 		apiRouter.Use(middleware.Authenticate)
 
 		// Workspaces
@@ -128,9 +128,9 @@ func main() {
 		apiRouter.Post("/approvals/resolve", approvalHandler.Resolve)
 	})
 
-	srv := &http.Server{
+	serverInstance := &http.Server{
 		Addr:         ":" + port,
-		Handler:      r,
+		Handler:      router,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  120 * time.Second,
@@ -138,7 +138,7 @@ func main() {
 
 	go func() {
 		slog.Info("Dotdeck switchboard listening", "port", port, "url", baseURL)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := serverInstance.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			slog.Error("server failed", "error", err)
 			os.Exit(1)
 		}
@@ -153,7 +153,7 @@ func main() {
 	defer cancel()
 	defer tracerCleanup(ctx)
 
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := serverInstance.Shutdown(ctx); err != nil {
 		slog.Error("forced server shutdown", "error", err)
 	}
 	slog.Info("Server stopped cleanly")

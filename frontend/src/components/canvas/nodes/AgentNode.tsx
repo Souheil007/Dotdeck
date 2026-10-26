@@ -113,8 +113,8 @@ export const AgentNode = memo(({ id, data, selected }: AgentNodeProps) => {
 
         {data.status === 'unpaired' ? (
           <button
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={(clickEvent) => {
+              clickEvent.stopPropagation();
               openPairingModal(data);
             }}
             className="px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-[11px] transition-colors"

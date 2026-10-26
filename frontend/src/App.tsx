@@ -126,14 +126,14 @@ export function App() {
             <div className="w-6 h-6 rounded-full bg-indigo-500 ring-2 ring-zinc-950 flex items-center justify-center text-[10px] font-bold text-white">
               You
             </div>
-            {Object.values(cursors).map((c) => (
+            {Object.values(cursors).map((teammateCursor) => (
               <div
-                key={c.userId}
-                style={{ backgroundColor: c.color }}
+                key={teammateCursor.userId}
+                style={{ backgroundColor: teammateCursor.color }}
                 className="w-6 h-6 rounded-full ring-2 ring-zinc-950 flex items-center justify-center text-[10px] font-bold text-white"
-                title={c.userName}
+                title={teammateCursor.userName}
               >
-                {c.userName.slice(0, 2).toUpperCase()}
+                {teammateCursor.userName.slice(0, 2).toUpperCase()}
               </div>
             ))}
           </div>

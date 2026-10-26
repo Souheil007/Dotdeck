@@ -25,9 +25,9 @@ const (
 //
 // In development, it falls back to a default developer profile if no header is present.
 func Authenticate(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userID := r.Header.Get("X-User-ID")
-		userName := r.Header.Get("X-User-Name")
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		userID := request.Header.Get("X-User-ID")
+		userName := request.Header.Get("X-User-Name")
 
 		if userID == "" {
 			// Development default fallback
@@ -35,9 +35,9 @@ func Authenticate(next http.Handler) http.Handler {
 			userName = "Alex Dev"
 		}
 
-		ctx := context.WithValue(r.Context(), UserIDKey, userID)
+		ctx := context.WithValue(request.Context(), UserIDKey, userID)
 		ctx = context.WithValue(ctx, UserNameKey, userName)
-		next.ServeHTTP(w, r.WithContext(ctx))
+		next.ServeHTTP(writer, request.WithContext(ctx))
 	})
 }
 
@@ -58,8 +58,8 @@ func GetUserName(ctx context.Context) string {
 }
 
 // BearerToken extracts the token component from an Authorization header.
-func BearerToken(r *http.Request) string {
-	header := r.Header.Get("Authorization")
+func BearerToken(request *http.Request) string {
+	header := request.Header.Get("Authorization")
 	if strings.HasPrefix(header, "Bearer ") {
 		return strings.TrimPrefix(header, "Bearer ")
 	}

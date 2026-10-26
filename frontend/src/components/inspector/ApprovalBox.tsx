@@ -84,7 +84,7 @@ export function ApprovalBox({ approval }: ApprovalBoxProps) {
           <input
             type="text"
             value={customReply}
-            onChange={(e) => setCustomReply(e.target.value)}
+            onChange={(event) => setCustomReply(event.target.value)}
             disabled={!canOperate || isSubmitting}
             placeholder={
               userRole === 'read'

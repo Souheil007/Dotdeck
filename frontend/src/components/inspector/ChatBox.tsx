@@ -11,8 +11,8 @@ export function ChatBox({ agentName }: ChatBoxProps) {
   const [isSending, setIsSending] = useState(false);
   const { userRole } = useWorkspaceStore();
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSend = async (formEvent: React.FormEvent) => {
+    formEvent.preventDefault();
     if (!message.trim() || userRole === 'read') return;
 
     setIsSending(true);
@@ -30,7 +30,7 @@ export function ChatBox({ agentName }: ChatBoxProps) {
         <input
           type="text"
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          onChange={(changeEvent) => setMessage(changeEvent.target.value)}
           disabled={userRole === 'read' || isSending}
           placeholder={
             userRole === 'read'

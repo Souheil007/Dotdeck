@@ -48,7 +48,7 @@ func NewAgentHandler(baseURL string) *AgentHandler {
 }
 
 // Create provisions an agent record and generates its pairing credentials and bootstrap prompt.
-func (h *AgentHandler) Create(w http.ResponseWriter, r *http.Request) {
+func (handler *AgentHandler) Create(writer http.ResponseWriter, request *http.Request) {
 	var body struct {
 		WorkspaceID    string   `json:"workspace_id"`
 		Name           string   `json:"name"`
@@ -59,8 +59,8 @@ func (h *AgentHandler) Create(w http.ResponseWriter, r *http.Request) {
 		PositionX      float64  `json:"position_x"`
 		PositionY      float64  `json:"position_y"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, `{"error":"invalid request payload"}`, http.StatusBadRequest)
+	if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+		http.Error(writer, `{"error":"invalid request payload"}`, http.StatusBadRequest)
 		return
 	}
 
@@ -84,12 +84,12 @@ func (h *AgentHandler) Create(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:      time.Now().UTC(),
 	}
 
-	mcpURL := fmt.Sprintf("%s/mcp/%s", h.baseURL, token)
+	mcpURL := fmt.Sprintf("%s/mcp/%s", handler.baseURL, token)
 	bootstrapPrompt := generateBootstrapPrompt(agent, mcpURL)
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusCreated)
+	json.NewEncoder(writer).Encode(map[string]interface{}{
 		"agent":            agent,
 		"mcp_url":          mcpURL,
 		"bootstrap_prompt": bootstrapPrompt,
@@ -97,15 +97,15 @@ func (h *AgentHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 // ConnectEdge wires two agent nodes together, dynamically synthesizing an MCP delegation tool.
-func (h *AgentHandler) ConnectEdge(w http.ResponseWriter, r *http.Request) {
+func (handler *AgentHandler) ConnectEdge(writer http.ResponseWriter, request *http.Request) {
 	var body struct {
 		WorkspaceID   string `json:"workspace_id"`
 		SourceAgentID string `json:"source_agent_id"`
 		TargetAgentID string `json:"target_agent_id"`
 		TargetName    string `json:"target_name"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, `{"error":"invalid request payload"}`, http.StatusBadRequest)
+	if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+		http.Error(writer, `{"error":"invalid request payload"}`, http.StatusBadRequest)
 		return
 	}
 
@@ -121,9 +121,9 @@ func (h *AgentHandler) ConnectEdge(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:     time.Now().UTC(),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(edge)
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(http.StatusCreated)
+	json.NewEncoder(writer).Encode(edge)
 }
 
 func generateBootstrapPrompt(agent Agent, mcpURL string) string {
@@ -143,16 +143,16 @@ Endpoint URL: %s
 %v`, agent.Name, mcpURL, agent.Goal, agent.AuthorityRules)
 }
 
-func sanitizeIdentifier(s string) string {
-	res := make([]rune, 0, len(s))
-	for _, r := range s {
-		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
-			res = append(res, r)
-		} else if r >= 'A' && r <= 'Z' {
-			res = append(res, r+'a'-'A')
-		} else if r == ' ' || r == '-' {
-			res = append(res, '_')
+func sanitizeIdentifier(inputIdentifier string) string {
+	cleaned := make([]rune, 0, len(inputIdentifier))
+	for _, charRune := range inputIdentifier {
+		if (charRune >= 'a' && charRune <= 'z') || (charRune >= '0' && charRune <= '9') {
+			cleaned = append(cleaned, charRune)
+		} else if charRune >= 'A' && charRune <= 'Z' {
+			cleaned = append(cleaned, charRune+'a'-'A')
+		} else if charRune == ' ' || charRune == '-' {
+			cleaned = append(cleaned, '_')
 		}
 	}
-	return string(res)
+	return string(cleaned)
 }

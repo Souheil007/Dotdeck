@@ -58,8 +58,8 @@ export function useMultiplayerWS(url: string) {
                 userId: payload.user_id,
                 userName: payload.user_name,
                 color: payload.color || '#3b82f6',
-                x: payload.x,
-                y: payload.y,
+                positionX: payload.position_x ?? payload.x,
+                positionY: payload.position_y ?? payload.y,
               });
               break;
 
@@ -92,12 +92,12 @@ export function useMultiplayerWS(url: string) {
     };
   }, [connect]);
 
-  const sendCursor = useCallback((x: number, y: number) => {
+  const sendCursor = useCallback((coordX: number, coordY: number) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(
         JSON.stringify({
           type: 'CURSOR_MOVE',
-          payload: { x, y },
+          payload: { position_x: coordX, position_y: coordY },
         })
       );
     }
