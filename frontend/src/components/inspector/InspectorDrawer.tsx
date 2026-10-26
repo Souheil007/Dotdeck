@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Brain, AlertCircle, MessageSquare, ExternalLink } from 'lucide-react';
+import { X, Brain, AlertCircle } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { ThoughtStream } from './ThoughtStream';
 import { ApprovalBox } from './ApprovalBox';

@@ -1,5 +1,7 @@
 import { memo } from 'react';
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@xyflow/react';
+import { useWorkspaceStore } from '../../../store/useWorkspaceStore';
+import { ArrowRight, Sparkles } from 'lucide-react';
 
 export const PulseEdge = memo(({
   id,
@@ -13,6 +15,7 @@ export const PulseEdge = memo(({
   markerEnd,
   data,
 }: EdgeProps) => {
+  const { setHandoffPreview } = useWorkspaceStore();
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -22,7 +25,8 @@ export const PulseEdge = memo(({
     targetPosition,
   });
 
-  const toolName = (data?.toolName as string) || 'handoff';
+  const toolName = (data?.toolName as string) || 'delegate_task';
+  const isActive = Boolean(data?.active);
 
   return (
     <>
@@ -31,10 +35,11 @@ export const PulseEdge = memo(({
         path={edgePath}
         markerEnd={markerEnd}
         style={{
-          stroke: '#6366f1',
-          strokeWidth: 2,
+          stroke: isActive ? '#10b981' : '#6366f1',
+          strokeWidth: isActive ? 2.5 : 2,
           strokeDasharray: '6 4',
-          animation: 'dash 1.5s linear infinite',
+          animation: 'dash 1.2s linear infinite',
+          filter: isActive ? 'drop-shadow(0 0 6px rgba(16,185,129,0.5))' : 'drop-shadow(0 0 4px rgba(99,102,241,0.3))',
           ...style,
         }}
       />
@@ -49,13 +54,20 @@ export const PulseEdge = memo(({
           className="nodrag nopan"
         >
           <button
-            onClick={() => {
-              // Clickable handoff pill: inspect payload passed along edge
+            onClick={(clickEvent) => {
+              clickEvent.stopPropagation();
+              setHandoffPreview({
+                edgeId: id,
+                toolName,
+                payload: data?.payload,
+              });
             }}
-            className="px-2 py-0.5 rounded-full bg-zinc-900/90 border border-indigo-500/40 text-[10px] font-mono text-indigo-300 hover:bg-zinc-800 transition-colors shadow-sm flex items-center gap-1 backdrop-blur-sm"
+            className="group px-3 py-1 rounded-full bg-zinc-950/90 border border-indigo-500/40 hover:border-indigo-400 text-[11px] font-mono text-indigo-300 hover:text-white hover:bg-zinc-900 transition-all shadow-lg flex items-center gap-1.5 backdrop-blur-md cursor-pointer select-none ring-1 ring-white/5"
+            title="Inspect synthesized MCP cross-agent tool"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />
-            <span>{toolName}</span>
+            <Sparkles className="w-3 h-3 text-indigo-400 group-hover:text-indigo-300 transition-colors animate-pulse" />
+            <span className="font-semibold">{toolName}</span>
+            <ArrowRight className="w-3 h-3 text-zinc-500 group-hover:translate-x-0.5 transition-transform" />
           </button>
         </div>
       </EdgeLabelRenderer>

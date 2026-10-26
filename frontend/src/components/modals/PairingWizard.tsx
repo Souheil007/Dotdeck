@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Copy, Check, ExternalLink, Sparkles, ShieldCheck } from 'lucide-react';
+import { X, Copy, Check, Sparkles, ShieldCheck } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 
 export function PairingWizard() {

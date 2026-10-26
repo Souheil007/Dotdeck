@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Bot, Share2, Plus, Sparkles, Shield, Users } from 'lucide-react';
+import { Bot, Share2, Plus } from 'lucide-react';
 import { AgentCanvas } from './components/canvas/AgentCanvas';
 import { InspectorDrawer } from './components/inspector/InspectorDrawer';
 import { PairingWizard } from './components/modals/PairingWizard';
@@ -16,7 +16,6 @@ export function App() {
     setShareModalOpen,
     openPairingModal,
     cursors,
-    userRole,
   } = useWorkspaceStore();
 
   // Populate sample multi-vendor fleet if canvas is empty

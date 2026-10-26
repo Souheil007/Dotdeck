@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Send, Zap } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 
 interface ChatBoxProps {

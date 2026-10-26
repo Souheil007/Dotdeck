@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Users, Globe, Copy, Check, Mail, Shield } from 'lucide-react';
+import { X, Users, Globe, Copy, Check, Mail } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 
 export function ShareModal() {
