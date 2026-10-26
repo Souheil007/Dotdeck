@@ -1,3 +1,5 @@
+// Package mcp implements the multi-tenant Model Context Protocol switchboard
+// connecting closed cloud agents to the Dotdeck orchestration graph.
 package mcp
 
 import (
@@ -5,9 +7,19 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
+)
+
+// Standard JSON-RPC 2.0 error codes.
+const (
+	RPCParseError     = -32700
+	RPCInvalidRequest = -32600
+	RPCMethodNotFound = -32601
+	RPCInvalidParams  = -32602
+	RPCInternalError  = -32603
 )
 
 // EventBroadcaster delivers real-time notifications to connected workspace clients.
@@ -39,81 +51,253 @@ type EdgeContext struct {
 	ToolName        string
 }
 
-// Server handles inbound JSON-RPC over HTTP/SSE for cloud agents.
-type Server struct {
-	repo        AgentRepository
-	holdEngine  *HoldEngine
-	broadcaster EventBroadcaster
-}
-
-// NewServer configures an MCP endpoint dispatcher for registered cloud agents.
-func NewServer(repo AgentRepository, holdEngine *HoldEngine, broadcaster EventBroadcaster) *Server {
-	return &Server{
-		repo:        repo,
-		holdEngine:  holdEngine,
-		broadcaster: broadcaster,
-	}
-}
-
 // JSONRPCRequest represents a standardized JSON-RPC 2.0 incoming payload.
 type JSONRPCRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      interface{}     `json:"id"`
 	Method  string          `json:"method"`
-	Params  json.RawMessage `json:"params"`
+	Params  json.RawMessage `json:"params,omitempty"`
+}
+
+// RPCErrorDetail describes a JSON-RPC 2.0 error body.
+type RPCErrorDetail struct {
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
 }
 
 // JSONRPCResponse standardizes outbound responses adhering to JSON-RPC 2.0.
 type JSONRPCResponse struct {
-	JSONRPC string      `json:"jsonrpc"`
-	ID      interface{} `json:"id"`
-	Result  interface{} `json:"result,omitempty"`
-	Error   interface{} `json:"error,omitempty"`
+	JSONRPC string          `json:"jsonrpc"`
+	ID      interface{}     `json:"id"`
+	Result  interface{}     `json:"result,omitempty"`
+	Error   *RPCErrorDetail `json:"error,omitempty"`
+}
+
+type sseSession struct {
+	sessionID string
+	messages  chan JSONRPCResponse
+}
+
+// Server handles inbound JSON-RPC 2.0 over HTTP and Server-Sent Events (SSE) for cloud agents.
+type Server struct {
+	repository  AgentRepository
+	holdEngine  *HoldEngine
+	broadcaster EventBroadcaster
+	sessionLock sync.RWMutex
+	sessions    map[string]*sseSession
+}
+
+// NewServer configures an MCP endpoint dispatcher for registered cloud agents.
+func NewServer(repository AgentRepository, holdEngine *HoldEngine, broadcaster EventBroadcaster) *Server {
+	return &Server{
+		repository:  repository,
+		holdEngine:  holdEngine,
+		broadcaster: broadcaster,
+		sessions:    make(map[string]*sseSession),
+	}
 }
 
 // ServeHTTP routes incoming agent requests identified by the agent URL token.
 func (server *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	token := strings.TrimPrefix(request.URL.Path, "/mcp/")
-	token = strings.TrimSpace(token)
-	if token == "" {
-		http.Error(writer, `{"error":"missing agent token"}`, http.StatusUnauthorized)
+	pathSuffix := strings.TrimPrefix(request.URL.Path, "/mcp/")
+	pathSuffix = strings.TrimSpace(pathSuffix)
+	if pathSuffix == "" {
+		http.Error(writer, `{"jsonrpc":"2.0","error":{"code":-32600,"message":"missing agent token"}}`, http.StatusUnauthorized)
 		return
 	}
 
-	agent, err := server.repo.GetAgentByToken(token)
-	if err != nil || agent == nil {
-		http.Error(writer, `{"error":"unrecognized or expired agent token"}`, http.StatusNotFound)
+	pathSegments := strings.Split(pathSuffix, "/")
+	tokenString := pathSegments[0]
+	actionSubpath := ""
+	if len(pathSegments) > 1 {
+		actionSubpath = pathSegments[1]
+	}
+
+	agentContext, lookupError := server.repository.GetAgentByToken(tokenString)
+	if lookupError != nil || agentContext == nil {
+		http.Error(writer, `{"jsonrpc":"2.0","error":{"code":-32600,"message":"unrecognized or expired agent token"}}`, http.StatusNotFound)
 		return
 	}
 
+	// Handle Webhook Check-in fallback for browser or webhook-only agents (e.g. Meta Muse)
+	if actionSubpath == "checkin" && request.Method == http.MethodPost {
+		server.handleCheckinWebhook(writer, request, agentContext)
+		return
+	}
+
+	// Handle Server-Sent Events (SSE) connection negotiation
+	if actionSubpath == "sse" || strings.Contains(request.Header.Get("Accept"), "text/event-stream") {
+		server.handleSSEStream(writer, request, tokenString, agentContext)
+		return
+	}
+
+	// Handle GET discovery check
 	if request.Method == http.MethodGet {
 		writer.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(writer).Encode(map[string]interface{}{
+		_ = json.NewEncoder(writer).Encode(map[string]interface{}{
 			"status":   "active",
-			"agent_id": agent.ID,
-			"name":     agent.Name,
+			"agent_id": agentContext.ID,
+			"name":     agentContext.Name,
 			"protocol": "mcp-2024-11-05",
+			"vendor":   agentContext.Provider,
 		})
 		return
 	}
 
-	var rpcRequest JSONRPCRequest
-	if err := json.NewDecoder(request.Body).Decode(&rpcRequest); err != nil {
-		http.Error(writer, `{"error":"malformed json payload"}`, http.StatusBadRequest)
+	if request.Method != http.MethodPost {
+		http.Error(writer, `{"jsonrpc":"2.0","error":{"code":-32600,"message":"method not allowed"}}`, http.StatusMethodNotAllowed)
 		return
 	}
 
+	var rpcRequest JSONRPCRequest
+	if decodeError := json.NewDecoder(request.Body).Decode(&rpcRequest); decodeError != nil {
+		writer.Header().Set("Content-Type", "application/json")
+		writer.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(writer).Encode(JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      nil,
+			Error: &RPCErrorDetail{
+				Code:    RPCParseError,
+				Message: "invalid JSON payload received",
+			},
+		})
+		return
+	}
+
+	if rpcRequest.JSONRPC != "2.0" {
+		writer.Header().Set("Content-Type", "application/json")
+		writer.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(writer).Encode(JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      rpcRequest.ID,
+			Error: &RPCErrorDetail{
+				Code:    RPCInvalidRequest,
+				Message: "invalid jsonrpc version; must be '2.0'",
+			},
+		})
+		return
+	}
+
+	rpcResponse := server.handleMethod(request, agentContext, rpcRequest)
+
+	sessionQueryID := request.URL.Query().Get("session_id")
+	if sessionQueryID != "" {
+		server.sessionLock.RLock()
+		activeSession, sessionExists := server.sessions[sessionQueryID]
+		server.sessionLock.RUnlock()
+
+		if sessionExists {
+			select {
+			case activeSession.messages <- rpcResponse:
+				writer.WriteHeader(http.StatusAccepted)
+				return
+			default:
+				// Fall through to synchronous return if channel buffer is full
+			}
+		}
+	}
+
 	writer.Header().Set("Content-Type", "application/json")
-	resp := server.handleMethod(request, agent, rpcRequest)
-	json.NewEncoder(writer).Encode(resp)
+	_ = json.NewEncoder(writer).Encode(rpcResponse)
 }
 
-func (server *Server) handleMethod(request *http.Request, agent *AgentContext, rpcRequest JSONRPCRequest) JSONRPCResponse {
+func (server *Server) handleSSEStream(writer http.ResponseWriter, request *http.Request, tokenString string, agentContext *AgentContext) {
+	flusher, flusherSupported := writer.(http.Flusher)
+	if !flusherSupported {
+		http.Error(writer, "Streaming unsupported by client", http.StatusInternalServerError)
+		return
+	}
+
+	sessionIdentifier := uuid.New().String()
+	sessionInstance := &sseSession{
+		sessionID: sessionIdentifier,
+		messages:  make(chan JSONRPCResponse, 64),
+	}
+
+	server.sessionLock.Lock()
+	server.sessions[sessionIdentifier] = sessionInstance
+	server.sessionLock.Unlock()
+
+	defer func() {
+		server.sessionLock.Lock()
+		delete(server.sessions, sessionIdentifier)
+		server.sessionLock.Unlock()
+	}()
+
+	writer.Header().Set("Content-Type", "text/event-stream")
+	writer.Header().Set("Cache-Control", "no-cache")
+	writer.Header().Set("Connection", "keep-alive")
+	writer.Header().Set("X-Accel-Buffering", "no")
+
+	postEndpoint := fmt.Sprintf("/mcp/%s?session_id=%s", tokenString, sessionIdentifier)
+	fmt.Fprintf(writer, "event: endpoint\ndata: %s\n\n", postEndpoint)
+	flusher.Flush()
+
+	requestContext := request.Context()
+	for {
+		select {
+		case <-requestContext.Done():
+			return
+		case outboundResponse := <-sessionInstance.messages:
+			responseBytes, marshalError := json.Marshal(outboundResponse)
+			if marshalError == nil {
+				fmt.Fprintf(writer, "event: message\ndata: %s\n\n", string(responseBytes))
+				flusher.Flush()
+			}
+		}
+	}
+}
+
+func (server *Server) handleCheckinWebhook(writer http.ResponseWriter, request *http.Request, agentContext *AgentContext) {
+	var payload struct {
+		Status          string      `json:"status"`
+		ReasoningTrace  string      `json:"reasoning_trace"`
+		NextPlannedStep string      `json:"next_planned_step"`
+		ToolCalled      string      `json:"tool_called"`
+		PayloadData     interface{} `json:"payload"`
+	}
+
+	if decodeError := json.NewDecoder(request.Body).Decode(&payload); decodeError != nil {
+		http.Error(writer, `{"error":"invalid checkin body"}`, http.StatusBadRequest)
+		return
+	}
+
+	targetStatus := payload.Status
+	if targetStatus == "" {
+		targetStatus = "working"
+	}
+
+	_ = server.repository.UpdateStatus(agentContext.ID, targetStatus)
+	if payload.ReasoningTrace != "" {
+		_ = server.repository.RecordThought(agentContext.ID, 0, payload.ReasoningTrace, payload.NextPlannedStep, payload.ToolCalled, payload.PayloadData)
+		server.broadcaster.Broadcast(agentContext.WorkspaceID, "THOUGHT_STEP_EMITTED", map[string]interface{}{
+			"agent_id":          agentContext.ID,
+			"reasoning_trace":   payload.ReasoningTrace,
+			"next_planned_step": payload.NextPlannedStep,
+			"tool_called":       payload.ToolCalled,
+			"timestamp":         time.Now().UTC(),
+		})
+	}
+
+	server.broadcaster.Broadcast(agentContext.WorkspaceID, "AGENT_STATE_CHANGED", map[string]interface{}{
+		"agent_id": agentContext.ID,
+		"status":   targetStatus,
+	})
+
+	writer.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(writer).Encode(map[string]interface{}{
+		"status":   "acknowledged",
+		"agent_id": agentContext.ID,
+	})
+}
+
+func (server *Server) handleMethod(request *http.Request, agentContext *AgentContext, rpcRequest JSONRPCRequest) JSONRPCResponse {
 	switch rpcRequest.Method {
 	case "initialize":
-		_ = server.repo.UpdateStatus(agent.ID, "resting")
-		server.broadcaster.Broadcast(agent.WorkspaceID, "AGENT_STATE_CHANGED", map[string]interface{}{
-			"agent_id": agent.ID,
+		_ = server.repository.UpdateStatus(agentContext.ID, "resting")
+		server.broadcaster.Broadcast(agentContext.WorkspaceID, "AGENT_STATE_CHANGED", map[string]interface{}{
+			"agent_id": agentContext.ID,
 			"status":   "resting",
 		})
 		return JSONRPCResponse{
@@ -131,60 +315,93 @@ func (server *Server) handleMethod(request *http.Request, agent *AgentContext, r
 			},
 		}
 
+	case "ping":
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      rpcRequest.ID,
+			Result:  map[string]interface{}{},
+		}
+
 	case "tools/list":
-		edges, _ := server.repo.GetOutboundEdges(agent.ID)
-		tools := []ToolDefinition{
+		edges, queryError := server.repository.GetOutboundEdges(agentContext.ID)
+		if queryError != nil {
+			edges = nil
+		}
+		toolsList := []ToolDefinition{
 			BuildTelemetryTool(),
 			BuildHumanApprovalTool(),
 		}
 		for _, edge := range edges {
-			tools = append(tools, BuildDelegationTool(edge.TargetAgentName, edge.ToolName))
+			toolsList = append(toolsList, BuildDelegationTool(edge.TargetAgentName, edge.ToolName))
 		}
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      rpcRequest.ID,
-			Result:  map[string]interface{}{"tools": tools},
+			Result:  map[string]interface{}{"tools": toolsList},
 		}
 
 	case "tools/call":
-		return server.handleToolCall(request, agent, rpcRequest)
+		return server.handleToolCall(request, agentContext, rpcRequest)
 
 	default:
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      rpcRequest.ID,
-			Error:   map[string]interface{}{"code": -32601, "message": "method not supported"},
+			Error: &RPCErrorDetail{
+				Code:    RPCMethodNotFound,
+				Message: fmt.Sprintf("method %q is not supported", rpcRequest.Method),
+			},
 		}
 	}
 }
 
-type toolCallParams struct {
+type toolCallArguments struct {
 	Name      string                 `json:"name"`
 	Arguments map[string]interface{} `json:"arguments"`
 }
 
-func (server *Server) handleToolCall(request *http.Request, agent *AgentContext, rpcRequest JSONRPCRequest) JSONRPCResponse {
-	var params toolCallParams
-	if err := json.Unmarshal(rpcRequest.Params, &params); err != nil {
+func (server *Server) handleToolCall(request *http.Request, agentContext *AgentContext, rpcRequest JSONRPCRequest) JSONRPCResponse {
+	var callArguments toolCallArguments
+	if decodeError := json.Unmarshal(rpcRequest.Params, &callArguments); decodeError != nil || callArguments.Name == "" {
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      rpcRequest.ID,
-			Error:   map[string]interface{}{"code": -32602, "message": "invalid arguments"},
+			Error: &RPCErrorDetail{
+				Code:    RPCInvalidParams,
+				Message: "invalid or missing tool call parameters",
+			},
 		}
 	}
 
-	switch params.Name {
+	switch callArguments.Name {
 	case "report_thought_step":
-		trace, _ := params.Arguments["reasoning_trace"].(string)
-		nextStep, _ := params.Arguments["next_planned_step"].(string)
+		reasoningTrace, _ := callArguments.Arguments["reasoning_trace"].(string)
+		nextPlannedStep, _ := callArguments.Arguments["next_planned_step"].(string)
 
-		_ = server.repo.UpdateStatus(agent.ID, "working")
-		_ = server.repo.RecordThought(agent.ID, 0, trace, nextStep, params.Name, nil)
+		if reasoningTrace == "" {
+			return JSONRPCResponse{
+				JSONRPC: "2.0",
+				ID:      rpcRequest.ID,
+				Error: &RPCErrorDetail{
+					Code:    RPCInvalidParams,
+					Message: "missing required argument: reasoning_trace",
+				},
+			}
+		}
 
-		server.broadcaster.Broadcast(agent.WorkspaceID, "THOUGHT_STEP_EMITTED", map[string]interface{}{
-			"agent_id":          agent.ID,
-			"reasoning_trace":   trace,
-			"next_planned_step": nextStep,
+		stepNumber := 0
+		if rawStep, stepExists := callArguments.Arguments["step_index"].(float64); stepExists {
+			stepNumber = int(rawStep)
+		}
+
+		_ = server.repository.UpdateStatus(agentContext.ID, "working")
+		_ = server.repository.RecordThought(agentContext.ID, stepNumber, reasoningTrace, nextPlannedStep, callArguments.Name, nil)
+
+		server.broadcaster.Broadcast(agentContext.WorkspaceID, "THOUGHT_STEP_EMITTED", map[string]interface{}{
+			"agent_id":          agentContext.ID,
+			"step_index":        stepNumber,
+			"reasoning_trace":   reasoningTrace,
+			"next_planned_step": nextPlannedStep,
 			"timestamp":         time.Now().UTC(),
 		})
 
@@ -195,64 +412,111 @@ func (server *Server) handleToolCall(request *http.Request, agent *AgentContext,
 		}
 
 	case "ask_human_question":
-		question, _ := params.Arguments["question"].(string)
-		trace, _ := params.Arguments["reasoning_trace"].(string)
+		questionText, _ := callArguments.Arguments["question"].(string)
+		reasoningTrace, _ := callArguments.Arguments["reasoning_trace"].(string)
 
-		decisionID := uuid.New().String()
-		_ = server.repo.UpdateStatus(agent.ID, "blocked_on_user")
+		if questionText == "" {
+			return JSONRPCResponse{
+				JSONRPC: "2.0",
+				ID:      rpcRequest.ID,
+				Error: &RPCErrorDetail{
+					Code:    RPCInvalidParams,
+					Message: "missing required argument: question",
+				},
+			}
+		}
 
-		server.broadcaster.Broadcast(agent.WorkspaceID, "APPROVAL_REQUESTED", map[string]interface{}{
-			"approval_id":     decisionID,
-			"agent_id":        agent.ID,
-			"question":        question,
-			"reasoning_trace": trace,
+		var optionsList []string
+		if rawOptions, optionsExist := callArguments.Arguments["options"].([]interface{}); optionsExist {
+			for _, optionItem := range rawOptions {
+				if stringOption, isString := optionItem.(string); isString {
+					optionsList = append(optionsList, stringOption)
+				}
+			}
+		}
+
+		approvalIdentifier := uuid.New().String()
+		_ = server.repository.UpdateStatus(agentContext.ID, "blocked_on_user")
+
+		server.broadcaster.Broadcast(agentContext.WorkspaceID, "APPROVAL_REQUESTED", map[string]interface{}{
+			"approval_id":     approvalIdentifier,
+			"agent_id":        agentContext.ID,
+			"question":        questionText,
+			"options":         optionsList,
+			"reasoning_trace": reasoningTrace,
 			"status":          "pending",
 		})
 
-		decReq := DecisionRequest{
-			ID:             decisionID,
-			WorkspaceID:    agent.WorkspaceID,
-			AgentID:        agent.ID,
-			Question:       question,
-			ReasoningTrace: trace,
-			CreatedAt:      time.Now(),
+		decisionRequest := DecisionRequest{
+			ID:             approvalIdentifier,
+			WorkspaceID:    agentContext.WorkspaceID,
+			AgentID:        agentContext.ID,
+			Question:       questionText,
+			Options:        optionsList,
+			ReasoningTrace: reasoningTrace,
+			CreatedAt:      time.Now().UTC(),
 		}
 
-		result, err := server.holdEngine.Hold(request.Context(), decReq, 45*time.Second)
-		if err != nil {
-			_ = server.repo.UpdateStatus(agent.ID, "resting")
+		decisionOutcome, holdError := server.holdEngine.Hold(request.Context(), decisionRequest, 45*time.Second)
+		if holdError != nil {
+			_ = server.repository.UpdateStatus(agentContext.ID, "resting")
 			return JSONRPCResponse{
 				JSONRPC: "2.0",
 				ID:      rpcRequest.ID,
 				Result: map[string]interface{}{
 					"status":  "queued_for_review",
-					"message": "Human operator review pending. Task queued; you will be awoken upon decision.",
+					"message": "Human operator review pending. Task queued; Dotdeck will wake you upon human decision.",
 				},
 			}
 		}
 
-		_ = server.repo.UpdateStatus(agent.ID, "working")
+		_ = server.repository.UpdateStatus(agentContext.ID, "working")
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      rpcRequest.ID,
 			Result: map[string]interface{}{
 				"status":      "approved",
-				"user_answer": result.Answer,
-				"approved_by": result.OperatorID,
+				"user_answer": decisionOutcome.Answer,
+				"approved_by": decisionOutcome.OperatorID,
 			},
 		}
 
 	default:
-		// Check for dynamic cross-agent delegation
-		if strings.HasPrefix(params.Name, "delegate_task_") {
-			trace, _ := params.Arguments["current_reasoning_trace"].(string)
-			instructions, _ := params.Arguments["instructions"].(string)
+		// Check for dynamic cross-agent delegation tools: delegate_task_to_<peer>
+		if strings.HasPrefix(callArguments.Name, "delegate_task_") {
+			reasoningTrace, _ := callArguments.Arguments["current_reasoning_trace"].(string)
+			instructionsText, _ := callArguments.Arguments["instructions"].(string)
+			artifactPayload := callArguments.Arguments["payload"]
 
-			server.broadcaster.Broadcast(agent.WorkspaceID, "HANDOFF_EMITTED", map[string]interface{}{
-				"source_agent_id": agent.ID,
-				"tool_called":     params.Name,
-				"instructions":    instructions,
-				"reasoning_trace": trace,
+			if instructionsText == "" {
+				return JSONRPCResponse{
+					JSONRPC: "2.0",
+					ID:      rpcRequest.ID,
+					Error: &RPCErrorDetail{
+						Code:    RPCInvalidParams,
+						Message: "missing required argument: instructions",
+					},
+				}
+			}
+
+			// Enforce mandatory piggybacked thought ingestion
+			if reasoningTrace != "" {
+				_ = server.repository.RecordThought(agentContext.ID, 0, reasoningTrace, "Dispatching task delegation", callArguments.Name, artifactPayload)
+				server.broadcaster.Broadcast(agentContext.WorkspaceID, "THOUGHT_STEP_EMITTED", map[string]interface{}{
+					"agent_id":          agentContext.ID,
+					"reasoning_trace":   reasoningTrace,
+					"next_planned_step": "Dispatching task delegation to peer",
+					"tool_called":       callArguments.Name,
+					"timestamp":         time.Now().UTC(),
+				})
+			}
+
+			server.broadcaster.Broadcast(agentContext.WorkspaceID, "HANDOFF_EMITTED", map[string]interface{}{
+				"source_agent_id": agentContext.ID,
+				"tool_called":     callArguments.Name,
+				"instructions":    instructionsText,
+				"payload":         artifactPayload,
+				"reasoning_trace": reasoningTrace,
 				"timestamp":       time.Now().UTC(),
 			})
 
@@ -261,7 +525,7 @@ func (server *Server) handleToolCall(request *http.Request, agent *AgentContext,
 				ID:      rpcRequest.ID,
 				Result: map[string]interface{}{
 					"status":  "handoff_queued",
-					"message": fmt.Sprintf("Delegation dispatched via Dotdeck switchboard."),
+					"message": "Delegation artifact dispatched via Dotdeck collaborative switchboard.",
 				},
 			}
 		}
@@ -269,7 +533,10 @@ func (server *Server) handleToolCall(request *http.Request, agent *AgentContext,
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      rpcRequest.ID,
-			Error:   map[string]interface{}{"code": -32601, "message": "unknown tool"},
+			Error: &RPCErrorDetail{
+				Code:    RPCMethodNotFound,
+				Message: fmt.Sprintf("unknown tool %q", callArguments.Name),
+			},
 		}
 	}
 }
