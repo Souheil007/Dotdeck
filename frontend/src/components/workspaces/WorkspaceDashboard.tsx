@@ -9,11 +9,11 @@ import {
   AlertTriangle,
   LayoutGrid,
   List,
-  Shield,
   Activity,
   Layers,
+  Trash2,
 } from 'lucide-react';
-import { useWorkspaceStore } from '../../store/useWorkspaceStore';
+import { useWorkspaceStore, type WorkspaceItem } from '../../store/useWorkspaceStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal';
 import { ThemeToggle } from '../common/ThemeToggle';
@@ -27,12 +27,13 @@ interface WorkspaceDashboardProps {
 }
 
 export function WorkspaceDashboard({ onSelectWorkspace, onGoToLanding, onOpenSettings }: WorkspaceDashboardProps) {
-  const { workspaces, switchWorkspace } = useWorkspaceStore();
+  const { workspaces, switchWorkspace, deleteWorkspace } = useWorkspaceStore();
   const { user } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'matrix' | 'dense'>('matrix');
   const [filterMode, setFilterMode] = useState<'all' | 'active' | 'held'>('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [fleetToDelete, setFleetToDelete] = useState<WorkspaceItem | null>(null);
 
   const filteredWorkspaces = workspaces.filter((item) => {
     const matchesSearch =
@@ -40,7 +41,7 @@ export function WorkspaceDashboard({ onSelectWorkspace, onGoToLanding, onOpenSet
       item.description.toLowerCase().includes(searchQuery.toLowerCase());
 
     if (!matchesSearch) return false;
-    if (filterMode === 'active') return item.agentCount > 0;
+    if (filterMode === 'active') return item.agentCount > 0 && item.activeApprovalsCount === 0;
     if (filterMode === 'held') return item.activeApprovalsCount > 0;
     return true;
   });
@@ -136,7 +137,7 @@ export function WorkspaceDashboard({ onSelectWorkspace, onGoToLanding, onOpenSet
       <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-6 relative z-10">
         
         {/* Fleet Telemetry Strip */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div className="p-3.5 rounded-lg bg-white dark:bg-[#111317] border border-[#dfe1e6] dark:border-[#22262e] shadow-tactical-sm">
             <div className="flex items-center justify-between text-[#5e6c84] dark:text-[#8c96a5] text-xs mb-1">
               <span>Managed Fleets</span>
@@ -166,17 +167,6 @@ export function WorkspaceDashboard({ onSelectWorkspace, onGoToLanding, onOpenSet
               {totalHeld}
             </div>
           </div>
-
-          <div className="p-3.5 rounded-lg bg-white dark:bg-[#111317] border border-[#dfe1e6] dark:border-[#22262e] shadow-tactical-sm">
-            <div className="flex items-center justify-between text-[#5e6c84] dark:text-[#8c96a5] text-xs mb-1">
-              <span>Security Perimeter</span>
-              <Shield className="w-3.5 h-3.5 text-[#0052cc] dark:text-[#2684ff]" />
-            </div>
-            <div className="font-mono text-sm font-bold text-[#00875a] dark:text-[#36b37e] flex items-center gap-1.5 mt-1">
-              <span className="w-2 h-2 rounded-full bg-[#00875a] dark:bg-[#36b37e] animate-pulse" />
-              <span>MCP Auth Enforced</span>
-            </div>
-          </div>
         </div>
 
         {/* Filter & Search Command Row */}
@@ -201,7 +191,7 @@ export function WorkspaceDashboard({ onSelectWorkspace, onGoToLanding, onOpenSet
                     : 'text-[#5e6c84] dark:text-[#8c96a5] hover:text-[#121417]'
                 }`}
               >
-                Active ({workspaces.filter((w) => w.agentCount > 0).length})
+                Active ({workspaces.filter((w) => w.agentCount > 0 && w.activeApprovalsCount === 0).length})
               </button>
               <button
                 onClick={() => setFilterMode('held')}
@@ -263,9 +253,24 @@ export function WorkspaceDashboard({ onSelectWorkspace, onGoToLanding, onOpenSet
                     <h3 className="font-display font-bold text-base text-[#121417] dark:text-[#f0f2f5] group-hover:text-[#0052cc] dark:group-hover:text-[#2684ff] transition-colors">
                       {item.name}
                     </h3>
-                    <span className="text-[10px] font-mono uppercase font-semibold px-2 py-0.2 rounded border bg-[#f4f5f7] dark:bg-[#171a21] border-[#dfe1e6] dark:border-[#22262e] text-[#5e6c84] dark:text-[#8c96a5]">
-                      {item.role}
-                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[10px] font-mono uppercase font-semibold px-2 py-0.2 rounded border bg-[#f4f5f7] dark:bg-[#171a21] border-[#dfe1e6] dark:border-[#22262e] text-[#5e6c84] dark:text-[#8c96a5]">
+                        {item.role}
+                      </span>
+                      {workspaces.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFleetToDelete(item);
+                          }}
+                          title={`Decommission ${item.name}`}
+                          className="p-1 rounded text-[#5e6c84] hover:text-[#de350b] hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <p className="text-xs text-[#5e6c84] dark:text-[#8c96a5] line-clamp-2 leading-relaxed mb-4">
@@ -297,10 +302,15 @@ export function WorkspaceDashboard({ onSelectWorkspace, onGoToLanding, onOpenSet
                         <AlertTriangle className="w-3 h-3" />
                         <span>{item.activeApprovalsCount} Hold</span>
                       </div>
-                    ) : (
+                    ) : item.agentCount > 0 ? (
                       <div className="flex items-center gap-1 text-[#00875a] dark:text-[#36b37e] font-mono text-[11px]">
                         <CheckCircle2 className="w-3 h-3" />
-                        <span>Nominal</span>
+                        <span>Active</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 text-[#5e6c84] dark:text-[#8c96a5] font-mono text-[11px]">
+                        <Activity className="w-3 h-3" />
+                        <span>Idle</span>
                       </div>
                     )}
 
@@ -373,16 +383,35 @@ export function WorkspaceDashboard({ onSelectWorkspace, onGoToLanding, onOpenSet
                       <AlertTriangle className="w-3 h-3" />
                       <span>{item.activeApprovalsCount} Hold</span>
                     </div>
-                  ) : (
+                  ) : item.agentCount > 0 ? (
                     <div className="flex items-center gap-1 text-[#00875a] dark:text-[#36b37e] font-mono text-[11px]">
                       <CheckCircle2 className="w-3 h-3" />
-                      <span>Nominal</span>
+                      <span>Active</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 text-[#5e6c84] dark:text-[#8c96a5] font-mono text-[11px]">
+                      <Activity className="w-3 h-3" />
+                      <span>Idle</span>
                     </div>
                   )}
 
                   <div className="text-[11px] font-mono text-[#5e6c84] hidden md:block">
                     {item.lastActive}
                   </div>
+
+                  {workspaces.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFleetToDelete(item);
+                      }}
+                      title={`Decommission ${item.name}`}
+                      className="p-1.5 rounded text-[#5e6c84] hover:text-[#de350b] hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
 
                   <ChevronRight className="w-4 h-4 text-[#5e6c84] group-hover:text-[#0052cc] dark:group-hover:text-[#2684ff] group-hover:translate-x-1 transition-all" />
                 </div>
@@ -402,6 +431,52 @@ export function WorkspaceDashboard({ onSelectWorkspace, onGoToLanding, onOpenSet
           Dotdeck Closed Cloud Orchestration Deck
         </div>
       </footer>
+
+      {/* Decommission Fleet Confirmation Modal */}
+      {fleetToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-[#111317] border border-[#dfe1e6] dark:border-[#22262e] rounded-xl max-w-md w-full p-6 shadow-tactical-lg animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3 mb-4 text-[#de350b]">
+              <div className="w-10 h-10 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-[#de350b]" />
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-base text-[#121417] dark:text-[#f0f2f5]">
+                  Decommission Fleet
+                </h3>
+                <p className="text-xs text-[#5e6c84] dark:text-[#8c96a5]">
+                  This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-[#5e6c84] dark:text-[#8c96a5] leading-relaxed mb-6">
+              Are you sure you want to decommission <strong className="text-[#121417] dark:text-[#f0f2f5]">{fleetToDelete.name}</strong>? All {fleetToDelete.agentCount} agent nodes, execution channels, and live topologies in this workspace will be deleted.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setFleetToDelete(null)}
+                className="px-3.5 py-1.5 rounded-lg border border-[#dfe1e6] dark:border-[#22262e] text-xs font-semibold text-[#5e6c84] dark:text-[#8c96a5] hover:text-[#121417] dark:hover:text-[#f0f2f5] hover:bg-[#f4f5f7] dark:hover:bg-[#171a21] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteWorkspace(fleetToDelete.id);
+                  setFleetToDelete(null);
+                }}
+                className="px-3.5 py-1.5 rounded-lg bg-[#de350b] hover:bg-[#bf2600] text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Decommission Fleet</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create Workspace Modal */}
       <CreateWorkspaceModal

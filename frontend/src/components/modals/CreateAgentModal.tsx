@@ -169,36 +169,38 @@ export function CreateAgentModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="relative w-full max-w-2xl rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-6 shadow-2xl my-8 text-[#202124] dark:text-zinc-100">
-        <button
-          onClick={closeCreateAgentModal}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-          title="Close (Esc)"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        {/* Modal Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-indigo-950/80 border border-blue-200 dark:border-indigo-700/50">
-            <Bot className="w-6 h-6 text-blue-600 dark:text-indigo-400" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4">
+      <div className="relative w-full max-w-2xl max-h-[92vh] flex flex-col rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-2xl text-[#202124] dark:text-zinc-100 overflow-hidden">
+        {/* Modal Header (Fixed) */}
+        <div className="shrink-0 p-4 sm:p-5 pb-3 border-b border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-blue-50 dark:bg-indigo-950/80 border border-blue-200 dark:border-indigo-700/50">
+              <Bot className="w-5 h-5 text-blue-600 dark:text-indigo-400" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-[#202124] dark:text-white">Add Closed Cloud Agent</h2>
+              <p className="text-xs text-[#5f6368] dark:text-zinc-400">
+                Provision a Tier 3 cloud agent blueprint with remote MCP switchboard credentials.
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-lg font-bold text-[#202124] dark:text-white">Add Closed Cloud Agent</h2>
-            <p className="text-xs text-[#5f6368] dark:text-zinc-400">
-              Provision an autonomous Tier 3 cloud agent blueprint with remote MCP switchboard credentials.
-            </p>
-          </div>
+          <button
+            onClick={closeCreateAgentModal}
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            title="Close (Esc)"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        {errorMessage && (
-          <div className="mb-4 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-800/80 text-rose-800 dark:text-rose-300 text-xs font-mono">
-            {errorMessage}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-5 text-xs">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          {/* Scrollable Form Body */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs">
+            {errorMessage && (
+              <div className="mb-4 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-800/80 text-rose-800 dark:text-rose-300 text-xs font-mono">
+                {errorMessage}
+              </div>
+            )}
           {/* Provider Selection */}
           <div>
             <label className="block text-[#202124] dark:text-zinc-300 font-semibold mb-2">1. Select Cloud Agent Provider</label>
@@ -403,36 +405,37 @@ export function CreateAgentModal() {
               </ul>
             )}
           </div>
+        </div>
 
-          {/* Form Actions */}
-          <div className="pt-3 border-t border-zinc-200 dark:border-zinc-800/80 flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={closeCreateAgentModal}
-              className="px-4 py-2 rounded-xl text-[#5f6368] dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors font-medium text-xs"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!name.trim() || !goal.trim() || isSubmitting}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold text-xs flex items-center gap-2 transition-colors shadow-md shadow-blue-600/20"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Provisioning Blueprint...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  <span>Create Blueprint & Pair</span>
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
+        {/* Form Actions (Fixed Footer) */}
+        <div className="shrink-0 p-4 border-t border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/40 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={closeCreateAgentModal}
+            className="px-4 py-2 rounded-xl text-[#5f6368] dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors font-medium text-xs"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={!name.trim() || !goal.trim() || isSubmitting}
+            className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold text-xs flex items-center gap-2 transition-colors shadow-md shadow-blue-600/20"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Provisioning Blueprint...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                <span>Create Blueprint & Pair</span>
+              </>
+            )}
+          </button>
+        </div>
+      </form>
     </div>
-  );
+  </div>
+);
 }

@@ -303,6 +303,7 @@ interface WorkspaceState {
   closeDecommissionModal: () => void;
   switchWorkspace: (workspaceId: string) => void;
   createWorkspace: (name: string, description: string) => WorkspaceItem;
+  deleteWorkspace: (workspaceId: string) => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(
@@ -316,7 +317,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           description: 'Orchestrates OpenAI web research to Grok bespoke email copy with Claude compliance guardrails.',
           providers: ['openai_dot', 'grok_bot', 'claude'],
           agentCount: 3,
-          activeApprovalsCount: 1,
+          activeApprovalsCount: 0,
           membersCount: 4,
           lastActive: '2m ago',
           role: 'admin',
@@ -565,15 +566,38 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           }),
 
         addApproval: (approval) =>
-          set((state) => ({
-            approvals: { ...state.approvals, [approval.id]: approval },
-          })),
+          set((state) => {
+            const nextApprovals = { ...state.approvals, [approval.id]: approval };
+            const updatedWorkspaces = state.workspaces.map((ws) => {
+              const nodesInWs = state.workspaceNodes[ws.id] || [];
+              const agentIds = new Set(nodesInWs.map((n) => n.id));
+              const count = Object.values(nextApprovals).filter(
+                (app) => app.status === 'pending' && agentIds.has(app.agentId)
+              ).length;
+              return { ...ws, activeApprovalsCount: count };
+            });
+            return {
+              approvals: nextApprovals,
+              workspaces: updatedWorkspaces,
+            };
+          }),
 
         resolveApproval: (approvalId) =>
           set((state) => {
             const nextApprovals = { ...state.approvals };
             delete nextApprovals[approvalId];
-            return { approvals: nextApprovals };
+            const updatedWorkspaces = state.workspaces.map((ws) => {
+              const nodesInWs = state.workspaceNodes[ws.id] || [];
+              const agentIds = new Set(nodesInWs.map((n) => n.id));
+              const count = Object.values(nextApprovals).filter(
+                (app) => app.status === 'pending' && agentIds.has(app.agentId)
+              ).length;
+              return { ...ws, activeApprovalsCount: count };
+            });
+            return {
+              approvals: nextApprovals,
+              workspaces: updatedWorkspaces,
+            };
           }),
 
         updateCursor: (cursor) =>
@@ -748,6 +772,50 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
           return newWorkspace;
         },
+
+        deleteWorkspace: (workspaceId) =>
+          set((state) => {
+            const nextWorkspaces = state.workspaces.filter((w) => w.id !== workspaceId);
+            const nextWorkspaceNodes = { ...state.workspaceNodes };
+            const nextWorkspaceEdges = { ...state.workspaceEdges };
+            delete nextWorkspaceNodes[workspaceId];
+            delete nextWorkspaceEdges[workspaceId];
+
+            let nextActiveId = state.activeWorkspaceId;
+            let nextActiveName = state.activeWorkspaceName;
+            let nextNodes = state.nodes;
+            let nextEdges = state.edges;
+            let nextRole = state.userRole;
+
+            if (state.activeWorkspaceId === workspaceId) {
+              const fallback = nextWorkspaces[0];
+              if (fallback) {
+                nextActiveId = fallback.id;
+                nextActiveName = fallback.name;
+                nextNodes = nextWorkspaceNodes[fallback.id] ?? DEFAULT_WORKSPACE_NODES[fallback.id] ?? [];
+                nextEdges = nextWorkspaceEdges[fallback.id] ?? DEFAULT_WORKSPACE_EDGES[fallback.id] ?? [];
+                nextRole = fallback.role;
+              } else {
+                nextActiveId = 'ws-default';
+                nextActiveName = 'Default Workspace';
+                nextNodes = [];
+                nextEdges = [];
+              }
+            }
+
+            return {
+              workspaces: nextWorkspaces,
+              workspaceId: nextActiveId,
+              activeWorkspaceId: nextActiveId,
+              activeWorkspaceName: nextActiveName,
+              userRole: nextRole,
+              nodes: nextNodes,
+              edges: nextEdges,
+              workspaceNodes: nextWorkspaceNodes,
+              workspaceEdges: nextWorkspaceEdges,
+              selectedAgentId: null,
+            };
+          }),
       };
     },
     {
@@ -798,11 +866,16 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         }
         if (state.workspaces && state.workspaces.length > 0) {
           state.workspaces = state.workspaces.map((ws) => {
-            const savedNodes = state.workspaceNodes?.[ws.id];
-            if (savedNodes !== undefined) {
-              return { ...ws, agentCount: savedNodes.length };
-            }
-            return ws;
+            const savedNodes = state.workspaceNodes?.[ws.id] || [];
+            const agentIds = new Set(savedNodes.map((n) => n.id));
+            const pendingApprovalsCount = Object.values(state.approvals || {}).filter(
+              (app) => app.status === 'pending' && agentIds.has(app.agentId)
+            ).length;
+            return {
+              ...ws,
+              agentCount: savedNodes.length,
+              activeApprovalsCount: pendingApprovalsCount,
+            };
           });
         }
       },
