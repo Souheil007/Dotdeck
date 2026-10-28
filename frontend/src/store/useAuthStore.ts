@@ -19,6 +19,7 @@ interface AuthState {
   quickLogin: (role: UserRole) => void;
   logout: () => void;
   updateRole: (role: UserRole) => void;
+  updateProfile: (name: string, email: string, avatar?: string) => void;
 }
 
 export const DEMO_USERS: Record<UserRole, AuthUser> = {
@@ -79,6 +80,19 @@ export const useAuthStore = create<AuthState>()(
       updateRole: (role: UserRole) => {
         set((state) => ({
           user: state.user ? { ...state.user, role } : null,
+        }));
+      },
+
+      updateProfile: (name: string, email: string, avatar?: string) => {
+        set((state) => ({
+          user: state.user
+            ? {
+                ...state.user,
+                name: name.trim() || state.user.name,
+                email: email.trim() || state.user.email,
+                avatar: avatar || state.user.avatar,
+              }
+            : null,
         }));
       },
     }),

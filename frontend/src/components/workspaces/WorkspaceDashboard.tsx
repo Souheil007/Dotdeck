@@ -4,7 +4,6 @@ import {
   Search,
   Bot,
   Clock,
-  LogOut,
   ChevronRight,
   CheckCircle2,
   AlertTriangle,
@@ -18,15 +17,17 @@ import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal';
 import { ThemeToggle } from '../common/ThemeToggle';
+import { UserNavDropdown } from '../navigation/UserNavDropdown';
 
 interface WorkspaceDashboardProps {
   onSelectWorkspace: (workspaceId: string) => void;
   onGoToLanding: () => void;
+  onOpenSettings?: () => void;
 }
 
-export function WorkspaceDashboard({ onSelectWorkspace, onGoToLanding }: WorkspaceDashboardProps) {
+export function WorkspaceDashboard({ onSelectWorkspace, onGoToLanding, onOpenSettings }: WorkspaceDashboardProps) {
   const { workspaces, switchWorkspace } = useWorkspaceStore();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'matrix' | 'dense'>('matrix');
   const [filterMode, setFilterMode] = useState<'all' | 'active' | 'held'>('all');
@@ -104,38 +105,25 @@ export function WorkspaceDashboard({ onSelectWorkspace, onGoToLanding }: Workspa
         </div>
 
         <div className="flex items-center gap-3">
-          <ThemeToggle />
-
-          {/* User Profile Pill */}
-          {user && (
-            <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-[#f4f5f7] dark:bg-[#171a21] border border-[#dfe1e6] dark:border-[#22262e] text-xs">
-              <span className="text-xs">{user.avatar}</span>
-              <span className="font-medium text-[#121417] dark:text-[#f0f2f5] text-xs hidden sm:inline">
-                {user.name.split(' ')[0]}
-              </span>
-              <span className="text-[9px] font-mono px-1 py-0.2 rounded uppercase font-bold tracking-wider bg-white dark:bg-[#111317] border border-[#dfe1e6] dark:border-[#22262e] text-[#5e6c84] dark:text-[#8c96a5]">
-                {user.role}
-              </span>
-            </div>
-          )}
-
           {/* Create Workspace CTA */}
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="py-1.5 px-3 rounded-lg bg-[#0052cc] hover:bg-[#0747a6] dark:bg-[#2684ff] dark:hover:bg-[#0065ff] text-white font-semibold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95"
+            className="py-1.5 px-3 rounded-xl bg-[#0052cc] hover:bg-[#0747a6] dark:bg-[#2684ff] dark:hover:bg-[#0065ff] text-white font-semibold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95"
           >
             <FolderPlus className="w-3.5 h-3.5" />
             <span>New Fleet</span>
           </button>
 
-          {/* Sign Out */}
-          <button
-            onClick={logout}
-            title="Sign Out"
-            className="p-1.5 rounded-lg bg-white dark:bg-[#171a21] hover:bg-[#f4f5f7] border border-[#dfe1e6] dark:border-[#22262e] text-[#5e6c84] dark:text-[#8c96a5] hover:text-[#121417] transition-colors"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-          </button>
+          {/* User Nav Dropdown or Theme Toggle */}
+          {user ? (
+            <UserNavDropdown
+              onOpenSettings={onOpenSettings || (() => {})}
+              onOpenWorkspaces={() => {}}
+              onGoToLanding={onGoToLanding}
+            />
+          ) : (
+            <ThemeToggle />
+          )}
         </div>
       </header>
 

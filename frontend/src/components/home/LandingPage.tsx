@@ -13,13 +13,15 @@ import {
 import { useAuthStore } from '../../store/useAuthStore';
 import { AuthModal } from '../auth/AuthModal';
 import { ThemeToggle } from '../common/ThemeToggle';
+import { UserNavDropdown } from '../navigation/UserNavDropdown';
 
 interface LandingPageProps {
   onEnterApp: () => void;
   onOpenShowcase: () => void;
+  onOpenSettings?: () => void;
 }
 
-export function LandingPage({ onEnterApp, onOpenShowcase }: LandingPageProps) {
+export function LandingPage({ onEnterApp, onOpenShowcase, onOpenSettings }: LandingPageProps) {
   const { isAuthenticated, user } = useAuthStore();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
@@ -111,18 +113,23 @@ export function LandingPage({ onEnterApp, onOpenShowcase }: LandingPageProps) {
         </nav>
 
         <div className="flex items-center gap-3">
-          <ThemeToggle />
-
           {isAuthenticated && user ? (
-            <button
-              onClick={onEnterApp}
-              className="py-1.5 px-3.5 rounded-lg bg-[#0052cc] hover:bg-[#0747a6] dark:bg-[#2684ff] dark:hover:bg-[#0065ff] text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
-            >
-              <span>Workspaces ({user.name.split(' ')[0]})</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={onEnterApp}
+                className="py-1.5 px-3 rounded-xl bg-[#0052cc] hover:bg-[#0747a6] dark:bg-[#2684ff] dark:hover:bg-[#0065ff] text-white font-semibold text-xs flex items-center gap-1.5 shadow-xs transition-all active:scale-95"
+              >
+                <span>Workspaces</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+              <UserNavDropdown
+                onOpenSettings={onOpenSettings || onEnterApp}
+                onOpenWorkspaces={onEnterApp}
+              />
+            </div>
           ) : (
             <>
+              <ThemeToggle />
               <button
                 onClick={() => setIsAuthModalOpen(true)}
                 className="py-1.5 px-3 rounded-lg text-[#5e6c84] dark:text-[#8c96a5] hover:text-[#121417] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 text-xs font-semibold transition-all"

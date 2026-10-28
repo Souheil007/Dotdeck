@@ -4,14 +4,11 @@ import {
   Share2,
   Plus,
   Sparkles,
-  Crown,
-  Zap,
-  Eye,
   ArrowLeft,
   ChevronDown,
   Home,
-  LogOut,
   FolderKanban,
+  FolderPlus,
 } from 'lucide-react';
 import { AgentCanvas } from './components/canvas/AgentCanvas';
 import { InspectorDrawer } from './components/inspector/InspectorDrawer';
@@ -21,6 +18,9 @@ import { ShareModal } from './components/modals/ShareModal';
 import { DecommissionAgentModal } from './components/modals/DecommissionAgentModal';
 import { LandingPage } from './components/home/LandingPage';
 import { WorkspaceDashboard } from './components/workspaces/WorkspaceDashboard';
+import { CreateWorkspaceModal } from './components/workspaces/CreateWorkspaceModal';
+import { SettingsPage } from './components/settings/SettingsPage';
+import { UserNavDropdown } from './components/navigation/UserNavDropdown';
 import { ThemeToggle } from './components/common/ThemeToggle';
 import { useWorkspaceStore } from './store/useWorkspaceStore';
 import { useAuthStore } from './store/useAuthStore';
@@ -40,11 +40,18 @@ export function App() {
     switchWorkspace,
   } = useWorkspaceStore();
 
-  const { isAuthenticated, user, logout } = useAuthStore();
+  const { user } = useAuthStore();
 
-  const [activeView, setActiveView] = useState<'landing' | 'dashboard' | 'canvas'>('landing');
+  const [activeView, setActiveView] = useState<'landing' | 'dashboard' | 'canvas' | 'settings'>('landing');
+  const [previousView, setPreviousView] = useState<'landing' | 'dashboard' | 'canvas'>('canvas');
   const [isShowcase, setIsShowcase] = useState(false);
   const [isWorkspaceSwitcherOpen, setIsWorkspaceSwitcherOpen] = useState(false);
+  const [isCreateWorkspaceModalOpen, setIsCreateWorkspaceModalOpen] = useState(false);
+
+  const handleOpenSettings = (fromView?: 'landing' | 'dashboard' | 'canvas') => {
+    setPreviousView(fromView || (activeView === 'settings' ? 'canvas' : activeView));
+    setActiveView('settings');
+  };
 
   // Initialize view and role based strictly on explicit URL params on mount
   useEffect(() => {
@@ -79,6 +86,7 @@ export function App() {
     return (
       <LandingPage
         onEnterApp={() => setActiveView('dashboard')}
+        onOpenSettings={() => handleOpenSettings('landing')}
         onOpenShowcase={() => {
           setIsShowcase(true);
           setUserRole('read');
@@ -95,30 +103,20 @@ export function App() {
       <WorkspaceDashboard
         onSelectWorkspace={() => setActiveView('canvas')}
         onGoToLanding={() => setActiveView('landing')}
+        onOpenSettings={() => handleOpenSettings('dashboard')}
       />
     );
   }
 
-  const roleBadgeConfig = {
-    admin: {
-      label: 'Admin',
-      icon: Crown,
-      badgeClass: 'bg-amber-50 dark:bg-amber-950/80 border-amber-300 dark:border-amber-700/80 text-amber-800 dark:text-amber-300',
-    },
-    write: {
-      label: 'Operator',
-      icon: Zap,
-      badgeClass: 'bg-blue-50 dark:bg-indigo-950/80 border-blue-300 dark:border-indigo-700/80 text-blue-800 dark:text-indigo-300',
-    },
-    read: {
-      label: 'Observer',
-      icon: Eye,
-      badgeClass: 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-300 dark:border-emerald-700/80 text-emerald-800 dark:text-emerald-300',
-    },
-  };
-
-  const currentRoleConfig = roleBadgeConfig[userRole] || roleBadgeConfig.write;
-  const RoleIcon = currentRoleConfig.icon;
+  // Route: Dedicated Operator Settings View
+  if (activeView === 'settings') {
+    return (
+      <SettingsPage
+        onBack={() => setActiveView(previousView)}
+        onGoToLanding={() => setActiveView('landing')}
+      />
+    );
+  }
 
   return (
     <div className="relative w-screen h-screen flex flex-col bg-[#f8f9fa] dark:bg-[#07080b] text-[#202124] dark:text-zinc-100 select-none overflow-hidden font-sans">
@@ -223,20 +221,18 @@ export function App() {
 
         {/* Right Controls */}
         <div className="flex items-center gap-2.5">
-          {/* Theme Toggle Button */}
-          <ThemeToggle />
-
-          {/* Workspace Role Badge */}
-          <div
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[11px] font-mono font-medium shadow-xs ${currentRoleConfig.badgeClass}`}
-            title={`Your Workspace Role: ${currentRoleConfig.label}`}
+          {/* Create New Fleet Button */}
+          <button
+            onClick={() => setIsCreateWorkspaceModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-[#121318] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-250 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-mono font-medium transition-colors shadow-xs"
+            title="Create New Fleet Workspace"
           >
-            <RoleIcon className="w-3 h-3" />
-            <span>{currentRoleConfig.label}</span>
-          </div>
+            <FolderPlus className="w-3.5 h-3.5 text-blue-600 dark:text-cyan-400" />
+            <span className="hidden md:inline">New Fleet</span>
+          </button>
 
           {/* Teammate Presence Avatars */}
-          <div className="flex items-center -space-x-1.5 overflow-hidden">
+          <div className="hidden sm:flex items-center -space-x-1.5 overflow-hidden">
             <div className="w-6 h-6 rounded-full bg-blue-600 dark:bg-cyan-600 ring-2 ring-white dark:ring-[#07080b] flex items-center justify-center text-[10px] font-bold text-white shadow-xs">
               {user ? user.avatar : 'You'}
             </div>
@@ -254,45 +250,44 @@ export function App() {
               ))}
           </div>
 
+          {/* Share Canvas */}
           <button
             onClick={() => setShareModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-[#121318] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-250 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-mono font-medium transition-colors shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-[#121318] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-250 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-mono font-medium transition-colors shadow-xs"
           >
             <Share2 className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Share</span>
           </button>
 
+          {/* Add Agent CTA */}
           <button
             onClick={openCreateAgentModal}
             disabled={userRole === 'read'}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 dark:bg-cyan-500 dark:hover:bg-cyan-400 dark:text-black text-white text-xs font-mono font-bold shadow-xs transition-all active:scale-[0.98] disabled:opacity-40"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#0052cc] hover:bg-[#0747a6] dark:bg-cyan-500 dark:hover:bg-cyan-400 dark:text-black text-white text-xs font-mono font-bold shadow-xs transition-all active:scale-[0.98] disabled:opacity-40"
             title={userRole === 'read' ? 'Read-only observer mode (Write permissions required)' : 'Add agent node'}
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Agent</span>
           </button>
 
-          {/* Landing quick button */}
-          <button
-            onClick={() => setActiveView('landing')}
-            title="Landing Home"
-            className="p-1.5 rounded-lg bg-white dark:bg-[#121318] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-250 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors shadow-xs"
-          >
-            <Home className="w-4 h-4" />
-          </button>
-
-          {/* Sign Out */}
-          {isAuthenticated && (
-            <button
-              onClick={() => {
-                logout();
-                setActiveView('landing');
-              }}
-              title="Sign Out"
-              className="p-1.5 rounded-lg bg-white dark:bg-[#121318] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-250 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors shadow-xs"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
+          {/* User Profile Dropdown or Guest Controls */}
+          {user ? (
+            <UserNavDropdown
+              onOpenSettings={() => handleOpenSettings('canvas')}
+              onOpenWorkspaces={() => setActiveView('dashboard')}
+              onGoToLanding={() => setActiveView('landing')}
+            />
+          ) : (
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <button
+                onClick={() => setActiveView('landing')}
+                title="Landing Home"
+                className="p-1.5 rounded-xl bg-white dark:bg-[#121318] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-250 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors shadow-xs"
+              >
+                <Home className="w-4 h-4" />
+              </button>
+            </div>
           )}
         </div>
       </header>
@@ -324,6 +319,14 @@ export function App() {
       <PairingWizard />
       <ShareModal />
       <DecommissionAgentModal />
+      <CreateWorkspaceModal
+        isOpen={isCreateWorkspaceModalOpen}
+        onClose={() => setIsCreateWorkspaceModalOpen(false)}
+        onSuccess={(createdId) => {
+          switchWorkspace(createdId);
+          setActiveView('canvas');
+        }}
+      />
     </div>
   );
 }
