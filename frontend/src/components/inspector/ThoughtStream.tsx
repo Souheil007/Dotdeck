@@ -117,13 +117,26 @@ export function ThoughtStream({ thoughts }: ThoughtStreamProps) {
   }, [thoughts]);
 
   const allCollapsed = useMemo(() => {
-    return runGroups.length > 0 && runGroups.every((g) => Boolean(collapsedRuns[g.runId]));
+    const totalRuns = runGroups.length;
+    return (
+      runGroups.length > 0 &&
+      runGroups.every((g) => {
+        const isLatest = g.runNumber === totalRuns;
+        return g.runId in collapsedRuns ? collapsedRuns[g.runId] : !isLatest;
+      })
+    );
   }, [runGroups, collapsedRuns]);
 
   const toggleAllRuns = () => {
     if (allCollapsed) {
-      setCollapsedRuns({});
+      // Expand all runs
+      const nextCollapsed: Record<string, boolean> = {};
+      runGroups.forEach((g) => {
+        nextCollapsed[g.runId] = false;
+      });
+      setCollapsedRuns(nextCollapsed);
     } else {
+      // Collapse all runs
       const nextCollapsed: Record<string, boolean> = {};
       runGroups.forEach((g) => {
         nextCollapsed[g.runId] = true;
@@ -138,8 +151,10 @@ export function ThoughtStream({ thoughts }: ThoughtStreamProps) {
     const totalRuns = runGroups.length;
 
     runGroups.forEach((group) => {
-      const isCollapsed = Boolean(collapsedRuns[group.runId]);
       const isLatest = group.runNumber === totalRuns;
+      // Default: only the latest execution run is expanded; all prior runs are collapsed
+      const isCollapsed =
+        group.runId in collapsedRuns ? collapsedRuns[group.runId] : !isLatest;
 
       items.push({
         type: 'run_header',
@@ -176,9 +191,14 @@ export function ThoughtStream({ thoughts }: ThoughtStreamProps) {
   });
 
   const toggleRun = (runId: string) => {
+    const totalRuns = runGroups.length;
+    const targetGroup = runGroups.find((g) => g.runId === runId);
+    const isLatest = targetGroup ? targetGroup.runNumber === totalRuns : false;
+    const currentCollapsed = runId in collapsedRuns ? collapsedRuns[runId] : !isLatest;
+
     setCollapsedRuns((previous) => ({
       ...previous,
-      [runId]: !previous[runId],
+      [runId]: !currentCollapsed,
     }));
   };
 
