@@ -746,10 +746,10 @@ func TestWorkspaceHub_AutoDiscovery(testingTarget *testing.T) {
 	}
 }
 
-// TestWorkspaceHub_VendorVerificationProbeIgnored verifies that automated vendor infrastructure probes
-// (such as xAI Grok's connectors-manager and grok-validator) receive compliant 200 OK responses
-// without spawning spurious ghost nodes on the visual canvas.
-func TestWorkspaceHub_VendorVerificationProbeIgnored(testingTarget *testing.T) {
+// TestWorkspaceHub_VendorVerificationProbeConsolidated verifies that automated vendor infrastructure probes
+// (such as xAI Grok's connectors-manager and grok-validator) consolidate into exactly ONE clean vendor agent node
+// ("Grok Agent") rather than creating multiple confusing internal microservice cards.
+func TestWorkspaceHub_VendorVerificationProbeConsolidated(testingTarget *testing.T) {
 	mockRepo := newMockRepository()
 	broadcaster := &mockBroadcaster{}
 	holdEngine := NewHoldEngine()
@@ -791,15 +791,29 @@ func TestWorkspaceHub_VendorVerificationProbeIgnored(testingTarget *testing.T) {
 		}
 	}
 
-	// Verify ZERO agents were created in mockRepo
-	if len(mockRepo.agents) != 0 {
-		testingTarget.Errorf("expected 0 agents provisioned for vendor probes, found %d", len(mockRepo.agents))
+	// Verify EXACTLY 1 agent was created in mockRepo (consolidated)
+	if len(mockRepo.agents) != 1 {
+		testingTarget.Fatalf("expected exactly 1 consolidated agent provisioned, found %d", len(mockRepo.agents))
 	}
 
-	// Verify ZERO AGENT_CREATED events were broadcasted
+	var createdAgent *AgentContext
+	for _, a := range mockRepo.agents {
+		createdAgent = a
+		break
+	}
+
+	if createdAgent.Name != "Grok Agent" {
+		testingTarget.Errorf("expected consolidated name 'Grok Agent', got: %s", createdAgent.Name)
+	}
+
+	// Verify EXACTLY 1 AGENT_CREATED event was broadcasted
+	createdEventCount := 0
 	for _, event := range broadcaster.events {
 		if event == "AGENT_CREATED" {
-			testingTarget.Errorf("unexpected AGENT_CREATED event broadcasted for vendor probe")
+			createdEventCount++
 		}
+	}
+	if createdEventCount != 1 {
+		testingTarget.Errorf("expected exactly 1 AGENT_CREATED event, got %d", createdEventCount)
 	}
 }

@@ -460,21 +460,17 @@ func (server *Server) handleWorkspaceHub(writer http.ResponseWriter, request *ht
 		}
 	}
 
-	// Intercept and absorb vendor verification probes (e.g. xAI Grok's connectors-manager, grok-validator)
-	// Return fully compliant MCP protocol responses without polluting the visual canvas with ghost agents.
+	// If the incoming client identifier is an internal vendor probe (e.g. connectors-manager, grok-validator),
+	// normalize it to the primary vendor identity (e.g. "grok") so that the operator sees exactly ONE clean
+	// "Grok Agent" node created upon connection, rather than confusing internal microservice names or nothing at all.
 	if isVendorVerificationProbe(clientName, request.UserAgent()) {
-		ephemeralContext := &AgentContext{
-			ID:          "probe-verifier",
-			WorkspaceID: workspaceID,
-			Name:        "Verification Probe",
-			Provider:    "grok_bot",
-			Goal:        "Transient connector verification check.",
-			Status:      "resting",
+		if strings.Contains(strings.ToLower(clientName+" "+request.UserAgent()), "claude") {
+			clientName = "claude"
+		} else if strings.Contains(strings.ToLower(clientName+" "+request.UserAgent()), "openai") || strings.Contains(strings.ToLower(clientName+" "+request.UserAgent()), "gpt") {
+			clientName = "openai"
+		} else {
+			clientName = "grok"
 		}
-		rpcResponse := server.handleMethod(request, ephemeralContext, rpcRequest)
-		writer.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(writer).Encode(rpcResponse)
-		return
 	}
 
 	// Determine deterministic hub token and display name for actual agent
