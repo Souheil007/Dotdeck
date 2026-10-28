@@ -328,6 +328,8 @@ function AgentCanvasInner() {
         fitView
         fitViewOptions={{ padding: 0.35, includeHiddenNodes: false }}
         defaultViewport={{ x: 80, y: 80, zoom: 0.85 }}
+        elevateEdgesOnSelect={true}
+        elevateNodesOnSelect={true}
         className="bg-[#f8f9fa] dark:bg-[#07080b]"
       >
         <Background color={theme === 'dark' ? '#22262e' : '#dadce0'} gap={24} size={1} />

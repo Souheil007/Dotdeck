@@ -17,7 +17,11 @@ export const PulseEdge = memo(({
   markerEnd,
   data,
 }: EdgeProps) => {
-  const { setHandoffPreview, removeEdgeFromWorkspace, workspaceId, userRole } = useWorkspaceStore();
+  const setHandoffPreview = useWorkspaceStore((state) => state.setHandoffPreview);
+  const removeEdgeFromWorkspace = useWorkspaceStore((state) => state.removeEdgeFromWorkspace);
+  const workspaceId = useWorkspaceStore((state) => state.workspaceId);
+  const userRole = useWorkspaceStore((state) => state.userRole);
+
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -25,6 +29,7 @@ export const PulseEdge = memo(({
     targetX,
     targetY,
     targetPosition,
+    curvature: 0.35,
   });
 
   const toolName = (data?.toolName as string) || 'delegate_task';
@@ -32,6 +37,17 @@ export const PulseEdge = memo(({
 
   return (
     <>
+      {/* Background Soft Ambient Halo: GPU-accelerated crisp glow with zero blur rasterization lag */}
+      <path
+        d={edgePath}
+        fill="none"
+        stroke={isActive ? 'rgba(54,179,126,0.25)' : 'rgba(38,132,255,0.2)'}
+        strokeWidth={isActive ? 8 : 6}
+        strokeLinecap="round"
+        style={{ pointerEvents: 'none' }}
+      />
+
+      {/* Main Directed Communication Wire */}
       <BaseEdge
         id={id}
         path={edgePath}
@@ -41,9 +57,6 @@ export const PulseEdge = memo(({
           strokeWidth: isActive ? 2.5 : 2,
           strokeDasharray: '6 4',
           animation: 'dash 1s linear infinite',
-          filter: isActive
-            ? 'drop-shadow(0 0 6px rgba(54,179,126,0.5))'
-            : 'drop-shadow(0 0 4px rgba(38,132,255,0.35))',
           ...style,
         }}
       />
@@ -54,6 +67,7 @@ export const PulseEdge = memo(({
             position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             pointerEvents: 'all',
+            willChange: 'transform',
           }}
           className="nodrag nopan flex items-center gap-1 group/pill"
         >

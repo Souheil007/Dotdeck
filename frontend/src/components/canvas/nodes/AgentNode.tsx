@@ -105,7 +105,7 @@ export const AgentNode = memo(({ id, data, selected }: AgentNodeProps) => {
   return (
     <div
       onClick={() => setSelectedAgentId(id)}
-      className={`relative w-[360px] rounded-xl p-4.5 transition-all duration-200 border cursor-pointer select-none ${
+      className={`relative w-[360px] rounded-xl p-4.5 transition-[border-color,box-shadow,background-color] duration-150 border cursor-pointer select-none ${
         config.borderClass
       } ${
         selected
