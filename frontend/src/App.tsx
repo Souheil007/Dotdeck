@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
+  Bot,
   Share2,
   Plus,
   Sparkles,
@@ -44,7 +45,7 @@ export function App() {
   const [isShowcase, setIsShowcase] = useState(false);
   const [isWorkspaceSwitcherOpen, setIsWorkspaceSwitcherOpen] = useState(false);
 
-  // Initialize view and role based on URL params and authentication state
+  // Initialize view and role based strictly on explicit URL params on mount
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.has('showcase') || searchParams.get('role') === 'read') {
@@ -53,15 +54,17 @@ export function App() {
       switchWorkspace('ws-prod-sales');
       setActiveView('canvas');
     } else if (searchParams.get('view') === 'canvas' || searchParams.has('workspace')) {
-      const targetWorkspace = searchParams.get('workspace') || activeWorkspaceId || 'ws-prod-sales';
+      const targetWorkspace = searchParams.get('workspace') || 'ws-prod-sales';
       switchWorkspace(targetWorkspace);
       setActiveView('canvas');
-    } else if (searchParams.get('view') === 'dashboard' || isAuthenticated) {
+    } else if (searchParams.get('view') === 'dashboard') {
       setActiveView('dashboard');
     } else {
+      // Default to the Dotdeck landing homepage on initial visit
       setActiveView('landing');
     }
-  }, [isAuthenticated, setUserRole, switchWorkspace, activeWorkspaceId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Sync role with logged-in user if available and not showcase
   useEffect(() => {
@@ -144,11 +147,27 @@ export function App() {
       {/* Top Command Bar & Switchboard Navigation */}
       <header className="h-14 border-b border-zinc-200 dark:border-zinc-800/80 px-4 flex items-center justify-between bg-white/90 dark:bg-[#07080b]/90 backdrop-blur-md z-30 shrink-0 font-sans">
         <div className="flex items-center gap-3">
+          {/* Dotdeck Logo & Name */}
+          <button
+            onClick={() => setActiveView('landing')}
+            className="flex items-center gap-2 group mr-1 text-left"
+            title="Return to Dotdeck Home"
+          >
+            <div className="w-7 h-7 rounded-lg bg-[#0052cc] dark:bg-[#2684ff] flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
+              <Bot className="w-4 h-4" />
+            </div>
+            <span className="font-display font-bold text-sm text-[#121417] dark:text-[#f0f2f5] tracking-tight">
+              Dotdeck
+            </span>
+          </button>
+
+          <span className="text-zinc-300 dark:text-zinc-700">/</span>
+
           {/* Back to Workspaces */}
           <button
             onClick={() => setActiveView('dashboard')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-[#121318] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-250 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white text-xs font-mono font-medium transition-colors shadow-xs"
-            title="Return to Workspace Hub"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#121318] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-250 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white text-xs font-mono font-medium transition-colors shadow-xs"
+            title="Return to Fleet Hub"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Hub</span>
@@ -178,6 +197,7 @@ export function App() {
                     onClick={() => {
                       switchWorkspace(ws.id);
                       setIsWorkspaceSwitcherOpen(false);
+                      setActiveView('canvas');
                     }}
                     className={`w-full px-3 py-2 text-left text-xs flex items-center justify-between hover:bg-zinc-100 dark:hover:bg-zinc-800/80 transition-colors ${
                       ws.id === activeWorkspaceId ? 'text-blue-600 dark:text-cyan-300 bg-blue-50 dark:bg-cyan-950/40 font-semibold' : 'text-zinc-700 dark:text-zinc-300'

@@ -80,18 +80,13 @@ export function LandingPage({ onEnterApp, onOpenShowcase }: LandingPageProps) {
 
       {/* Top Command Bar */}
       <header className="border-b border-[#dfe1e6] dark:border-[#22262e] bg-[#ffffff]/90 dark:bg-[#111317]/90 backdrop-blur-md sticky top-0 z-40 px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-[#0052cc] dark:bg-[#2684ff] flex items-center justify-center text-white shadow-sm">
             <Bot className="w-4 h-4" />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="font-display font-bold text-sm tracking-tight text-[#121417] dark:text-[#f0f2f5]">
-              Dotdeck
-            </span>
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[#5e6c84] dark:text-[#8c96a5] px-1.5 py-0.5 rounded bg-[#f4f5f7] dark:bg-[#171a21] border border-[#dfe1e6] dark:border-[#22262e]">
-              Tier 3 Switchboard
-            </span>
-          </div>
+          <span className="font-display font-bold text-sm tracking-tight text-[#121417] dark:text-[#f0f2f5]">
+            Dotdeck
+          </span>
         </div>
 
         <nav className="hidden md:flex items-center gap-8 text-xs font-medium text-[#5e6c84] dark:text-[#8c96a5]">

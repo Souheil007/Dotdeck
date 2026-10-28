@@ -91,19 +91,15 @@ export function WorkspaceDashboard({ onSelectWorkspace, onGoToLanding }: Workspa
         <div className="flex items-center gap-4">
           <button
             onClick={onGoToLanding}
-            className="flex items-center gap-2.5 group transition-transform active:scale-95 text-left"
+            className="flex items-center gap-2 group transition-transform active:scale-95 text-left"
+            title="Return to Dotdeck Home"
           >
             <div className="w-7 h-7 rounded-lg bg-[#0052cc] dark:bg-[#2684ff] flex items-center justify-center text-white shadow-xs">
               <Bot className="w-4 h-4" />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="font-display font-bold text-sm text-[#121417] dark:text-[#f0f2f5] tracking-tight">
-                Dotdeck
-              </span>
-              <span className="text-[10px] font-mono uppercase text-[#5e6c84] dark:text-[#8c96a5] px-1.5 py-0.2 rounded bg-[#f4f5f7] dark:bg-[#171a21] border border-[#dfe1e6] dark:border-[#22262e]">
-                Fleet Hub
-              </span>
-            </div>
+            <span className="font-display font-bold text-sm text-[#121417] dark:text-[#f0f2f5] tracking-tight">
+              Dotdeck
+            </span>
           </button>
         </div>
 
