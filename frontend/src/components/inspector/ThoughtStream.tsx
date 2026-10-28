@@ -9,7 +9,6 @@ import {
   Check,
   Layers,
   ArrowRight,
-  Filter,
 } from 'lucide-react';
 import type { ThoughtStep } from '../../store/useWorkspaceStore';
 
@@ -44,7 +43,6 @@ type VirtualItemData =
 export function ThoughtStream({ thoughts }: ThoughtStreamProps) {
   const [collapsedRuns, setCollapsedRuns] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [filterMode, setFilterMode] = useState<'all' | 'with_next'>('all');
   const parentRef = useRef<HTMLDivElement>(null);
 
   // Group thoughts into execution runs
@@ -53,7 +51,7 @@ export function ThoughtStream({ thoughts }: ThoughtStreamProps) {
 
     const groups: RunGroup[] = [];
     let currentGroup: RunGroup | null = null;
-    let runCounter = 1;
+    let groupIndex = 1;
 
     for (let index = 0; index < thoughts.length; index++) {
       const step = thoughts[index];
@@ -69,33 +67,49 @@ export function ThoughtStream({ thoughts }: ThoughtStreamProps) {
 
       if (isNewRun) {
         currentGroup = {
-          runId: `run-${runCounter}`,
-          runNumber: runCounter,
+          runId: `run-${groupIndex}`,
+          runNumber: 0,
           startTime: step.timestamp,
           steps: [step],
         };
         groups.push(currentGroup);
-        runCounter++;
+        groupIndex++;
       } else if (currentGroup) {
         currentGroup.steps.push(step);
       }
     }
 
+    // Number runs chronologically: oldest is Run #1, newest is Run #totalRuns
+    const totalRuns = groups.length;
+    groups.forEach((group, idx) => {
+      group.runNumber = totalRuns - idx;
+    });
+
     return groups;
   }, [thoughts]);
 
-  // Flatten groups for virtual scrolling with optional filtering
+  const allCollapsed = useMemo(() => {
+    return runGroups.length > 0 && runGroups.every((g) => Boolean(collapsedRuns[g.runId]));
+  }, [runGroups, collapsedRuns]);
+
+  const toggleAllRuns = () => {
+    if (allCollapsed) {
+      setCollapsedRuns({});
+    } else {
+      const nextCollapsed: Record<string, boolean> = {};
+      runGroups.forEach((g) => {
+        nextCollapsed[g.runId] = true;
+      });
+      setCollapsedRuns(nextCollapsed);
+    }
+  };
+
+  // Flatten groups for virtual scrolling
   const flatItems: VirtualItemData[] = useMemo(() => {
     const items: VirtualItemData[] = [];
 
     runGroups.forEach((group) => {
       const isCollapsed = Boolean(collapsedRuns[group.runId]);
-      const visibleSteps =
-        filterMode === 'with_next'
-          ? group.steps.filter((step) => Boolean(step.nextPlannedStep))
-          : group.steps;
-
-      if (visibleSteps.length === 0 && filterMode === 'with_next') return;
 
       items.push({
         type: 'run_header',
@@ -103,12 +117,12 @@ export function ThoughtStream({ thoughts }: ThoughtStreamProps) {
         runId: group.runId,
         runNumber: group.runNumber,
         startTime: group.startTime,
-        stepCount: visibleSteps.length,
+        stepCount: group.steps.length,
         isCollapsed,
       });
 
       if (!isCollapsed) {
-        visibleSteps.forEach((step) => {
+        group.steps.forEach((step) => {
           items.push({
             type: 'thought_step',
             id: `step-${step.id || step.stepIndex}-${step.timestamp}`,
@@ -120,7 +134,7 @@ export function ThoughtStream({ thoughts }: ThoughtStreamProps) {
     });
 
     return items;
-  }, [runGroups, collapsedRuns, filterMode]);
+  }, [runGroups, collapsedRuns]);
 
   const virtualizer = useVirtualizer({
     count: flatItems.length,
@@ -161,36 +175,23 @@ export function ThoughtStream({ thoughts }: ThoughtStreamProps) {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Telemetry Filter Strip */}
+      {/* Telemetry Header Strip */}
       <div className="px-4 py-2 border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/40 flex items-center justify-between text-xs font-mono">
         <div className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400 text-[10px]">
           <Layers className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
-          <span>{thoughts.length} Total Steps</span>
+          <span>
+            {thoughts.length} Total Steps &bull; {runGroups.length} {runGroups.length === 1 ? 'Run' : 'Runs'}
+          </span>
         </div>
 
-        <div className="flex items-center gap-1">
+        {runGroups.length > 1 && (
           <button
-            onClick={() => setFilterMode('all')}
-            className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors ${
-              filterMode === 'all'
-                ? 'bg-blue-600 text-white font-semibold dark:bg-cyan-500 dark:text-black'
-                : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300'
-            }`}
+            onClick={toggleAllRuns}
+            className="px-2 py-0.5 rounded text-[10px] font-mono text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60 transition-colors"
           >
-            All Steps
+            {allCollapsed ? 'Expand All' : 'Collapse All'}
           </button>
-          <button
-            onClick={() => setFilterMode('with_next')}
-            className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors flex items-center gap-1 ${
-              filterMode === 'with_next'
-                ? 'bg-blue-600 text-white font-semibold dark:bg-cyan-500 dark:text-black'
-                : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300'
-            }`}
-          >
-            <Filter className="w-2.5 h-2.5" />
-            <span>Planned Next</span>
-          </button>
-        </div>
+        )}
       </div>
 
       {/* Virtualized Stream List */}
@@ -232,11 +233,11 @@ export function ThoughtStream({ thoughts }: ThoughtStreamProps) {
                         <ChevronDown className="w-3.5 h-3.5 text-blue-600 dark:text-cyan-400" />
                       )}
                       <span className="text-xs font-mono font-semibold text-zinc-800 dark:text-zinc-200">
-                        {item.runNumber === 1 ? 'LATEST RUN' : `EXECUTION RUN #${item.runNumber}`}
+                        EXECUTION RUN #{item.runNumber}
                       </span>
-                      {item.runNumber === 1 && (
+                      {item.runNumber === runGroups.length && (
                         <span className="px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 text-[9px] font-mono font-bold uppercase">
-                          Active Loop
+                          Latest Run
                         </span>
                       )}
                       <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono tabular-nums">
