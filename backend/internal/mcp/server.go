@@ -368,6 +368,48 @@ func (server *Server) handleMethod(request *http.Request, agentContext *AgentCon
 			Result:  map[string]interface{}{},
 		}
 
+	case "notifications/initialized", "initialized":
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      rpcRequest.ID,
+			Result:  map[string]interface{}{"status": "acknowledged"},
+		}
+
+	case "notifications/cancelled":
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      rpcRequest.ID,
+			Result:  map[string]interface{}{"status": "acknowledged"},
+		}
+
+	case "resources/list":
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      rpcRequest.ID,
+			Result:  map[string]interface{}{"resources": []interface{}{}},
+		}
+
+	case "resources/templates/list":
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      rpcRequest.ID,
+			Result:  map[string]interface{}{"resourceTemplates": []interface{}{}},
+		}
+
+	case "prompts/list":
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      rpcRequest.ID,
+			Result:  map[string]interface{}{"prompts": []interface{}{}},
+		}
+
+	case "logging/setLevel":
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      rpcRequest.ID,
+			Result:  map[string]interface{}{},
+		}
+
 	case "tools/list":
 		edges, queryError := server.repository.GetOutboundEdges(agentContext.ID)
 		if queryError != nil {
