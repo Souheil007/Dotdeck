@@ -13,6 +13,7 @@ export interface AgentData extends Record<string, unknown> {
   status: AgentStatus;
   currentThought?: string;
   currentStep?: string;
+  latestOutput?: string;
   lastRunStatus?: 'success' | 'failed';
   lastRunTime?: string;
   nextScheduledTime?: string;
@@ -117,6 +118,7 @@ export const DEFAULT_WORKSPACE_NODES: Record<string, Node<AgentData>[]> = {
         provider: 'claude',
         goal: 'Verify outbound emails adhere to GDPR and company privacy policies.',
         status: 'resting',
+        latestOutput: 'Verified outbound email templates: 100% GDPR and corporate privacy compliant.',
         lastRunStatus: 'success',
         lastRunTime: '1h ago',
         nextScheduledTime: 'Tomorrow 9:00 AM',
@@ -150,6 +152,7 @@ export const DEFAULT_WORKSPACE_NODES: Record<string, Node<AgentData>[]> = {
         provider: 'claude',
         goal: 'Audit security logs and enforce CIS benchmark compliance.',
         status: 'resting',
+        latestOutput: 'CIS cloud benchmark audit completed. All perimeter security rules passed.',
         lastRunStatus: 'success',
         lastRunTime: '30m ago',
       },
@@ -283,6 +286,7 @@ interface WorkspaceState {
   updateNodePosition: (nodeId: string, position: { x: number; y: number }) => void;
   updateNodeStatus: (agentId: string, status: AgentStatus) => void;
   updateNodeThought: (agentId: string, thought: string, nextStep: string) => void;
+  updateNodeOutput: (agentId: string, output: string) => void;
   setSelectedAgentId: (agentId: string | null) => void;
   addThoughtStep: (agentId: string, step: ThoughtStep) => void;
   addApproval: (approval: ApprovalRequest) => void;
@@ -531,6 +535,31 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             const updatedNodes: Node<AgentData>[] = state.nodes.map((node) =>
               node.id === agentId
                 ? { ...node, data: { ...node.data, currentThought, currentStep, status: 'working' as const } }
+                : node
+            );
+            return {
+              nodes: updatedNodes,
+              workspaceNodes: {
+                ...state.workspaceNodes,
+                [state.activeWorkspaceId]: updatedNodes,
+              },
+            };
+          }),
+
+        updateNodeOutput: (agentId, output) =>
+          set((state) => {
+            const updatedNodes: Node<AgentData>[] = state.nodes.map((node) =>
+              node.id === agentId
+                ? {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      latestOutput: output,
+                      status: 'resting' as const,
+                      lastRunStatus: 'success' as const,
+                      lastRunTime: 'Just now',
+                    },
+                  }
                 : node
             );
             return {

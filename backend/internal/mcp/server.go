@@ -94,6 +94,8 @@ type Server struct {
 	sessions          map[string]*sseSession
 	delegationLock    sync.Mutex
 	delegationHistory map[string][]time.Time
+	idleTimerLock     sync.Mutex
+	idleTimers        map[string]*time.Timer
 }
 
 // NewServer configures an MCP endpoint dispatcher for registered cloud agents.
@@ -104,6 +106,36 @@ func NewServer(repository AgentRepository, holdEngine *HoldEngine, broadcaster E
 		broadcaster:       broadcaster,
 		sessions:          make(map[string]*sseSession),
 		delegationHistory: make(map[string][]time.Time),
+		idleTimers:        make(map[string]*time.Timer),
+	}
+}
+
+// resetIdleTimer starts or resets the 60-second inactivity timer that transitions working agents back to resting.
+func (server *Server) resetIdleTimer(agentContext *AgentContext) {
+	server.idleTimerLock.Lock()
+	defer server.idleTimerLock.Unlock()
+
+	if existingTimer, timerFound := server.idleTimers[agentContext.ID]; timerFound && existingTimer != nil {
+		existingTimer.Stop()
+	}
+
+	server.idleTimers[agentContext.ID] = time.AfterFunc(60*time.Second, func() {
+		_ = server.repository.UpdateStatus(agentContext.ID, "resting")
+		server.broadcaster.Broadcast(agentContext.WorkspaceID, "AGENT_STATE_CHANGED", map[string]interface{}{
+			"agent_id": agentContext.ID,
+			"status":   "resting",
+		})
+	})
+}
+
+// stopIdleTimer cancels any active inactivity timer for the designated agent.
+func (server *Server) stopIdleTimer(agentID string) {
+	server.idleTimerLock.Lock()
+	defer server.idleTimerLock.Unlock()
+
+	if activeTimer, timerFound := server.idleTimers[agentID]; timerFound && activeTimer != nil {
+		activeTimer.Stop()
+		delete(server.idleTimers, agentID)
 	}
 }
 
@@ -308,6 +340,7 @@ func (server *Server) handleCheckinWebhook(writer http.ResponseWriter, request *
 func (server *Server) handleMethod(request *http.Request, agentContext *AgentContext, rpcRequest JSONRPCRequest) JSONRPCResponse {
 	switch rpcRequest.Method {
 	case "initialize":
+		server.stopIdleTimer(agentContext.ID)
 		_ = server.repository.UpdateStatus(agentContext.ID, "resting")
 		server.broadcaster.Broadcast(agentContext.WorkspaceID, "AGENT_STATE_CHANGED", map[string]interface{}{
 			"agent_id": agentContext.ID,
@@ -343,6 +376,7 @@ func (server *Server) handleMethod(request *http.Request, agentContext *AgentCon
 		toolsList := []ToolDefinition{
 			BuildTelemetryTool(),
 			BuildHumanApprovalTool(),
+			BuildTaskCompletionTool(),
 		}
 		for _, edge := range edges {
 			toolsList = append(toolsList, BuildDelegationTool(edge.TargetAgentName, edge.TargetAgentGoal, edge.ToolName))
@@ -408,6 +442,7 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 		}
 
 		_ = server.repository.UpdateStatus(agentContext.ID, "working")
+		server.resetIdleTimer(agentContext)
 		_ = server.repository.RecordThought(agentContext.ID, stepNumber, reasoningTrace, nextPlannedStep, callArguments.Name, nil)
 
 		server.broadcaster.Broadcast(agentContext.WorkspaceID, "THOUGHT_STEP_EMITTED", map[string]interface{}{
@@ -423,6 +458,48 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 			JSONRPC: "2.0",
 			ID:      rpcRequest.ID,
 			Result:  map[string]interface{}{"status": "acknowledged"},
+		}
+
+	case "complete_task":
+		server.stopIdleTimer(agentContext.ID)
+		summaryText, _ := callArguments.Arguments["summary"].(string)
+		deliverableText, _ := callArguments.Arguments["deliverable"].(string)
+
+		if summaryText == "" {
+			return JSONRPCResponse{
+				JSONRPC: "2.0",
+				ID:      rpcRequest.ID,
+				Error: &RPCErrorDetail{
+					Code:    RPCInvalidParams,
+					Message: "missing required argument: summary",
+				},
+			}
+		}
+
+		_ = server.repository.UpdateStatus(agentContext.ID, "resting")
+		_ = server.repository.RecordThought(agentContext.ID, 0, summaryText, "Task completed", callArguments.Name, map[string]interface{}{
+			"deliverable": deliverableText,
+		})
+
+		server.broadcaster.Broadcast(agentContext.WorkspaceID, "TASK_COMPLETED", map[string]interface{}{
+			"agent_id":    agentContext.ID,
+			"summary":     summaryText,
+			"deliverable": deliverableText,
+			"timestamp":   time.Now().UTC(),
+		})
+
+		server.broadcaster.Broadcast(agentContext.WorkspaceID, "AGENT_STATE_CHANGED", map[string]interface{}{
+			"agent_id": agentContext.ID,
+			"status":   "resting",
+		})
+
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      rpcRequest.ID,
+			Result: map[string]interface{}{
+				"status":  "completed",
+				"message": "Task completion recorded. Status set to resting.",
+			},
 		}
 
 	case "ask_human_question":
@@ -449,6 +526,7 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 			}
 		}
 
+		server.stopIdleTimer(agentContext.ID)
 		approvalIdentifier := uuid.New().String()
 		if recordedID, recordError := server.repository.RecordApproval(agentContext.WorkspaceID, agentContext.ID, questionText, optionsList, reasoningTrace); recordError == nil && recordedID != "" {
 			approvalIdentifier = recordedID
@@ -488,6 +566,7 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 		}
 
 		_ = server.repository.UpdateStatus(agentContext.ID, "working")
+		server.resetIdleTimer(agentContext)
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      rpcRequest.ID,

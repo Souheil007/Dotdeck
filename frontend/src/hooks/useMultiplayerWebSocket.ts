@@ -11,6 +11,7 @@ export function useMultiplayerWebSocket(websocketUrl: string) {
   const {
     updateNodeStatus,
     updateNodeThought,
+    updateNodeOutput,
     addThoughtStep,
     addApproval,
     updateCursor,
@@ -47,6 +48,20 @@ export function useMultiplayerWebSocket(websocketUrl: string) {
           switch (type) {
             case 'AGENT_STATE_CHANGED':
               updateNodeStatus(payload.agent_id, payload.status);
+              break;
+
+            case 'TASK_COMPLETED':
+              if (payload.agent_id && payload.summary) {
+                updateNodeOutput(payload.agent_id, payload.summary);
+                addThoughtStep(payload.agent_id, {
+                  id: payload.id || `task-completed-${Date.now()}`,
+                  agentId: payload.agent_id,
+                  stepIndex: 0,
+                  reasoningTrace: `Task completed: ${payload.summary}`,
+                  nextPlannedStep: 'Standby for downstream handoffs or next turn',
+                  timestamp: payload.timestamp || new Date().toISOString(),
+                });
+              }
               break;
 
             case 'THOUGHT_STEP_EMITTED':

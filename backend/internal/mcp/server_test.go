@@ -243,6 +243,69 @@ func TestMCPServerReportThoughtStep(testingT *testing.T) {
 	}
 }
 
+// TestMCPServerCompleteTask validates that complete_task records the summary and transitions the agent to resting.
+func TestMCPServerCompleteTask(testingT *testing.T) {
+	mockRepo := newMockRepository()
+	agentToken := "complete-token"
+	agentID := "agent-completer"
+	mockRepo.agents[agentToken] = &AgentContext{
+		ID:          agentID,
+		WorkspaceID: "ws-1",
+		Name:        "Summary Bot",
+		Provider:    "grok_bot",
+		Status:      "working",
+	}
+
+	broadcaster := &mockBroadcaster{}
+	holdEngine := NewHoldEngine()
+	mcpServer := NewServer(mockRepo, holdEngine, broadcaster)
+
+	requestBody := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      4,
+		"method":  "tools/call",
+		"params": map[string]interface{}{
+			"name": "complete_task",
+			"arguments": map[string]interface{}{
+				"summary":     "Delivered concise 3-bullet summary of eXalt candidate notification.",
+				"deliverable": "Detailed markdown deliverable content.",
+			},
+		},
+	}
+	serializedBytes, _ := json.Marshal(requestBody)
+
+	request := httptest.NewRequest(http.MethodPost, "/mcp/"+agentToken, bytes.NewReader(serializedBytes))
+	recorder := httptest.NewRecorder()
+
+	mcpServer.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		testingT.Fatalf("expected HTTP 200, got %d", recorder.Code)
+	}
+
+	if mockRepo.status[agentID] != "resting" {
+		testingT.Errorf("expected status 'resting', got %q", mockRepo.status[agentID])
+	}
+
+	foundTaskCompleted := false
+	foundStateChanged := false
+	for _, eventType := range broadcaster.events {
+		if eventType == "TASK_COMPLETED" {
+			foundTaskCompleted = true
+		}
+		if eventType == "AGENT_STATE_CHANGED" {
+			foundStateChanged = true
+		}
+	}
+
+	if !foundTaskCompleted {
+		testingT.Errorf("expected TASK_COMPLETED broadcast event")
+	}
+	if !foundStateChanged {
+		testingT.Errorf("expected AGENT_STATE_CHANGED broadcast event")
+	}
+}
+
 // TestMCPServerPiggybackedDelegation validates that dynamic delegation captures reasoning traces.
 func TestMCPServerPiggybackedDelegation(testingT *testing.T) {
 	mockRepo := newMockRepository()

@@ -220,6 +220,24 @@ export const AgentNode = memo(({ id, data, selected }: AgentNodeProps) => {
         </div>
       )}
 
+      {/* Latest Deliverable / Output (Resting / Standby State) */}
+      {data.status !== 'working' && data.status !== 'blocked_on_user' && data.latestOutput && (
+        <div
+          title={data.latestOutput}
+          className="mt-2.5 p-2.5 rounded-lg bg-zinc-100/80 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800/80 shadow-xs"
+        >
+          <div className="flex items-center gap-1.5 mb-1 text-emerald-700 dark:text-emerald-400">
+            <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider">
+              Latest Deliverable
+            </span>
+          </div>
+          <p className="text-[11px] text-[#121417] dark:text-[#f0f2f5] line-clamp-2 leading-relaxed">
+            {data.latestOutput}
+          </p>
+        </div>
+      )}
+
       {/* Footer Info & Telemetry Actions */}
       <div className="mt-3 pt-2.5 border-t border-[#dfe1e6] dark:border-[#22262e] flex items-center justify-between text-[11px] font-mono text-[#5e6c84] dark:text-[#8c96a5]">
         <div className="flex items-center gap-1.5">

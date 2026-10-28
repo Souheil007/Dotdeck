@@ -232,8 +232,13 @@ export function ThoughtStream({ thoughts }: ThoughtStreamProps) {
                         <ChevronDown className="w-3.5 h-3.5 text-blue-600 dark:text-cyan-400" />
                       )}
                       <span className="text-xs font-mono font-semibold text-zinc-800 dark:text-zinc-200">
-                        EXECUTION RUN #{item.runNumber}
+                        {item.runNumber === 1 ? 'LATEST RUN' : `EXECUTION RUN #${item.runNumber}`}
                       </span>
+                      {item.runNumber === 1 && (
+                        <span className="px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 text-[9px] font-mono font-bold uppercase">
+                          Active Loop
+                        </span>
+                      )}
                       <span className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono tabular-nums">
                         {new Date(item.startTime).toLocaleTimeString()}
                       </span>

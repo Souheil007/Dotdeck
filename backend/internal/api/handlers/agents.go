@@ -373,9 +373,10 @@ Deliver clear, high-signal artifacts. Document hypotheses and deductions step-by
 Connect your Model Context Protocol client to:
 %s
 
-### 6. MANDATORY TELEMETRY STANDARD
-At every reasoning milestone or before executing tool invocations, you MUST call:
-report_thought_step(reasoning_trace, next_planned_step)
+### 6. MANDATORY TELEMETRY & COMPLETION RULES
+- Milestone Telemetry: Call report_thought_step(reasoning_trace, next_planned_step) ONLY for significant reasoning milestones, planning steps, or before external tool calls.
+- DO NOT emit thoughts to acknowledge human approvals or announce that you are writing plain text.
+- Task Completion: When you have finished your task or final response turn, ALWAYS call complete_task(summary) with a concise 1-2 sentence executive summary of what was delivered or concluded. This updates your canvas card and sets your status to resting.
 
 ### 7. HUMAN-IN-THE-LOOP AUTHORITY RULES
 You MUST suspend execution and invoke human review via ask_human_question(question, reasoning_trace) whenever you encounter:
@@ -402,10 +403,11 @@ func generateGrokBotPrompt(agent domain.Agent, endpointURL string) string {
 ## CRITICAL OPERATIONAL PROTOCOL (MANDATORY FOR ALL MESSAGES):
 You are an autonomous background cloud computer agent reporting in real-time to the Dotdeck Swarm Cockpit.
 1. Initialize your session by calling initialize() immediately upon start.
-2. For EVERY message or analytical step: You MUST call report_thought_step(reasoning_trace, next_planned_step). Do not output raw answers without broadcasting your thought trace.
+2. Significant Reasoning Milestones: Call report_thought_step(reasoning_trace, next_planned_step) for substantive deductions or before tool calls. Do NOT call report_thought_step merely to echo operator approvals or announce that you are typing text.
 3. If an action crosses the following authority constraints, you MUST halt and call ask_human_question(question, reasoning_trace):
 %s
-4. Use delegate_task_* tools to route structured payloads to downstream connected canvas agents.`,
+4. Task Completion: When your task or response turn is completed, ALWAYS call complete_task(summary) with a 1-2 sentence executive summary of your deliverable to update the canvas and transition to resting.
+5. Use delegate_task_* tools to route structured payloads to downstream connected canvas agents.`,
 		agent.Name,
 		agent.Goal,
 		endpointURL,
@@ -430,7 +432,7 @@ If MCP SSE streaming is unavailable in your environment, submit thought updates 
 %s
 
 ## COLLABORATION INSTRUCTIONS:
-Emit report_thought_step telemetry before running complex routines. Escalate edge cases to workspace operators using ask_human_question.`,
+Emit report_thought_step telemetry for significant analytical milestones. Do NOT echo human approvals. When your routine finishes, invoke complete_task(summary). Escalate edge cases to workspace operators using ask_human_question.`,
 		agent.Name,
 		agent.Goal,
 		endpointURL,
@@ -450,10 +452,11 @@ Remote MCP Endpoint: %s
 
 ## MANDATORY BEHAVIORAL CONSTRAINTS:
 1. Always maintain high reasoning density and telemetry transparency.
-2. Emit intermediate deduction milestones using report_thought_step(reasoning_trace, next_planned_step).
-3. Whenever an action conflicts with the following authority boundary, trigger ask_human_question(question, reasoning_trace) and wait for human operator sign-off (up to 45 seconds synchronous hold):
+2. Emit intermediate deduction milestones using report_thought_step(reasoning_trace, next_planned_step). Do not emit thought steps to acknowledge human approvals or state obvious next steps.
+3. When your task or response turn is completed, ALWAYS call complete_task(summary) with a concise 1-2 sentence deliverable summary.
+4. Whenever an action conflicts with the following authority boundary, trigger ask_human_question(question, reasoning_trace) and wait for human operator sign-off (up to 45 seconds synchronous hold):
 %s
-4. Dispatch tasks across the canvas topology using available dynamic delegate_task_* tools.`,
+5. Dispatch tasks across the canvas topology using available dynamic delegate_task_* tools.`,
 		agent.Name,
 		endpointURL,
 		agent.Goal,
@@ -470,9 +473,10 @@ Endpoint URL: %s
 %s
 
 ### MANDATORY TELEMETRY & REPORTING RULES:
-1. Every time you reach a reasoning milestone or plan an action, you MUST call report_thought_step(reasoning_trace, next_planned_step).
-2. When requiring human confirmation or hitting authority boundaries, you MUST call ask_human_question(question, reasoning_trace) and wait for the response.
-3. Use delegate_task_* tools to pass structured artifacts to your connected peers on the Dotdeck canvas.
+1. Every time you reach a significant reasoning milestone or plan an action, call report_thought_step(reasoning_trace, next_planned_step). Do not echo human approvals.
+2. When your task or response turn is completed, call complete_task(summary) to record your deliverable summary on the canvas.
+3. When requiring human confirmation or hitting authority boundaries, you MUST call ask_human_question(question, reasoning_trace) and wait for the response.
+4. Use delegate_task_* tools to pass structured artifacts to your connected peers on the Dotdeck canvas.
 
 ### AUTHORITY CONSTRAINTS:
 %s`,

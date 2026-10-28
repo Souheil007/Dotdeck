@@ -64,6 +64,28 @@ func BuildHumanApprovalTool() ToolDefinition {
 	}
 }
 
+// BuildTaskCompletionTool returns the schema for announcing task completion and storing deliverable summaries on the canvas.
+func BuildTaskCompletionTool() ToolDefinition {
+	return ToolDefinition{
+		Name:        "complete_task",
+		Description: "Announce completion of your assigned mission, subtask, or turn. Stores your final executive summary on the Dotdeck canvas and transitions your status to resting.",
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"summary": map[string]interface{}{
+					"type":        "string",
+					"description": "Concise 1-2 sentence executive summary of what was delivered or concluded.",
+				},
+				"deliverable": map[string]interface{}{
+					"type":        "string",
+					"description": "Optional full text or markdown representation of the final deliverable output.",
+				},
+			},
+			"required": []string{"summary"},
+		},
+	}
+}
+
 // BuildDelegationTool dynamically generates an MCP tool for dispatching work across canvas edges.
 // It incorporates both the target peer's identity and its operational objective/mission so calling agents
 // understand the peer's domain specialization and make informed delegation decisions.
