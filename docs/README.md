@@ -10,6 +10,7 @@ Welcome to the **Dotdeck** architecture and engineering documentation hub.
 Dotdeck/docs/
 ├── product-overview.md               # SaaS capabilities, features & user value proposition
 ├── agent-steering-mechanics.md       # Runtime human-in-the-loop steering & outbound bridges
+├── held-approval-channels.md         # 45-second synchronous hold engine & human authority gating
 ├── architecture/                     # System design, topologies, and concepts
 │   ├── database-schema-and-entities.md # Relational ERD, domain class diagram & table specs
 │   ├── system-design-specification.md # Production-grade system design (capacity, QPS, DDL, trade-offs)
@@ -33,4 +34,5 @@ Dotdeck/docs/
 4. **[System Architecture Overview](file:///C:/GithubProjects/Dotdeck/docs/architecture/overview.md)**: Deep dive into the Go Switchboard, React Flow canvas, held HTTP/SSE approval channels, and multiplayer WebSockets.
 5. **[Tier 3 Closed Cloud Agent Concept](file:///C:/GithubProjects/Dotdeck/docs/architecture/tier3-switchboard-concept.md)**: Why we focus exclusively on closed cloud agents (OpenAI Dots, Grok Bots, Meta Muse, Claude), how we engineer around proprietary VM walls, and why dropping local PTYs is a major strategic win.
 6. **[Agent Steering Mechanics & Runtime Guidance](file:///C:/GithubProjects/Dotdeck/docs/agent-steering-mechanics.md)**: Mid-flight pilot control vs. chat, preset directives, and dual delivery patterns (Outbound Webhooks vs. Inbound MCP Tool Injection).
-7. **[Architecture Decision Records (ADRs)](file:///C:/GithubProjects/Dotdeck/docs/decisions/)**: Immutable log of key architectural decisions, rationale, trade-offs, and consequences.
+7. **[45-Second Held Approval Channels & Authority Gating](file:///C:/GithubProjects/Dotdeck/docs/held-approval-channels.md)**: Synchronous HTTP hold engine, gateway timeout pre-emption, Redis cluster resolution, and multi-operator claim locking.
+8. **[Architecture Decision Records (ADRs)](file:///C:/GithubProjects/Dotdeck/docs/decisions/)**: Immutable log of key architectural decisions, rationale, trade-offs, and consequences.
