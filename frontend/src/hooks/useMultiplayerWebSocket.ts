@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { useWorkspaceStore } from '../store/useWorkspaceStore';
+import { useWorkspaceStore, type AgentStatus } from '../store/useWorkspaceStore';
 
 export function useMultiplayerWebSocket(websocketUrl: string) {
   const socketRef = useRef<WebSocket | null>(null);
@@ -49,6 +49,28 @@ export function useMultiplayerWebSocket(websocketUrl: string) {
             case 'AGENT_STATE_CHANGED':
               updateNodeStatus(payload.agent_id, payload.status);
               break;
+
+            case 'AGENT_CREATED': {
+              const agent = payload.agent || payload;
+              if (agent && agent.id) {
+                const store = useWorkspaceStore.getState();
+                const currentNodes = store.nodes;
+                if (!currentNodes.some((node) => node.id === agent.id)) {
+                  store.addAgentNode({
+                    id: agent.id,
+                    name: agent.name || 'Discovered Agent',
+                    provider: agent.provider || 'grok_bot',
+                    goal: agent.goal || 'Autonomous cloud agent connected via Fleet Hub.',
+                    status: (agent.status as AgentStatus) || 'resting',
+                    scheduleCron: agent.schedule_cron,
+                  }, {
+                    x: agent.position_x || (140 + (currentNodes.length % 3) * 440),
+                    y: agent.position_y || (140 + Math.floor(currentNodes.length / 3) * 320),
+                  });
+                }
+              }
+              break;
+            }
 
             case 'TASK_COMPLETED':
               if (payload.agent_id && payload.summary) {

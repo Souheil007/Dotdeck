@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Souheil007/Dotdeck/backend/internal/domain"
 )
 
 type mockBroadcaster struct {
@@ -59,6 +61,18 @@ func (repository *mockAgentRepository) RecordThought(agentID string, step int, t
 
 func (repository *mockAgentRepository) RecordApproval(workspaceID, agentID, question string, options []string, trace string) (string, error) {
 	return "mock-approval-id", nil
+}
+
+func (repository *mockAgentRepository) CreateAgent(ctx context.Context, agent domain.Agent) (*domain.Agent, error) {
+	repository.agents[agent.Token] = &AgentContext{
+		ID:          agent.ID,
+		WorkspaceID: agent.WorkspaceID,
+		Name:        agent.Name,
+		Provider:    string(agent.Provider),
+		Goal:        agent.Goal,
+		Status:      string(agent.Status),
+	}
+	return &agent, nil
 }
 
 // TestMCPServerInitialize validates the JSON-RPC 2.0 initialize handshake.
@@ -605,5 +619,129 @@ func TestMCPServerRunawayDelegationGuardrail(testingTarget *testing.T) {
 	// Verify agent status flipped to blocked_on_user
 	if mockRepo.status[agentID] != "blocked_on_user" {
 		testingTarget.Errorf("expected agent status blocked_on_user, got: %s", mockRepo.status[agentID])
+	}
+}
+
+// TestWorkspaceHub_AutoDiscovery validates that cloud agents connecting to the workspace hub
+// endpoint (/mcp/ws/{workspace_id}) are automatically discovered, provisioned, and initialized.
+func TestWorkspaceHub_AutoDiscovery(testingTarget *testing.T) {
+	mockRepo := newMockRepository()
+	broadcaster := &mockBroadcaster{}
+	holdEngine := NewHoldEngine()
+	mcpServer := NewServer(mockRepo, holdEngine, broadcaster)
+
+	requestBody := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "initialize",
+		"params": map[string]interface{}{
+			"protocolVersion": "2024-11-05",
+			"clientInfo": map[string]string{
+				"name":    "grok-email-viewer",
+				"version": "1.0",
+			},
+		},
+	}
+	serializedBytes, _ := json.Marshal(requestBody)
+
+	request := httptest.NewRequest(http.MethodPost, "/mcp/ws/ws-test-hub", bytes.NewReader(serializedBytes))
+	recorder := httptest.NewRecorder()
+
+	mcpServer.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		testingTarget.Fatalf("expected HTTP 200, got %d: %s", recorder.Code, recorder.Body.String())
+	}
+
+	var rpcResponse JSONRPCResponse
+	if err := json.Unmarshal(recorder.Body.Bytes(), &rpcResponse); err != nil {
+		testingTarget.Fatalf("failed to parse JSON-RPC response: %v", err)
+	}
+
+	resultMap, ok := rpcResponse.Result.(map[string]interface{})
+	if !ok {
+		testingTarget.Fatalf("expected result object in response, got %v", rpcResponse.Result)
+	}
+
+	instructions, ok := resultMap["instructions"].(string)
+	if !ok || !strings.Contains(instructions, "Dotdeck Swarm Cockpit") {
+		testingTarget.Errorf("expected autonomous protocol instructions in initialize result, got: %v", instructions)
+	}
+
+	// Verify agent auto-provisioned in mockRepo
+	if len(mockRepo.agents) != 1 {
+		testingTarget.Fatalf("expected 1 agent auto-provisioned, found %d", len(mockRepo.agents))
+	}
+
+	var discoveredAgent *AgentContext
+	for _, a := range mockRepo.agents {
+		discoveredAgent = a
+		break
+	}
+
+	if discoveredAgent.Name != "Grok Email Viewer" {
+		testingTarget.Errorf("expected formatted name 'Grok Email Viewer', got: %s", discoveredAgent.Name)
+	}
+
+	if discoveredAgent.Provider != "grok_bot" {
+		testingTarget.Errorf("expected provider 'grok_bot', got: %s", discoveredAgent.Provider)
+	}
+
+	if discoveredAgent.WorkspaceID != "ws-test-hub" {
+		testingTarget.Errorf("expected workspace ID 'ws-test-hub', got: %s", discoveredAgent.WorkspaceID)
+	}
+
+	// Verify AGENT_CREATED was broadcasted
+	createdFound := false
+	for _, event := range broadcaster.events {
+		if event == "AGENT_CREATED" {
+			createdFound = true
+			break
+		}
+	}
+	if !createdFound {
+		testingTarget.Errorf("expected AGENT_CREATED event broadcasted, got: %v", broadcaster.events)
+	}
+
+	// Test prompts/list
+	promptsListReq := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      2,
+		"method":  "prompts/list",
+		"params":  map[string]interface{}{},
+	}
+	listBytes, _ := json.Marshal(promptsListReq)
+	reqList := httptest.NewRequest(http.MethodPost, "/mcp/ws/ws-test-hub", bytes.NewReader(listBytes))
+	recList := httptest.NewRecorder()
+	mcpServer.ServeHTTP(recList, reqList)
+
+	var listResp JSONRPCResponse
+	_ = json.Unmarshal(recList.Body.Bytes(), &listResp)
+	listMap, _ := listResp.Result.(map[string]interface{})
+	promptsArr, ok := listMap["prompts"].([]interface{})
+	if !ok || len(promptsArr) == 0 {
+		testingTarget.Errorf("expected non-empty prompts array from prompts/list, got: %v", listResp.Result)
+	}
+
+	// Test prompts/get
+	promptsGetReq := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      3,
+		"method":  "prompts/get",
+		"params": map[string]interface{}{
+			"name": "dotdeck_governance_protocol",
+		},
+	}
+	getBytes, _ := json.Marshal(promptsGetReq)
+	reqGet := httptest.NewRequest(http.MethodPost, "/mcp/ws/ws-test-hub", bytes.NewReader(getBytes))
+	recGet := httptest.NewRecorder()
+	mcpServer.ServeHTTP(recGet, reqGet)
+
+	var getResp JSONRPCResponse
+	_ = json.Unmarshal(recGet.Body.Bytes(), &getResp)
+	getMap, _ := getResp.Result.(map[string]interface{})
+	messagesArr, ok := getMap["messages"].([]interface{})
+	if !ok || len(messagesArr) == 0 {
+		testingTarget.Errorf("expected messages array in prompts/get result, got: %v", getResp.Result)
 	}
 }

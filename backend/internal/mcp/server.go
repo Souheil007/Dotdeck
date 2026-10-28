@@ -3,6 +3,7 @@
 package mcp
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,6 +12,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/Souheil007/Dotdeck/backend/internal/domain"
 )
 
 // Standard JSON-RPC 2.0 error codes.
@@ -34,6 +37,7 @@ type AgentRepository interface {
 	UpdateStatus(agentID, status string) error
 	RecordThought(agentID string, step int, trace, nextStep, tool string, payload interface{}) error
 	RecordApproval(workspaceID, agentID, question string, options []string, trace string) (string, error)
+	CreateAgent(ctx context.Context, agent domain.Agent) (*domain.Agent, error)
 }
 
 // AgentContext contains core metadata required to serve an agent's MCP session.
@@ -139,16 +143,21 @@ func (server *Server) stopIdleTimer(agentID string) {
 	}
 }
 
-// ServeHTTP routes incoming agent requests identified by the agent URL token.
+// ServeHTTP routes incoming agent requests identified by the agent URL token or workspace hub path.
 func (server *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	pathSuffix := strings.TrimPrefix(request.URL.Path, "/mcp/")
 	pathSuffix = strings.TrimSpace(pathSuffix)
 	if pathSuffix == "" {
-		http.Error(writer, `{"jsonrpc":"2.0","error":{"code":-32600,"message":"missing agent token"}}`, http.StatusUnauthorized)
+		http.Error(writer, `{"jsonrpc":"2.0","error":{"code":-32600,"message":"missing agent token or workspace id"}}`, http.StatusUnauthorized)
 		return
 	}
 
 	pathSegments := strings.Split(pathSuffix, "/")
+	if len(pathSegments) > 0 && pathSegments[0] == "ws" {
+		server.handleWorkspaceHub(writer, request, pathSegments)
+		return
+	}
+
 	tokenString := pathSegments[0]
 	actionSubpath := ""
 	if len(pathSegments) > 1 {
@@ -337,6 +346,136 @@ func (server *Server) handleCheckinWebhook(writer http.ResponseWriter, request *
 	})
 }
 
+func formatDisplayName(rawName string) string {
+	cleaned := strings.ReplaceAll(rawName, "-", " ")
+	cleaned = strings.ReplaceAll(cleaned, "_", " ")
+	words := strings.Fields(cleaned)
+	for i, w := range words {
+		if len(w) > 0 {
+			words[i] = strings.ToUpper(w[:1]) + strings.ToLower(w[1:])
+		}
+	}
+	formatted := strings.Join(words, " ")
+	if formatted == "" {
+		return "Cloud Agent"
+	}
+	return formatted
+}
+
+func inferProvider(name, userAgent string) domain.Provider {
+	lower := strings.ToLower(name + " " + userAgent)
+	if strings.Contains(lower, "claude") || strings.Contains(lower, "anthropic") {
+		return domain.ProviderClaude
+	}
+	if strings.Contains(lower, "gpt") || strings.Contains(lower, "openai") || strings.Contains(lower, "dot") {
+		return domain.ProviderOpenAIDot
+	}
+	if strings.Contains(lower, "muse") || strings.Contains(lower, "meta") {
+		return domain.ProviderMetaMuse
+	}
+	return domain.ProviderGrokBot
+}
+
+// handleWorkspaceHub enables zero-line auto-discovery for cloud agents connecting to /mcp/ws/{workspace_id}.
+func (server *Server) handleWorkspaceHub(writer http.ResponseWriter, request *http.Request, pathSegments []string) {
+	workspaceID := "default-workspace"
+	if len(pathSegments) > 1 && strings.TrimSpace(pathSegments[1]) != "" {
+		workspaceID = strings.TrimSpace(pathSegments[1])
+	}
+	customAlias := ""
+	if len(pathSegments) > 2 && strings.TrimSpace(pathSegments[2]) != "" {
+		customAlias = strings.TrimSpace(pathSegments[2])
+	}
+
+	if request.Method == http.MethodGet {
+		writer.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(writer).Encode(map[string]interface{}{
+			"status":       "active",
+			"workspace_id": workspaceID,
+			"mode":         "workspace_hub",
+			"protocol":     "mcp-2024-11-05",
+		})
+		return
+	}
+
+	if request.Method != http.MethodPost {
+		http.Error(writer, `{"jsonrpc":"2.0","error":{"code":-32600,"message":"method not allowed"}}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	request.Body = http.MaxBytesReader(writer, request.Body, MaxPayloadBytes)
+	var rpcRequest JSONRPCRequest
+	if decodeError := json.NewDecoder(request.Body).Decode(&rpcRequest); decodeError != nil {
+		writer.Header().Set("Content-Type", "application/json")
+		writer.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(writer).Encode(JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      nil,
+			Error: &RPCErrorDetail{
+				Code:    RPCParseError,
+				Message: "invalid JSON payload received",
+			},
+		})
+		return
+	}
+
+	rawName := customAlias
+	if rpcRequest.Method == "initialize" {
+		var initPayload struct {
+			ClientInfo struct {
+				Name    string `json:"name"`
+				Version string `json:"version"`
+			} `json:"clientInfo"`
+		}
+		_ = json.Unmarshal(rpcRequest.Params, &initPayload)
+		if rawName == "" {
+			rawName = initPayload.ClientInfo.Name
+		}
+	}
+
+	if rawName == "" {
+		rawName = "grok-email-viewer"
+	}
+
+	displayName := formatDisplayName(rawName)
+	provider := inferProvider(rawName, request.UserAgent())
+	hubToken := fmt.Sprintf("hub_%s_%s", workspaceID, strings.ToLower(strings.ReplaceAll(rawName, " ", "_")))
+
+	agentContext, _ := server.repository.GetAgentByToken(hubToken)
+	if agentContext == nil {
+		agentID := uuid.New().String()
+		agentRecord := domain.Agent{
+			ID:          agentID,
+			WorkspaceID: workspaceID,
+			Token:       hubToken,
+			Name:        displayName,
+			Provider:    provider,
+			Goal:        "Autonomous cloud agent connected via Fleet Hub.",
+			Status:      domain.StatusResting,
+		}
+		_, _ = server.repository.CreateAgent(request.Context(), agentRecord)
+		if server.broadcaster != nil {
+			server.broadcaster.Broadcast(workspaceID, "AGENT_CREATED", agentRecord)
+			server.broadcaster.Broadcast(workspaceID, "AGENT_STATE_CHANGED", map[string]interface{}{
+				"agent_id": agentID,
+				"status":   "resting",
+			})
+		}
+		agentContext = &AgentContext{
+			ID:          agentID,
+			WorkspaceID: workspaceID,
+			Name:        displayName,
+			Provider:    string(provider),
+			Goal:        agentRecord.Goal,
+			Status:      "resting",
+		}
+	}
+
+	rpcResponse := server.handleMethod(request, agentContext, rpcRequest)
+	writer.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(writer).Encode(rpcResponse)
+}
+
 func (server *Server) handleMethod(request *http.Request, agentContext *AgentContext, rpcRequest JSONRPCRequest) JSONRPCResponse {
 	switch rpcRequest.Method {
 	case "initialize":
@@ -356,8 +495,13 @@ func (server *Server) handleMethod(request *http.Request, agentContext *AgentCon
 					"version": "1.0.0",
 				},
 				"capabilities": map[string]interface{}{
-					"tools": map[string]bool{"listChanged": true},
+					"tools":   map[string]bool{"listChanged": true},
+					"prompts": map[string]bool{"listChanged": true},
 				},
+				"instructions": "You are connected to the Dotdeck Swarm Cockpit. " +
+					"Invoke report_thought_step to report reasoning milestones, " +
+					"ask_human_question before critical mutations, and " +
+					"complete_task when your turn is finished.",
 			},
 		}
 
@@ -400,7 +544,37 @@ func (server *Server) handleMethod(request *http.Request, agentContext *AgentCon
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      rpcRequest.ID,
-			Result:  map[string]interface{}{"prompts": []interface{}{}},
+			Result: map[string]interface{}{
+				"prompts": []map[string]interface{}{
+					{
+						"name":        "dotdeck_governance_protocol",
+						"description": "Standard operational protocol for autonomous cloud agents connected to Dotdeck",
+						"arguments":   []interface{}{},
+					},
+				},
+			},
+		}
+
+	case "prompts/get":
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      rpcRequest.ID,
+			Result: map[string]interface{}{
+				"description": "Standard Dotdeck operational directives",
+				"messages": []map[string]interface{}{
+					{
+						"role": "user",
+						"content": map[string]interface{}{
+							"type": "text",
+							"text": "CRITICAL DOTDECK PROTOCOL:\n" +
+								"1. Stream your reasoning traces via report_thought_step.\n" +
+								"2. Pause for operator approval via ask_human_question before irreversible actions.\n" +
+								"3. Announce turn/task completion via complete_task(summary).\n" +
+								"4. Delegate downstream work via delegate_task_* tools.",
+						},
+					},
+				},
+			},
 		}
 
 	case "logging/setLevel":

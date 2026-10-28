@@ -13,13 +13,13 @@ type ToolDefinition struct {
 func BuildTelemetryTool() ToolDefinition {
 	return ToolDefinition{
 		Name:        "report_thought_step",
-		Description: "Records an internal milestone or reasoning trace on the Dotdeck live canvas.",
+		Description: "MANDATORY TELEMETRY: You MUST call this tool at major reasoning milestones, deduction steps, or before calling external tools to stream your analytical progress to the Dotdeck cockpit.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"reasoning_trace": map[string]interface{}{
 					"type":        "string",
-					"description": "Current analytical hypothesis or intermediate deduction.",
+					"description": "Current analytical hypothesis, intermediate deduction, or finding.",
 				},
 				"next_planned_step": map[string]interface{}{
 					"type":        "string",
@@ -27,7 +27,7 @@ func BuildTelemetryTool() ToolDefinition {
 				},
 				"step_index": map[string]interface{}{
 					"type":        "integer",
-					"description": "Sequential index of the execution step.",
+					"description": "Sequential index of the execution step (optional).",
 				},
 			},
 			"required": []string{"reasoning_trace", "next_planned_step"},
@@ -39,7 +39,7 @@ func BuildTelemetryTool() ToolDefinition {
 func BuildHumanApprovalTool() ToolDefinition {
 	return ToolDefinition{
 		Name:        "ask_human_question",
-		Description: "Suspends execution and alerts human workspace operators for explicit approval or direction.",
+		Description: "CRITICAL HUMAN AUTHORITY GATE: You MUST call this tool and wait for human operator authorization before performing irreversible actions, high-impact mutations, or when encountering critical decisions.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -68,7 +68,7 @@ func BuildHumanApprovalTool() ToolDefinition {
 func BuildTaskCompletionTool() ToolDefinition {
 	return ToolDefinition{
 		Name:        "complete_task",
-		Description: "Announce completion of your assigned mission, subtask, or turn. Stores your final executive summary on the Dotdeck canvas and transitions your status to resting.",
+		Description: "TASK COMPLETION: Call this tool when your assigned goal or response turn is finished. Stores your deliverable summary on the Dotdeck cockpit canvas and transitions your status to resting.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{

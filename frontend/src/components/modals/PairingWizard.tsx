@@ -30,9 +30,11 @@ export function PairingWizard() {
     setSelectedAgentId,
     setFocusAgentId,
     nodes,
+    activeWorkspaceId,
   } = useWorkspaceStore();
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [copiedHub, setCopiedHub] = useState(false);
   const [justPaired, setJustPaired] = useState(false);
 
   // Monitor live node status to detect immediate heartbeat transition
@@ -55,6 +57,12 @@ export function PairingWizard() {
   }, [isPaired, justPaired]);
 
   if (!isPairingModalOpen || !pairingAgent) return null;
+
+  const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const baseUrl = isLocalhost
+    ? 'https://folding-trend-troy-optional.trycloudflare.com'
+    : (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8080');
+  const hubUrl = `${baseUrl}/mcp/ws/${activeWorkspaceId || 'ws-prod-sales'}`;
 
   const mcpUrl =
     pairingSession?.mcpUrl ||
@@ -122,6 +130,33 @@ ${pairingAgent.goal}
         </div>
 
         <div className="mt-5 space-y-4 text-xs">
+          {/* Zero-Line Auto-Discovery Alternative */}
+          <div className="p-3.5 rounded-xl bg-blue-50/70 dark:bg-cyan-950/30 border border-blue-200 dark:border-cyan-800/40">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-1.5 font-semibold text-blue-900 dark:text-cyan-300">
+                <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-cyan-400" />
+                <span>Zero-Prompt Fleet Hub URL (Recommended)</span>
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(hubUrl);
+                  setCopiedHub(true);
+                  setTimeout(() => setCopiedHub(false), 2000);
+                }}
+                className="flex items-center gap-1 text-blue-600 hover:text-blue-700 dark:text-cyan-400 dark:hover:text-cyan-300 font-medium transition-colors"
+              >
+                {copiedHub ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedHub ? 'Copied Fleet Hub' : 'Copy Hub URL'}</span>
+              </button>
+            </div>
+            <p className="text-[#5f6368] dark:text-zinc-400 mb-2 leading-relaxed text-[11px]">
+              No prompt copying required! Simply configure your cloud agent (Grok, Dot, Muse) with this Fleet Hub URL. Dotdeck automatically discovers your agent name and provisions it on canvas with self-instructing tool directives.
+            </p>
+            <code className="block p-2 rounded bg-white dark:bg-zinc-950 border border-blue-100 dark:border-cyan-900/50 text-[11px] font-mono text-[#202124] dark:text-cyan-300 break-all select-all">
+              {hubUrl}
+            </code>
+          </div>
+
           {/* Step 1: Remote MCP URL */}
           <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800">
             <div className="flex items-center justify-between mb-1.5">

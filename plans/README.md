@@ -43,6 +43,7 @@ flowchart TD
 | **11** | [plan-11-homepage-auth-and-workspace-management.md](file:///C:/GithubProjects/Dotdeck/plans/plan-11-homepage-auth-and-workspace-management.md) | AgentGrid-inspired homepage, auth modal, workspace hub | Completed [x] |
 | **12** | [plan-12-strategic-pivot-hitl-governance-gateway.md](file:///C:/GithubProjects/Dotdeck/plans/plan-12-strategic-pivot-hitl-governance-gateway.md) | Headless HITL gateway, declarative policy engine, Slack callbacks | Upcoming [ ] |
 | **13** | [plan-13-distinctive-frontend-redesign.md](file:///C:/GithubProjects/Dotdeck/plans/plan-13-distinctive-frontend-redesign.md) | Distinctive Flight Deck UI/UX, asymmetric layout, hardware avionics nodes, live mini-switchboard | Completed [x] |
+| **14** | [plan-14-mcp-workspace-hub-and-zero-line-auto-discovery.md](file:///C:/GithubProjects/Dotdeck/plans/plan-14-mcp-workspace-hub-and-zero-line-auto-discovery.md) | Workspace Hub `/mcp/ws/{workspace_id}` endpoint, Method A auto-discovery & zero-line prompt engineering | Completed [x] |
 
 ---
 
