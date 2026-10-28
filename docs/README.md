@@ -8,6 +8,7 @@ Welcome to the **Dotdeck** architecture and engineering documentation hub.
 
 ```
 Dotdeck/docs/
+├── platform-guide-and-use-cases.md   # Complete platform guide, why Dotdeck, capabilities & 8 enterprise use cases
 ├── product-overview.md               # SaaS capabilities, features & user value proposition
 ├── agent-steering-mechanics.md       # Runtime human-in-the-loop steering & outbound bridges
 ├── held-approval-channels.md         # 45-second synchronous hold engine & human authority gating
@@ -28,7 +29,8 @@ Dotdeck/docs/
 
 ## Key Guides & Reading Order
 
-1. **[Product Overview & SaaS Value Proposition](file:///C:/GithubProjects/Dotdeck/docs/product-overview.md)**: What Dotdeck offers to operators, engineers, and enterprise AI teams (capabilities matrix, before-vs-after comparison, and key user experiences).
+1. **[Platform Guide & Enterprise Use Cases](file:///C:/GithubProjects/Dotdeck/docs/platform-guide-and-use-cases.md)**: The comprehensive guide on why Dotdeck exists, what capabilities were previously impossible, exact architecture features, step-by-step user journey, and 8 exhaustive real-world enterprise use cases.
+2. **[Product Overview & SaaS Value Proposition](file:///C:/GithubProjects/Dotdeck/docs/product-overview.md)**: What Dotdeck offers to operators, engineers, and enterprise AI teams (capabilities matrix, before-vs-after comparison, and key user experiences).
 2. **[Database Schema & Entity Relationship Specification](file:///C:/GithubProjects/Dotdeck/docs/architecture/database-schema-and-entities.md)**: Relational ERD, Go domain class diagram, state machine, and exhaustive specifications for all PostgreSQL tables and monthly range partitions.
 3. **[System Design Specification](file:///C:/GithubProjects/Dotdeck/docs/architecture/system-design-specification.md)**: Production-grade architectural blueprint, quantitative back-of-the-envelope capacity estimations, PostgreSQL monthly partitioned DDL, Redis cross-node hold synchronization, and failure mode mitigations.
 4. **[System Architecture Overview](file:///C:/GithubProjects/Dotdeck/docs/architecture/overview.md)**: Deep dive into the Go Switchboard, React Flow canvas, held HTTP/SSE approval channels, and multiplayer WebSockets.
