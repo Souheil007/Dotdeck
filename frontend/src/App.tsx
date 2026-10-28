@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Bot,
   Share2,
@@ -46,6 +46,26 @@ export function App() {
   const [isShowcase, setIsShowcase] = useState(false);
   const [isWorkspaceSwitcherOpen, setIsWorkspaceSwitcherOpen] = useState(false);
   const [isCreateWorkspaceModalOpen, setIsCreateWorkspaceModalOpen] = useState(false);
+  const workspaceSwitcherRef = useRef<HTMLDivElement>(null);
+
+  // Automatically dismiss fleet dropdown whenever view changes or workspace switches
+  useEffect(() => {
+    setIsWorkspaceSwitcherOpen(false);
+  }, [activeView, activeWorkspaceId]);
+
+  // Click outside to dismiss fleet dropdown
+  useEffect(() => {
+    if (!isWorkspaceSwitcherOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (workspaceSwitcherRef.current && !workspaceSwitcherRef.current.contains(event.target as Node)) {
+        setIsWorkspaceSwitcherOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isWorkspaceSwitcherOpen]);
 
   const handleOpenSettings = (fromView?: 'landing' | 'dashboard' | 'canvas') => {
     setPreviousView(fromView || (activeView === 'settings' ? 'canvas' : activeView));
@@ -147,7 +167,10 @@ export function App() {
         <div className="flex items-center gap-3">
           {/* Dotdeck Logo & Name */}
           <button
-            onClick={() => setActiveView('landing')}
+            onClick={() => {
+              setIsWorkspaceSwitcherOpen(false);
+              setActiveView('landing');
+            }}
             className="flex items-center gap-2 group mr-1 text-left"
             title="Return to Dotdeck Home"
           >
@@ -163,7 +186,10 @@ export function App() {
 
           {/* Back to Workspaces */}
           <button
-            onClick={() => setActiveView('dashboard')}
+            onClick={() => {
+              setIsWorkspaceSwitcherOpen(false);
+              setActiveView('dashboard');
+            }}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#121318] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-250 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white text-xs font-mono font-medium transition-colors shadow-xs"
             title="Return to Fleet Hub"
           >
@@ -174,7 +200,7 @@ export function App() {
           <span className="text-zinc-300 dark:text-zinc-700">/</span>
 
           {/* Workspace Switcher Dropdown */}
-          <div className="relative">
+          <div className="relative" ref={workspaceSwitcherRef}>
             <button
               onClick={() => setIsWorkspaceSwitcherOpen(!isWorkspaceSwitcherOpen)}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-[#121318] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-750 text-zinc-900 dark:text-zinc-100 text-xs font-semibold shadow-xs transition-all font-display"
