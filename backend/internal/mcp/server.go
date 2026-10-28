@@ -357,9 +357,9 @@ func formatDisplayName(rawName string) string {
 	}
 	formatted := strings.Join(words, " ")
 	if formatted == "" {
-		return "Grok Agent"
+		return "Cloud Agent"
 	}
-	if len(words) == 1 && (strings.EqualFold(words[0], "Grok") || strings.EqualFold(words[0], "Claude") || strings.EqualFold(words[0], "Dot")) {
+	if len(words) == 1 && (strings.EqualFold(words[0], "Grok") || strings.EqualFold(words[0], "Claude") || strings.EqualFold(words[0], "Dot") || strings.EqualFold(words[0], "Chatgpt") || strings.EqualFold(words[0], "Openai")) {
 		return formatted + " Agent"
 	}
 	return formatted
@@ -370,7 +370,7 @@ func inferProvider(name, userAgent string) domain.Provider {
 	if strings.Contains(lower, "claude") || strings.Contains(lower, "anthropic") {
 		return domain.ProviderClaude
 	}
-	if strings.Contains(lower, "gpt") || strings.Contains(lower, "openai") || strings.Contains(lower, "dot") {
+	if strings.Contains(lower, "gpt") || strings.Contains(lower, "openai") || strings.Contains(lower, "chatgpt") || strings.Contains(lower, "dot") {
 		return domain.ProviderOpenAIDot
 	}
 	if strings.Contains(lower, "muse") || strings.Contains(lower, "meta") {
@@ -467,7 +467,18 @@ func (server *Server) handleWorkspaceHub(writer http.ResponseWriter, request *ht
 		if strings.Contains(strings.ToLower(clientName+" "+request.UserAgent()), "claude") {
 			clientName = "claude"
 		} else if strings.Contains(strings.ToLower(clientName+" "+request.UserAgent()), "openai") || strings.Contains(strings.ToLower(clientName+" "+request.UserAgent()), "gpt") {
-			clientName = "openai"
+			clientName = "chatgpt"
+		} else {
+			clientName = "grok"
+		}
+	}
+
+	if clientName == "" {
+		lowerUA := strings.ToLower(request.UserAgent())
+		if strings.Contains(lowerUA, "openai") || strings.Contains(lowerUA, "gpt") {
+			clientName = "chatgpt"
+		} else if strings.Contains(lowerUA, "claude") || strings.Contains(lowerUA, "anthropic") {
+			clientName = "claude"
 		} else {
 			clientName = "grok"
 		}
