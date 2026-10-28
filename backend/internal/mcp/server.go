@@ -489,7 +489,10 @@ func (server *Server) handleWorkspaceHub(writer http.ResponseWriter, request *ht
 	var displayName string
 	if customAlias != "" {
 		displayName = formatDisplayName(customAlias)
-		hubToken = fmt.Sprintf("hub_%s_%s", workspaceID, strings.ToLower(strings.ReplaceAll(customAlias, " ", "_")))
+		cleanedAlias := strings.ToLower(customAlias)
+		cleanedAlias = strings.ReplaceAll(cleanedAlias, " ", "_")
+		cleanedAlias = strings.ReplaceAll(cleanedAlias, "-", "_")
+		hubToken = fmt.Sprintf("hub_%s_%s", workspaceID, cleanedAlias)
 	} else if clientName != "" && !strings.EqualFold(clientName, "grok") && !strings.EqualFold(clientName, "claude") {
 		displayName = formatDisplayName(clientName)
 		hubToken = fmt.Sprintf("hub_%s_agent", workspaceID)

@@ -8,8 +8,6 @@ import {
   ChevronDown,
   Home,
   FolderKanban,
-  Radio,
-  Check,
 } from 'lucide-react';
 import { AgentCanvas } from './components/canvas/AgentCanvas';
 import { InspectorDrawer } from './components/inspector/InspectorDrawer';
@@ -48,19 +46,7 @@ export function App() {
   const [isShowcase, setIsShowcase] = useState(false);
   const [isWorkspaceSwitcherOpen, setIsWorkspaceSwitcherOpen] = useState(false);
   const [isCreateWorkspaceModalOpen, setIsCreateWorkspaceModalOpen] = useState(false);
-  const [copiedFleetHub, setCopiedFleetHub] = useState(false);
   const workspaceSwitcherRef = useRef<HTMLDivElement>(null);
-
-  const handleCopyFleetHub = () => {
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const baseUrl = isLocalhost
-      ? 'https://folding-trend-troy-optional.trycloudflare.com'
-      : window.location.origin;
-    const hubUrl = `${baseUrl}/mcp/ws/${activeWorkspaceId}`;
-    navigator.clipboard.writeText(hubUrl);
-    setCopiedFleetHub(true);
-    setTimeout(() => setCopiedFleetHub(false), 2000);
-  };
 
   // Automatically dismiss fleet dropdown whenever view changes or workspace switches
   useEffect(() => {
@@ -278,25 +264,6 @@ export function App() {
                 </div>
               ))}
           </div>
-
-          {/* Copy Fleet MCP Hub Endpoint */}
-          <button
-            onClick={handleCopyFleetHub}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-[#121318] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-250 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-mono font-medium transition-colors shadow-xs"
-            title={`Copy Fleet MCP Hub URL for ${activeWorkspaceName} (Zero-Configuration Auto-Discovery)`}
-          >
-            {copiedFleetHub ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-emerald-500" />
-                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Copied Fleet Hub!</span>
-              </>
-            ) : (
-              <>
-                <Radio className="w-3.5 h-3.5 text-blue-600 dark:text-cyan-400 animate-pulse" />
-                <span className="hidden sm:inline">Fleet MCP Hub</span>
-              </>
-            )}
-          </button>
 
           {/* Share Canvas */}
           <button

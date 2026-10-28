@@ -3,8 +3,6 @@ package handlers
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -92,10 +90,21 @@ func (handler *AgentHandler) Create(writer http.ResponseWriter, request *http.Re
 		return
 	}
 
-	rawToken := make([]byte, 16)
-	_, _ = rand.Read(rawToken)
-	tokenString := hex.EncodeToString(rawToken)
+	slug := strings.ToLower(strings.TrimSpace(payload.Name))
+	slug = strings.ReplaceAll(slug, " ", "-")
+	slug = strings.ReplaceAll(slug, "_", "-")
+	var cleanedSlug []rune
+	for _, r := range slug {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
+			cleanedSlug = append(cleanedSlug, r)
+		}
+	}
+	finalSlug := strings.Trim(string(cleanedSlug), "-")
+	if finalSlug == "" {
+		finalSlug = "agent"
+	}
 
+	tokenString := fmt.Sprintf("hub_%s_%s", payload.WorkspaceID, strings.ReplaceAll(finalSlug, "-", "_"))
 	agentIdentifier := uuid.New().String()
 	nowTimestamp := time.Now().UTC()
 	agentRecord := domain.Agent{
@@ -125,7 +134,7 @@ func (handler *AgentHandler) Create(writer http.ResponseWriter, request *http.Re
 		handler.broadcaster.Broadcast(payload.WorkspaceID, "AGENT_CREATED", agentRecord)
 	}
 
-	mcpEndpointURL := fmt.Sprintf("%s/mcp/%s", handler.baseURL, tokenString)
+	mcpEndpointURL := fmt.Sprintf("%s/mcp/ws/%s/%s", handler.baseURL, payload.WorkspaceID, finalSlug)
 	promptText := generateBootstrapPrompt(agentRecord, mcpEndpointURL)
 
 	response.JSON(writer, http.StatusCreated, AgentCreateResponse{

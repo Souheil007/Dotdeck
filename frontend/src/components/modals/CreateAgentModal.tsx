@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Sparkles, ShieldAlert, Clock, Plus, Trash2, Loader2, Bot } from 'lucide-react';
+import { X, Sparkles, ShieldAlert, Clock, Plus, Trash2, Loader2, Bot, Copy, Check, Radio } from 'lucide-react';
 import { useWorkspaceStore, type AgentData } from '../../store/useWorkspaceStore';
 import { OpenAILogo, GrokLogo, MetaMuseLogo, ClaudeLogo } from '../common/ProviderLogos';
 
@@ -73,6 +73,24 @@ export function CreateAgentModal() {
   const [newRuleInput, setNewRuleInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [copiedEndpoint, setCopiedEndpoint] = useState(false);
+
+  const selectedProviderOption = providerOptions.find((opt) => opt.id === provider);
+
+  const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const baseUrl = isLocalhost
+    ? 'https://folding-trend-troy-optional.trycloudflare.com'
+    : (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8080');
+
+  const defaultSlug = provider === 'openai_dot' ? 'chatgpt' : provider === 'claude' ? 'claude' : provider === 'meta_muse' ? 'muse' : 'grok';
+  const computedSlug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || defaultSlug;
+  const dynamicMcpUrl = `${baseUrl}/mcp/ws/${workspaceId || 'default-workspace'}/${computedSlug}`;
+
+  const handleCopyEndpoint = () => {
+    navigator.clipboard.writeText(dynamicMcpUrl);
+    setCopiedEndpoint(true);
+    setTimeout(() => setCopiedEndpoint(false), 2000);
+  };
 
   if (!isCreateAgentModalOpen) return null;
 
@@ -111,7 +129,7 @@ export function CreateAgentModal() {
 
   const handleSubmit = async (submitEvent: React.FormEvent) => {
     submitEvent.preventDefault();
-    if (!name.trim() || !goal.trim() || isSubmitting) return;
+    if (!name.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
     setErrorMessage(null);
@@ -119,6 +137,7 @@ export function CreateAgentModal() {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
       const scheduleCron = getComputedScheduleCron();
+      const finalGoal = goal.trim() || `Autonomous ${selectedProviderOption?.name || 'Cloud'} Agent pursuing tasks and reporting telemetry.`;
 
       const response = await fetch(`${apiUrl}/api/v1/agents`, {
         method: 'POST',
@@ -129,7 +148,7 @@ export function CreateAgentModal() {
           workspace_id: workspaceId || 'default-workspace',
           name: name.trim(),
           provider,
-          goal: goal.trim(),
+          goal: finalGoal,
           schedule_cron: scheduleCron,
           authority_rules: authorityRules,
           position_x: 250 + Math.random() * 200,
@@ -235,7 +254,7 @@ export function CreateAgentModal() {
             </div>
           </div>
 
-          {/* Name & Goal */}
+          {/* Name, Dynamic Endpoint & Goal */}
           <div className="space-y-3">
             <div>
               <label className="block text-[#202124] dark:text-zinc-300 font-semibold mb-1.5">2. Agent Identity & Name</label>
@@ -244,19 +263,44 @@ export function CreateAgentModal() {
                 required
                 value={name}
                 onChange={(changeEvent) => setName(changeEvent.target.value)}
-                placeholder="e.g. Sales Prospecting Dot, Security Audit Bot"
+                placeholder="e.g. Email Reader, Urgent Escalator, Sales Lead Scout"
                 className="w-full px-3.5 py-2.5 rounded-lg bg-white dark:bg-zinc-900/90 border border-zinc-300 dark:border-zinc-700 text-[#202124] dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-indigo-500 text-xs font-sans"
               />
             </div>
 
+            {/* Dynamic Remote MCP Endpoint Preview */}
+            <div className="p-3.5 rounded-xl bg-blue-50/70 dark:bg-zinc-900/80 border border-blue-200 dark:border-zinc-800">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-semibold text-xs text-blue-900 dark:text-cyan-300 flex items-center gap-1.5 font-mono">
+                  <Radio className="w-3.5 h-3.5 text-blue-600 dark:text-cyan-400 animate-pulse" />
+                  <span>Dynamic Remote MCP Endpoint</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyEndpoint}
+                  className="flex items-center gap-1 text-blue-600 hover:text-blue-700 dark:text-cyan-400 font-medium text-xs transition-colors"
+                >
+                  {copiedEndpoint ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedEndpoint ? 'Copied' : 'Copy Endpoint'}</span>
+                </button>
+              </div>
+              <code className="block p-2 rounded bg-white dark:bg-zinc-950 border border-blue-100 dark:border-zinc-800 text-[11px] font-mono text-zinc-900 dark:text-cyan-300 break-all select-all">
+                {dynamicMcpUrl}
+              </code>
+              <p className="text-[11px] text-[#5f6368] dark:text-zinc-400 mt-1.5 leading-relaxed">
+                Connect your {selectedProviderOption?.name || 'Agent'} using this exact URL. All handshakes, live thought streaming, and task deliveries route automatically to this canvas node.
+              </p>
+            </div>
+
             <div>
-              <label className="block text-[#202124] dark:text-zinc-300 font-semibold mb-1.5">3. Ongoing Mission & Goal</label>
+              <label className="block text-[#202124] dark:text-zinc-300 font-semibold mb-1.5">
+                3. Ongoing Mission & Goal <span className="text-[10px] text-zinc-400 font-normal font-sans">(Optional)</span>
+              </label>
               <textarea
-                required
-                rows={3}
+                rows={2}
                 value={goal}
                 onChange={(changeEvent) => setGoal(changeEvent.target.value)}
-                placeholder="Define the primary operational objective this cloud agent will autonomously pursue..."
+                placeholder={`Define operational goal for ${name.trim() || 'this agent'} (optional)...`}
                 className="w-full px-3.5 py-2 rounded-lg bg-white dark:bg-zinc-900/90 border border-zinc-300 dark:border-zinc-700 text-[#202124] dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-indigo-500 text-xs font-sans leading-relaxed"
               />
             </div>
@@ -418,7 +462,7 @@ export function CreateAgentModal() {
           </button>
           <button
             type="submit"
-            disabled={!name.trim() || !goal.trim() || isSubmitting}
+            disabled={!name.trim() || isSubmitting}
             className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold text-xs flex items-center gap-2 transition-colors shadow-md shadow-blue-600/20"
           >
             {isSubmitting ? (
