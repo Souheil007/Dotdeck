@@ -1,6 +1,9 @@
 package mcp
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // ToolDefinition describes an MCP tool schema exposed to cloud agents.
 type ToolDefinition struct {
@@ -86,13 +89,33 @@ func BuildTaskCompletionTool() ToolDefinition {
 	}
 }
 
+// FormatProviderVendor maps internal provider tokens into human- and LLM-friendly brand names.
+func FormatProviderVendor(rawProvider string) string {
+	switch strings.ToLower(rawProvider) {
+	case "openai_dot", "chatgpt", "openai":
+		return "ChatGPT / OpenAI Dot"
+	case "grok_bot", "grok", "xai":
+		return "xAI Grok"
+	case "claude", "anthropic":
+		return "Anthropic Claude"
+	case "meta_muse", "muse", "meta":
+		return "Meta Muse"
+	default:
+		if rawProvider != "" {
+			return rawProvider
+		}
+		return "Cloud Agent"
+	}
+}
+
 // BuildDelegationTool dynamically generates an MCP tool for dispatching work across canvas edges.
-// It incorporates both the target peer's identity and its operational objective/mission so calling agents
-// understand the peer's domain specialization and make informed delegation decisions.
-func BuildDelegationTool(targetAgentName, targetAgentGoal, toolName string) ToolDefinition {
-	descriptionText := fmt.Sprintf("Hands off a structured subtask to peer agent %s via the Dotdeck switchboard.", targetAgentName)
+// It incorporates the target peer's identity, cloud provider platform, and operational objective
+// so calling agents understand the peer's specialization and make informed delegation decisions.
+func BuildDelegationTool(targetAgentName, targetAgentGoal, targetAgentProvider, toolName string) ToolDefinition {
+	vendorLabel := FormatProviderVendor(targetAgentProvider)
+	descriptionText := fmt.Sprintf("Hands off a structured subtask to peer agent %s (%s) via the Dotdeck switchboard.", targetAgentName, vendorLabel)
 	if targetAgentGoal != "" {
-		descriptionText = fmt.Sprintf("Hands off a structured subtask to peer agent %s via the Dotdeck switchboard. Peer Objective & Specialization: %q. Invoke this tool whenever your task requires this peer's domain specialization or downstream handoff.", targetAgentName, targetAgentGoal)
+		descriptionText = fmt.Sprintf("Hands off a structured subtask to peer agent %s (%s) via the Dotdeck switchboard. Peer Objective & Specialization: %q. Invoke this tool whenever your task requires this peer's domain specialization, provider capabilities (%s), or downstream processing handoff.", targetAgentName, vendorLabel, targetAgentGoal, vendorLabel)
 	}
 
 	return ToolDefinition{

@@ -102,6 +102,45 @@ export function useMultiplayerWebSocket(websocketUrl: string) {
               });
               break;
 
+            case 'HANDOFF_EMITTED': {
+              const sourceAgentId = payload.source_agent_id;
+              const instructions = payload.instructions || '';
+              const store = useWorkspaceStore.getState();
+              const matchingEdge = store.edges.find((edge) => edge.source === sourceAgentId);
+              if (matchingEdge) {
+                store.setEdges(
+                  store.edges.map((edge) =>
+                    edge.id === matchingEdge.id
+                      ? { ...edge, data: { ...edge.data, active: true } }
+                      : edge
+                  )
+                );
+                window.setTimeout(() => {
+                  const currentStore = useWorkspaceStore.getState();
+                  currentStore.setEdges(
+                    currentStore.edges.map((edge) =>
+                      edge.id === matchingEdge.id
+                        ? { ...edge, data: { ...edge.data, active: false } }
+                        : edge
+                    )
+                  );
+                }, 4000);
+
+                if (matchingEdge.target) {
+                  addThoughtStep(matchingEdge.target, {
+                    id: `handoff-rx-${Date.now()}`,
+                    agentId: matchingEdge.target,
+                    stepIndex: 0,
+                    reasoningTrace: `Inbound task received from peer: ${instructions}`,
+                    nextPlannedStep: 'Process delegated task payload',
+                    timestamp: payload.timestamp || new Date().toISOString(),
+                  });
+                  updateNodeStatus(matchingEdge.target, 'working');
+                }
+              }
+              break;
+            }
+
             case 'APPROVAL_REQUESTED':
               addApproval({
                 id: payload.approval_id,

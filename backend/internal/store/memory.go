@@ -185,16 +185,19 @@ func (store *MemoryStore) CreateEdge(requestContext context.Context, edge domain
 
 	targetName := edge.TargetAgentID
 	targetGoal := ""
+	targetProvider := ""
 	if targetAgent, exists := store.byID[edge.TargetAgentID]; exists {
 		targetName = targetAgent.Name
 		targetGoal = targetAgent.Goal
+		targetProvider = targetAgent.Provider
 	}
 
 	edgeContext := mcp.EdgeContext{
-		TargetAgentID:   edge.TargetAgentID,
-		TargetAgentName: targetName,
-		TargetAgentGoal: targetGoal,
-		ToolName:        edge.ToolName,
+		TargetAgentID:       edge.TargetAgentID,
+		TargetAgentName:     targetName,
+		TargetAgentGoal:     targetGoal,
+		TargetAgentProvider: targetProvider,
+		ToolName:            edge.ToolName,
 	}
 
 	store.edges[edge.SourceAgentID] = append(store.edges[edge.SourceAgentID], edgeContext)
@@ -230,11 +233,30 @@ func (store *MemoryStore) GetAgentByToken(token string) (*mcp.AgentContext, erro
 	return agent, nil
 }
 
-// GetOutboundEdges returns all target agents wired downstream from the source agent.
+// GetOutboundEdges returns all target agents wired downstream from the source agent, dynamically enriching target metadata.
 func (store *MemoryStore) GetOutboundEdges(agentID string) ([]mcp.EdgeContext, error) {
 	store.storeMutex.RLock()
 	defer store.storeMutex.RUnlock()
-	return store.edges[agentID], nil
+
+	rawEdges := store.edges[agentID]
+	enrichedEdges := make([]mcp.EdgeContext, len(rawEdges))
+	for index, edgeItem := range rawEdges {
+		if edgeItem.TargetAgentProvider == "" || edgeItem.TargetAgentName == "" || edgeItem.TargetAgentGoal == "" {
+			if targetAgent, exists := store.byID[edgeItem.TargetAgentID]; exists {
+				if edgeItem.TargetAgentProvider == "" {
+					edgeItem.TargetAgentProvider = targetAgent.Provider
+				}
+				if edgeItem.TargetAgentName == "" {
+					edgeItem.TargetAgentName = targetAgent.Name
+				}
+				if edgeItem.TargetAgentGoal == "" {
+					edgeItem.TargetAgentGoal = targetAgent.Goal
+				}
+			}
+		}
+		enrichedEdges[index] = edgeItem
+	}
+	return enrichedEdges, nil
 }
 
 // GetAgentByID retrieves an agent descriptor by its ID.

@@ -76,10 +76,11 @@ func (store *PostgresStore) GetOutboundEdges(agentID string) ([]mcp.EdgeContext,
 			targetAgent, targetError := store.queries.GetAgentByID(lookupContext, edge.TargetAgentID)
 			if targetError == nil {
 				outboundEdges = append(outboundEdges, mcp.EdgeContext{
-					TargetAgentID:   uuidToString(edge.TargetAgentID),
-					TargetAgentName: targetAgent.Name,
-					TargetAgentGoal: targetAgent.Goal,
-					ToolName:        edge.ToolName,
+					TargetAgentID:       uuidToString(edge.TargetAgentID),
+					TargetAgentName:     targetAgent.Name,
+					TargetAgentGoal:     targetAgent.Goal,
+					TargetAgentProvider: string(targetAgent.Provider),
+					ToolName:            edge.ToolName,
 				})
 			}
 		}

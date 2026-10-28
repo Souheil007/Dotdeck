@@ -52,10 +52,11 @@ type AgentContext struct {
 
 // EdgeContext defines a directed communication link to another agent on the canvas.
 type EdgeContext struct {
-	TargetAgentID   string
-	TargetAgentName string
-	TargetAgentGoal string
-	ToolName        string
+	TargetAgentID       string
+	TargetAgentName     string
+	TargetAgentGoal     string
+	TargetAgentProvider string
+	ToolName            string
 }
 
 // JSONRPCRequest represents a standardized JSON-RPC 2.0 incoming payload.
@@ -658,7 +659,13 @@ func (server *Server) handleMethod(request *http.Request, agentContext *AgentCon
 			BuildTaskCompletionTool(),
 		}
 		for _, edge := range edges {
-			toolsList = append(toolsList, BuildDelegationTool(edge.TargetAgentName, edge.TargetAgentGoal, edge.ToolName))
+			toolsList = append(toolsList, BuildDelegationTool(edge.TargetAgentName, edge.TargetAgentGoal, edge.TargetAgentProvider, edge.ToolName))
+
+			providerSlug := getProviderSlug(edge.TargetAgentProvider)
+			if providerSlug != "" && !strings.Contains(edge.ToolName, providerSlug) {
+				aliasToolName := fmt.Sprintf("delegate_task_to_%s", providerSlug)
+				toolsList = append(toolsList, BuildDelegationTool(edge.TargetAgentName, edge.TargetAgentGoal, edge.TargetAgentProvider, aliasToolName))
+			}
 		}
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
@@ -964,4 +971,20 @@ func (server *Server) ResetDelegationHistory(agentID string) {
 	server.delegationLock.Lock()
 	defer server.delegationLock.Unlock()
 	delete(server.delegationHistory, agentID)
+}
+
+// getProviderSlug derives a normalized short vendor token for dynamic delegation aliasing.
+func getProviderSlug(rawProvider string) string {
+	switch strings.ToLower(rawProvider) {
+	case "openai_dot", "chatgpt", "openai":
+		return "chatgpt"
+	case "grok_bot", "grok", "xai":
+		return "grok"
+	case "claude", "anthropic":
+		return "claude"
+	case "meta_muse", "muse", "meta":
+		return "muse"
+	default:
+		return ""
+	}
 }
