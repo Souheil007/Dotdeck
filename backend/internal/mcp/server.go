@@ -789,10 +789,23 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 			"timestamp":         time.Now().UTC(),
 		})
 
+		resultPayload := map[string]interface{}{
+			"status": "acknowledged",
+		}
+		if deliverable, lookupError := server.repository.GetLatestPipelineDeliverable(callingContext.ID); lookupError == nil && deliverable != nil {
+			resultPayload["pipeline_deliverable"] = map[string]interface{}{
+				"from_agent":  deliverable.SourceAgentName,
+				"summary":     deliverable.Summary,
+				"deliverable": deliverable.Deliverable,
+				"timestamp":   deliverable.Timestamp,
+			}
+			resultPayload["inbox_notice"] = fmt.Sprintf("Upstream deliverable available from %s: %s", deliverable.SourceAgentName, deliverable.Summary)
+		}
+
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      rpcRequest.ID,
-			Result:  map[string]interface{}{"status": "acknowledged"},
+			Result:  resultPayload,
 		}
 
 	case "complete_task":
@@ -980,14 +993,23 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 
 		_ = server.repository.UpdateStatus(callingContext.ID, "working")
 		server.resetIdleTimer(callingContext)
+		approvalResult := map[string]interface{}{
+			"status":      "approved",
+			"user_answer": decisionOutcome.Answer,
+			"approved_by": decisionOutcome.OperatorID,
+		}
+		if deliverable, lookupError := server.repository.GetLatestPipelineDeliverable(callingContext.ID); lookupError == nil && deliverable != nil {
+			approvalResult["pipeline_deliverable"] = map[string]interface{}{
+				"from_agent":  deliverable.SourceAgentName,
+				"summary":     deliverable.Summary,
+				"deliverable": deliverable.Deliverable,
+				"timestamp":   deliverable.Timestamp,
+			}
+		}
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      rpcRequest.ID,
-			Result: map[string]interface{}{
-				"status":      "approved",
-				"user_answer": decisionOutcome.Answer,
-				"approved_by": decisionOutcome.OperatorID,
-			},
+			Result:  approvalResult,
 		}
 
 	default:
