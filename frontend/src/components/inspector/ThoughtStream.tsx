@@ -9,6 +9,7 @@ import {
   Check,
   Layers,
   ArrowRight,
+  Sparkles,
 } from 'lucide-react';
 import type { ThoughtStep } from '../../store/useWorkspaceStore';
 
@@ -45,7 +46,14 @@ type VirtualItemData =
 export function ThoughtStream({ thoughts }: ThoughtStreamProps) {
   const [collapsedRuns, setCollapsedRuns] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedDeliverableId, setCopiedDeliverableId] = useState<string | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
+
+  const copyDeliverable = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedDeliverableId(id);
+    setTimeout(() => setCopiedDeliverableId(null), 2000);
+  };
 
   // Group thoughts into chronological execution runs with ordered steps
   const runGroups = useMemo(() => {
@@ -322,6 +330,37 @@ export function ThoughtStream({ thoughts }: ThoughtStreamProps) {
                   <div className="text-[#202124] dark:text-zinc-200 leading-relaxed font-sans text-xs mb-2 break-words">
                     {step.reasoningTrace}
                   </div>
+
+                  {step.deliverable && (
+                    <div className="mb-2 p-3 rounded-lg bg-zinc-950 text-zinc-100 border border-zinc-800 font-mono text-[11px] overflow-hidden">
+                      <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-zinc-800 text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
+                        <span className="flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                          Full Deliverable Output
+                        </span>
+                        <button
+                          onClick={() => copyDeliverable(step.id, step.deliverable!)}
+                          className="flex items-center gap-1 px-1.5 py-0.5 rounded text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                          title="Copy full deliverable text"
+                        >
+                          {copiedDeliverableId === step.id ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-400" />
+                              <span className="text-emerald-400 font-sans">Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              <span className="font-sans">Copy Output</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      <pre className="whitespace-pre-wrap font-sans text-xs text-zinc-200 leading-relaxed max-h-72 overflow-y-auto">
+                        {step.deliverable}
+                      </pre>
+                    </div>
+                  )}
 
                   {step.nextPlannedStep && (
                     <div className="flex items-start gap-1.5 text-[11px] text-blue-700 dark:text-cyan-300 pt-2 border-t border-zinc-100 dark:border-zinc-800/80 bg-blue-50/30 dark:bg-cyan-950/20 -mx-3 -mb-3 p-2.5 rounded-b-lg">

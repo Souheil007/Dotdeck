@@ -14,6 +14,7 @@ export interface AgentData extends Record<string, unknown> {
   currentThought?: string;
   currentStep?: string;
   latestOutput?: string;
+  latestDeliverable?: string;
   lastRunStatus?: 'success' | 'failed';
   lastRunTime?: string;
   nextScheduledTime?: string;
@@ -25,6 +26,9 @@ export interface ThoughtStep {
   stepIndex: number;
   reasoningTrace: string;
   nextPlannedStep: string;
+  toolCalled?: string;
+  deliverable?: string;
+  toolPayload?: unknown;
   timestamp: string;
 }
 
@@ -287,7 +291,7 @@ interface WorkspaceState {
   updateNodePosition: (nodeId: string, position: { x: number; y: number }) => void;
   updateNodeStatus: (agentId: string, status: AgentStatus) => void;
   updateNodeThought: (agentId: string, thought: string, nextStep: string) => void;
-  updateNodeOutput: (agentId: string, output: string) => void;
+  updateNodeOutput: (agentId: string, output: string, deliverable?: string) => void;
   setSelectedAgentId: (agentId: string | null) => void;
   setFocusAgentId: (agentId: string | null) => void;
   addThoughtStep: (agentId: string, step: ThoughtStep) => void;
@@ -550,7 +554,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             };
           }),
 
-        updateNodeOutput: (agentId, output) =>
+        updateNodeOutput: (agentId, output, deliverable) =>
           set((state) => {
             const updatedNodes: Node<AgentData>[] = state.nodes.map((node) =>
               node.id === agentId
@@ -559,6 +563,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                     data: {
                       ...node.data,
                       latestOutput: output,
+                      latestDeliverable: deliverable || (deliverable === undefined ? node.data.latestDeliverable : output),
                       status: 'resting' as const,
                       lastRunStatus: 'success' as const,
                       lastRunTime: 'Just now',

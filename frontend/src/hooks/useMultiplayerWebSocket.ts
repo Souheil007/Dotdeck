@@ -77,14 +77,17 @@ export function useMultiplayerWebSocket(websocketUrl: string) {
             }
 
             case 'TASK_COMPLETED':
-              if (payload.agent_id && payload.summary) {
-                updateNodeOutput(payload.agent_id, payload.summary);
+              if (payload.agent_id && (payload.summary || payload.deliverable)) {
+                updateNodeOutput(payload.agent_id, payload.summary || 'Task completed', payload.deliverable);
                 addThoughtStep(payload.agent_id, {
                   id: payload.id || `task-completed-${Date.now()}`,
                   agentId: payload.agent_id,
                   stepIndex: 0,
                   reasoningTrace: `Task completed: ${payload.summary}`,
                   nextPlannedStep: 'Standby for downstream handoffs or next turn',
+                  toolCalled: 'complete_task',
+                  deliverable: payload.deliverable,
+                  toolPayload: { deliverable: payload.deliverable, summary: payload.summary },
                   timestamp: payload.timestamp || new Date().toISOString(),
                 });
               }
