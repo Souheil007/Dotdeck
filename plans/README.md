@@ -21,6 +21,7 @@ flowchart TD
     P04 & P07 & P08 & P09 --> P10["Plan 10: E2E Verification & Production Hardening"]
     P10 --> P11["Plan 11: AgentGrid Homepage, Auth & Workspace Hub"]
     P11 --> P12["Plan 12: Strategic Pivot to HITL Execution Gateway"]
+    P11 --> P13["Plan 13: Distinctive Frontend Redesign & Non-Generic UI/UX System"]
 ```
 
 ---
@@ -41,10 +42,11 @@ flowchart TD
 | **10** | [plan-10-end-to-end-verification-and-production-hardening.md](file:///C:/GithubProjects/Dotdeck/plans/plan-10-end-to-end-verification-and-production-hardening.md) | E2E mock agent simulation, Docker Compose validation, tests | Completed [x] |
 | **11** | [plan-11-homepage-auth-and-workspace-management.md](file:///C:/GithubProjects/Dotdeck/plans/plan-11-homepage-auth-and-workspace-management.md) | AgentGrid-inspired homepage, auth modal, workspace hub | Completed [x] |
 | **12** | [plan-12-strategic-pivot-hitl-governance-gateway.md](file:///C:/GithubProjects/Dotdeck/plans/plan-12-strategic-pivot-hitl-governance-gateway.md) | Headless HITL gateway, declarative policy engine, Slack callbacks | Upcoming [ ] |
+| **13** | [plan-13-distinctive-frontend-redesign.md](file:///C:/GithubProjects/Dotdeck/plans/plan-13-distinctive-frontend-redesign.md) | Distinctive Flight Deck UI/UX, asymmetric layout, hardware avionics nodes, live mini-switchboard | Upcoming [ ] |
 
 ---
 
 ## Execution Rules
-1. Work through plans **sequentially (01 through 12)**.
+1. Work through plans **sequentially (01 through 13)**.
 2. Mark tasks and plans as `In Progress [x]` while actively working and `Completed [x]` when passing DoD.
 3. Always ensure Go Google-Style docstrings and strict naming conventions are preserved.
