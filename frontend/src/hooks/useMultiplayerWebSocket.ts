@@ -53,12 +53,16 @@ export function useMultiplayerWebSocket(websocketUrl: string) {
             case 'AGENT_CREATED': {
               const agent = payload.agent || payload;
               if (agent && agent.id) {
+                const lowerName = (agent.name || '').toLowerCase();
+                if (lowerName.includes('connector') || lowerName.includes('validator') || lowerName.includes('inspector') || lowerName.includes('probe')) {
+                  break;
+                }
                 const store = useWorkspaceStore.getState();
                 const currentNodes = store.nodes;
                 if (!currentNodes.some((node) => node.id === agent.id)) {
                   store.addAgentNode({
                     id: agent.id,
-                    name: agent.name || 'Discovered Agent',
+                    name: agent.name || 'Grok Agent',
                     provider: agent.provider || 'grok_bot',
                     goal: agent.goal || 'Autonomous cloud agent connected via Fleet Hub.',
                     status: (agent.status as AgentStatus) || 'resting',

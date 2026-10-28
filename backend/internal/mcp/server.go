@@ -357,7 +357,10 @@ func formatDisplayName(rawName string) string {
 	}
 	formatted := strings.Join(words, " ")
 	if formatted == "" {
-		return "Cloud Agent"
+		return "Grok Agent"
+	}
+	if len(words) == 1 && (strings.EqualFold(words[0], "Grok") || strings.EqualFold(words[0], "Claude") || strings.EqualFold(words[0], "Dot")) {
+		return formatted + " Agent"
 	}
 	return formatted
 }
@@ -374,6 +377,30 @@ func inferProvider(name, userAgent string) domain.Provider {
 		return domain.ProviderMetaMuse
 	}
 	return domain.ProviderGrokBot
+}
+
+// isVendorVerificationProbe checks whether an incoming MCP handshake is an automated infrastructure
+// healthcheck, schema validator, or connector registration probe from a vendor platform (e.g. xAI Grok).
+func isVendorVerificationProbe(name, userAgent string) bool {
+	lowerName := strings.ToLower(name)
+	lowerUA := strings.ToLower(userAgent)
+
+	probeKeywords := []string{
+		"connector",
+		"validator",
+		"inspector",
+		"probe",
+		"healthcheck",
+		"test-client",
+		"schema-check",
+	}
+
+	for _, keyword := range probeKeywords {
+		if strings.Contains(lowerName, keyword) || strings.Contains(lowerUA, keyword) {
+			return true
+		}
+	}
+	return false
 }
 
 // handleWorkspaceHub enables zero-line auto-discovery for cloud agents connecting to /mcp/ws/{workspace_id}.
@@ -419,7 +446,7 @@ func (server *Server) handleWorkspaceHub(writer http.ResponseWriter, request *ht
 		return
 	}
 
-	rawName := customAlias
+	clientName := customAlias
 	if rpcRequest.Method == "initialize" {
 		var initPayload struct {
 			ClientInfo struct {
@@ -428,18 +455,44 @@ func (server *Server) handleWorkspaceHub(writer http.ResponseWriter, request *ht
 			} `json:"clientInfo"`
 		}
 		_ = json.Unmarshal(rpcRequest.Params, &initPayload)
-		if rawName == "" {
-			rawName = initPayload.ClientInfo.Name
+		if clientName == "" {
+			clientName = initPayload.ClientInfo.Name
 		}
 	}
 
-	if rawName == "" {
-		rawName = "grok-email-viewer"
+	// Intercept and absorb vendor verification probes (e.g. xAI Grok's connectors-manager, grok-validator)
+	// Return fully compliant MCP protocol responses without polluting the visual canvas with ghost agents.
+	if isVendorVerificationProbe(clientName, request.UserAgent()) {
+		ephemeralContext := &AgentContext{
+			ID:          "probe-verifier",
+			WorkspaceID: workspaceID,
+			Name:        "Verification Probe",
+			Provider:    "grok_bot",
+			Goal:        "Transient connector verification check.",
+			Status:      "resting",
+		}
+		rpcResponse := server.handleMethod(request, ephemeralContext, rpcRequest)
+		writer.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(writer).Encode(rpcResponse)
+		return
 	}
 
-	displayName := formatDisplayName(rawName)
-	provider := inferProvider(rawName, request.UserAgent())
-	hubToken := fmt.Sprintf("hub_%s_%s", workspaceID, strings.ToLower(strings.ReplaceAll(rawName, " ", "_")))
+	// Determine deterministic hub token and display name for actual agent
+	var hubToken string
+	var displayName string
+	if customAlias != "" {
+		displayName = formatDisplayName(customAlias)
+		hubToken = fmt.Sprintf("hub_%s_%s", workspaceID, strings.ToLower(strings.ReplaceAll(customAlias, " ", "_")))
+	} else if clientName != "" && !strings.EqualFold(clientName, "grok") && !strings.EqualFold(clientName, "claude") {
+		displayName = formatDisplayName(clientName)
+		hubToken = fmt.Sprintf("hub_%s_agent", workspaceID)
+	} else {
+		// Single fleet agent endpoint /mcp/ws/{workspace_id}
+		hubToken = fmt.Sprintf("hub_%s_agent", workspaceID)
+		displayName = formatDisplayName(clientName)
+	}
+
+	provider := inferProvider(displayName, request.UserAgent())
 
 	agentContext, _ := server.repository.GetAgentByToken(hubToken)
 	if agentContext == nil {

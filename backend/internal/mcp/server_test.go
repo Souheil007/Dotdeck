@@ -745,3 +745,61 @@ func TestWorkspaceHub_AutoDiscovery(testingTarget *testing.T) {
 		testingTarget.Errorf("expected messages array in prompts/get result, got: %v", getResp.Result)
 	}
 }
+
+// TestWorkspaceHub_VendorVerificationProbeIgnored verifies that automated vendor infrastructure probes
+// (such as xAI Grok's connectors-manager and grok-validator) receive compliant 200 OK responses
+// without spawning spurious ghost nodes on the visual canvas.
+func TestWorkspaceHub_VendorVerificationProbeIgnored(testingTarget *testing.T) {
+	mockRepo := newMockRepository()
+	broadcaster := &mockBroadcaster{}
+	holdEngine := NewHoldEngine()
+	mcpServer := NewServer(mockRepo, holdEngine, broadcaster)
+
+	probeNames := []string{"connectors-manager", "grok-validator", "mcp-inspector", "healthcheck-probe"}
+
+	for iterationIndex, probeName := range probeNames {
+		requestBody := map[string]interface{}{
+			"jsonrpc": "2.0",
+			"id":      iterationIndex + 1,
+			"method":  "initialize",
+			"params": map[string]interface{}{
+				"protocolVersion": "2024-11-05",
+				"clientInfo": map[string]string{
+					"name":    probeName,
+					"version": "1.0",
+				},
+			},
+		}
+		serializedBytes, _ := json.Marshal(requestBody)
+
+		request := httptest.NewRequest(http.MethodPost, "/mcp/ws/ws-probe-test", bytes.NewReader(serializedBytes))
+		recorder := httptest.NewRecorder()
+
+		mcpServer.ServeHTTP(recorder, request)
+
+		if recorder.Code != http.StatusOK {
+			testingTarget.Fatalf("probe %q failed with HTTP %d: %s", probeName, recorder.Code, recorder.Body.String())
+		}
+
+		var rpcResponse JSONRPCResponse
+		if err := json.Unmarshal(recorder.Body.Bytes(), &rpcResponse); err != nil {
+			testingTarget.Fatalf("probe %q response invalid JSON: %v", probeName, err)
+		}
+
+		if rpcResponse.Error != nil {
+			testingTarget.Fatalf("probe %q returned error: %v", probeName, rpcResponse.Error.Message)
+		}
+	}
+
+	// Verify ZERO agents were created in mockRepo
+	if len(mockRepo.agents) != 0 {
+		testingTarget.Errorf("expected 0 agents provisioned for vendor probes, found %d", len(mockRepo.agents))
+	}
+
+	// Verify ZERO AGENT_CREATED events were broadcasted
+	for _, event := range broadcaster.events {
+		if event == "AGENT_CREATED" {
+			testingTarget.Errorf("unexpected AGENT_CREATED event broadcasted for vendor probe")
+		}
+	}
+}

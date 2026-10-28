@@ -898,6 +898,22 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         if (!state.approvals) {
           state.approvals = {};
         }
+        // Filter out accidental vendor infrastructure probe nodes from persisted state
+        const isProbeAgent = (name?: string) => {
+          if (!name) return false;
+          const lower = name.toLowerCase();
+          return lower.includes('connector') || lower.includes('validator') || lower.includes('inspector') || lower.includes('verification probe');
+        };
+
+        if (state.workspaceNodes) {
+          for (const wsId of Object.keys(state.workspaceNodes)) {
+            state.workspaceNodes[wsId] = state.workspaceNodes[wsId].filter((node) => !isProbeAgent(node.data?.name));
+          }
+        }
+        if (state.nodes) {
+          state.nodes = state.nodes.filter((node) => !isProbeAgent(node.data?.name));
+        }
+
         if (state.workspaces && state.workspaces.length > 0) {
           state.workspaces = state.workspaces.map((ws) => {
             const savedNodes = state.workspaceNodes?.[ws.id] || [];
