@@ -74,6 +74,167 @@ export interface DecommissionTarget {
   connectedWiresCount: number;
 }
 
+export const DEFAULT_WORKSPACE_NODES: Record<string, Node<AgentData>[]> = {
+  'ws-prod-sales': [
+    {
+      id: 'agent-1',
+      type: 'agentNode',
+      position: { x: 100, y: 150 },
+      data: {
+        id: 'agent-1',
+        name: 'Sales Research Dot',
+        provider: 'openai_dot',
+        goal: 'Scrape high-intent SaaS leads and extract corporate tech stacks.',
+        status: 'working',
+        currentThought: 'Analyzing Stripe documentation page for webhook signature format',
+        currentStep: 'Drafting outbound brief for Grok Copywriter',
+        lastRunStatus: 'success',
+        lastRunTime: '4m ago',
+      },
+    },
+    {
+      id: 'agent-2',
+      type: 'agentNode',
+      position: { x: 550, y: 80 },
+      data: {
+        id: 'agent-2',
+        name: 'Grok Copywriter',
+        provider: 'grok_bot',
+        goal: 'Draft tailored outreach sequences based on incoming technical dossiers.',
+        status: 'blocked_on_user',
+        currentThought: 'Generated 3 email variants; awaiting sign-off on pricing mention.',
+        lastRunStatus: 'success',
+        lastRunTime: '12m ago',
+      },
+    },
+    {
+      id: 'agent-3',
+      type: 'agentNode',
+      position: { x: 550, y: 320 },
+      data: {
+        id: 'agent-3',
+        name: 'Claude Compliance',
+        provider: 'claude',
+        goal: 'Verify outbound emails adhere to GDPR and company privacy policies.',
+        status: 'resting',
+        lastRunStatus: 'success',
+        lastRunTime: '1h ago',
+        nextScheduledTime: 'Tomorrow 9:00 AM',
+      },
+    },
+  ],
+  'ws-secops': [
+    {
+      id: 'sec-1',
+      type: 'agentNode',
+      position: { x: 120, y: 180 },
+      data: {
+        id: 'sec-1',
+        name: 'Meta Muse Recon',
+        provider: 'meta_muse',
+        goal: 'Port scan perimeter infrastructure and flag open ingress points.',
+        status: 'working',
+        currentThought: 'Running syn scan against public cloud CIDR blocks',
+        currentStep: 'Summarizing CVE vulnerabilities',
+        lastRunStatus: 'success',
+        lastRunTime: '18m ago',
+      },
+    },
+    {
+      id: 'sec-2',
+      type: 'agentNode',
+      position: { x: 580, y: 180 },
+      data: {
+        id: 'sec-2',
+        name: 'Claude Auditor',
+        provider: 'claude',
+        goal: 'Audit security logs and enforce CIS benchmark compliance.',
+        status: 'resting',
+        lastRunStatus: 'success',
+        lastRunTime: '30m ago',
+      },
+    },
+  ],
+  'ws-support': [
+    {
+      id: 'supp-1',
+      type: 'agentNode',
+      position: { x: 120, y: 180 },
+      data: {
+        id: 'supp-1',
+        name: 'Triage OpenAI Dot',
+        provider: 'openai_dot',
+        goal: 'Classify incoming customer dispute tickets, compute SLA uptime breaches, and draft refund authorizations.',
+        status: 'working',
+        currentThought: 'Evaluating SLA outage dispute for Acme Corp (#8921); requesting $1,250 refund.',
+        currentStep: 'Forwarding SLA breach analysis to Claude Escalation Specialist',
+        lastRunStatus: 'success',
+        lastRunTime: '3m ago',
+      },
+    },
+    {
+      id: 'supp-2',
+      type: 'agentNode',
+      position: { x: 580, y: 180 },
+      data: {
+        id: 'supp-2',
+        name: 'Claude Escalation Specialist',
+        provider: 'claude',
+        goal: 'Audit refund payouts against corporate policy and gate payouts behind human operator approval.',
+        status: 'blocked_on_user',
+        currentThought: 'Payout exceeds $500 threshold ($1,250). Initiating 45s operator hold.',
+        lastRunStatus: 'success',
+        lastRunTime: '1m ago',
+      },
+    },
+  ],
+};
+
+export const DEFAULT_WORKSPACE_EDGES: Record<string, Edge[]> = {
+  'ws-prod-sales': [
+    {
+      id: 'edge-1-2',
+      source: 'agent-1',
+      target: 'agent-2',
+      sourceHandle: 'handle-right',
+      targetHandle: 'handle-left',
+      type: 'pulseEdge',
+      data: { toolName: 'delegate_task_to_grok_copywriter' },
+    },
+    {
+      id: 'edge-2-3',
+      source: 'agent-2',
+      target: 'agent-3',
+      sourceHandle: 'handle-bottom',
+      targetHandle: 'handle-top',
+      type: 'pulseEdge',
+      data: { toolName: 'delegate_task_to_claude_compliance' },
+    },
+  ],
+  'ws-secops': [
+    {
+      id: 'edge-sec-1-2',
+      source: 'sec-1',
+      target: 'sec-2',
+      sourceHandle: 'handle-right',
+      targetHandle: 'handle-left',
+      type: 'pulseEdge',
+      data: { toolName: 'delegate_task_to_claude_auditor' },
+    },
+  ],
+  'ws-support': [
+    {
+      id: 'edge-supp-1-2',
+      source: 'supp-1',
+      target: 'supp-2',
+      sourceHandle: 'handle-right',
+      targetHandle: 'handle-left',
+      type: 'pulseEdge',
+      data: { toolName: 'delegate_task_to_claude_escalation_specialist' },
+    },
+  ],
+};
+
 function getOrCreateSessionUser() {
   if (typeof window === 'undefined') {
     return { userId: 'operator-1', userName: 'Operator' };
@@ -98,6 +259,8 @@ interface WorkspaceState {
   activeWorkspaceId: string;
   activeWorkspaceName: string;
   userRole: 'admin' | 'write' | 'read';
+  workspaceNodes: Record<string, Node<AgentData>[]>;
+  workspaceEdges: Record<string, Edge[]>;
   nodes: Node<AgentData>[];
   edges: Edge[];
   selectedAgentId: string | null;
@@ -190,8 +353,10 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         activeWorkspaceId: 'ws-prod-sales',
         activeWorkspaceName: 'Enterprise Outbound Swarm',
         userRole: 'admin',
-        nodes: [],
-        edges: [],
+        workspaceNodes: DEFAULT_WORKSPACE_NODES,
+        workspaceEdges: DEFAULT_WORKSPACE_EDGES,
+        nodes: DEFAULT_WORKSPACE_NODES['ws-prod-sales'] || [],
+        edges: DEFAULT_WORKSPACE_EDGES['ws-prod-sales'] || [],
         selectedAgentId: null,
         thoughts: {},
         approvals: {},
@@ -204,401 +369,417 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         handoffPreview: null,
         decommissionTarget: null,
 
-      setNodes: (nodes) => set({ nodes }),
-      setEdges: (edges) => set({ edges }),
-      addEdgeToWorkspace: (edge) =>
-        set((state) => ({
-          edges: [...state.edges.filter((existingEdge) => existingEdge.id !== edge.id), edge],
-        })),
-      removeEdgeFromWorkspace: (edgeId) =>
-        set((state) => ({
-          edges: state.edges.filter((existingEdge) => existingEdge.id !== edgeId),
-        })),
-      addAgentNode: (agent, position) =>
-        set((state) => {
-          const updatedNodes = [
-            ...state.nodes.filter((node) => node.id !== agent.id),
-            {
-              id: agent.id,
-              type: 'agentNode',
-              position: position || {
-                x: 120 + (state.nodes.length % 3) * 440,
-                y: 120 + Math.floor(state.nodes.length / 3) * 320,
-              },
-              data: agent,
+        setNodes: (nodes) =>
+          set((state) => ({
+            nodes,
+            workspaceNodes: {
+              ...state.workspaceNodes,
+              [state.activeWorkspaceId]: nodes,
             },
-          ];
-          const updatedWorkspaces = state.workspaces.map((w) =>
-            w.id === state.activeWorkspaceId ? { ...w, agentCount: updatedNodes.length } : w
-          );
-          return {
-            nodes: updatedNodes,
-            workspaces: updatedWorkspaces,
-          };
-        }),
-      deleteAgentNode: (agentId) =>
-        set((state) => {
-          const updatedNodes = state.nodes.filter((node) => node.id !== agentId);
-          const updatedEdges = state.edges.filter(
-            (edge) => edge.source !== agentId && edge.target !== agentId
-          );
-          const updatedWorkspaces = state.workspaces.map((ws) =>
-            ws.id === state.activeWorkspaceId
-              ? { ...ws, agentCount: updatedNodes.length }
-              : ws
-          );
-          const nextThoughts = { ...state.thoughts };
-          delete nextThoughts[agentId];
+          })),
 
-          const nextApprovals = { ...state.approvals };
-          Object.keys(nextApprovals).forEach((key) => {
-            if (nextApprovals[key].agentId === agentId) {
-              delete nextApprovals[key];
+        setEdges: (edges) =>
+          set((state) => ({
+            edges,
+            workspaceEdges: {
+              ...state.workspaceEdges,
+              [state.activeWorkspaceId]: edges,
+            },
+          })),
+
+        addEdgeToWorkspace: (edge) =>
+          set((state) => {
+            const updatedEdges = [
+              ...state.edges.filter((existingEdge) => existingEdge.id !== edge.id),
+              edge,
+            ];
+            return {
+              edges: updatedEdges,
+              workspaceEdges: {
+                ...state.workspaceEdges,
+                [state.activeWorkspaceId]: updatedEdges,
+              },
+            };
+          }),
+
+        removeEdgeFromWorkspace: (edgeId) =>
+          set((state) => {
+            const updatedEdges = state.edges.filter((existingEdge) => existingEdge.id !== edgeId);
+            return {
+              edges: updatedEdges,
+              workspaceEdges: {
+                ...state.workspaceEdges,
+                [state.activeWorkspaceId]: updatedEdges,
+              },
+            };
+          }),
+
+        addAgentNode: (agent, position) =>
+          set((state) => {
+            const updatedNodes = [
+              ...state.nodes.filter((node) => node.id !== agent.id),
+              {
+                id: agent.id,
+                type: 'agentNode',
+                position: position || {
+                  x: 120 + (state.nodes.length % 3) * 440,
+                  y: 120 + Math.floor(state.nodes.length / 3) * 320,
+                },
+                data: agent,
+              },
+            ];
+            const updatedWorkspaceNodes = {
+              ...state.workspaceNodes,
+              [state.activeWorkspaceId]: updatedNodes,
+            };
+            const updatedWorkspaces = state.workspaces.map((w) =>
+              w.id === state.activeWorkspaceId ? { ...w, agentCount: updatedNodes.length } : w
+            );
+            return {
+              nodes: updatedNodes,
+              workspaceNodes: updatedWorkspaceNodes,
+              workspaces: updatedWorkspaces,
+            };
+          }),
+
+        deleteAgentNode: (agentId) =>
+          set((state) => {
+            const updatedNodes = state.nodes.filter((node) => node.id !== agentId);
+            const updatedEdges = state.edges.filter(
+              (edge) => edge.source !== agentId && edge.target !== agentId
+            );
+            const updatedWorkspaceNodes = {
+              ...state.workspaceNodes,
+              [state.activeWorkspaceId]: updatedNodes,
+            };
+            const updatedWorkspaceEdges = {
+              ...state.workspaceEdges,
+              [state.activeWorkspaceId]: updatedEdges,
+            };
+            const updatedWorkspaces = state.workspaces.map((ws) =>
+              ws.id === state.activeWorkspaceId
+                ? { ...ws, agentCount: updatedNodes.length }
+                : ws
+            );
+            const nextThoughts = { ...state.thoughts };
+            delete nextThoughts[agentId];
+
+            const nextApprovals = { ...state.approvals };
+            Object.keys(nextApprovals).forEach((key) => {
+              if (nextApprovals[key].agentId === agentId) {
+                delete nextApprovals[key];
+              }
+            });
+
+            // Dispatch async DELETE to backend
+            try {
+              const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+              fetch(`${apiUrl}/api/v1/agents/${agentId}`, {
+                method: 'DELETE',
+                headers: {
+                  'X-User-ID': state.currentUserId,
+                  'X-User-Name': state.currentUserName,
+                },
+              }).catch(() => {});
+            } catch {
+              // Non-fatal if offline
             }
+
+            return {
+              nodes: updatedNodes,
+              edges: updatedEdges,
+              workspaceNodes: updatedWorkspaceNodes,
+              workspaceEdges: updatedWorkspaceEdges,
+              workspaces: updatedWorkspaces,
+              selectedAgentId: state.selectedAgentId === agentId ? null : state.selectedAgentId,
+              thoughts: nextThoughts,
+              approvals: nextApprovals,
+            };
+          }),
+
+        updateNodePosition: (nodeId, position) =>
+          set((state) => {
+            const updatedNodes = state.nodes.map((node) =>
+              node.id === nodeId ? { ...node, position } : node
+            );
+            return {
+              nodes: updatedNodes,
+              workspaceNodes: {
+                ...state.workspaceNodes,
+                [state.activeWorkspaceId]: updatedNodes,
+              },
+            };
+          }),
+
+        updateNodeStatus: (agentId, status) =>
+          set((state) => {
+            const updatedNodes = state.nodes.map((node) =>
+              node.id === agentId ? { ...node, data: { ...node.data, status } } : node
+            );
+            return {
+              nodes: updatedNodes,
+              workspaceNodes: {
+                ...state.workspaceNodes,
+                [state.activeWorkspaceId]: updatedNodes,
+              },
+            };
+          }),
+
+        updateNodeThought: (agentId, currentThought, currentStep) =>
+          set((state) => {
+            const updatedNodes: Node<AgentData>[] = state.nodes.map((node) =>
+              node.id === agentId
+                ? { ...node, data: { ...node.data, currentThought, currentStep, status: 'working' as const } }
+                : node
+            );
+            return {
+              nodes: updatedNodes,
+              workspaceNodes: {
+                ...state.workspaceNodes,
+                [state.activeWorkspaceId]: updatedNodes,
+              },
+            };
+          }),
+
+        setSelectedAgentId: (selectedAgentId) => set({ selectedAgentId }),
+        addThoughtStep: (agentId, step) =>
+          set((state) => ({
+            thoughts: {
+              ...state.thoughts,
+              [agentId]: [step, ...(state.thoughts[agentId] || [])],
+            },
+          })),
+
+        addApproval: (approval) =>
+          set((state) => ({
+            approvals: { ...state.approvals, [approval.id]: approval },
+          })),
+
+        resolveApproval: (approvalId) =>
+          set((state) => {
+            const nextApprovals = { ...state.approvals };
+            delete nextApprovals[approvalId];
+            return { approvals: nextApprovals };
+          }),
+
+        updateCursor: (cursor) =>
+          set((state) => ({
+            cursors: { ...state.cursors, [cursor.userId]: cursor },
+          })),
+
+        removeCursor: (userId) =>
+          set((state) => {
+            const nextCursors = { ...state.cursors };
+            delete nextCursors[userId];
+            return { cursors: nextCursors };
+          }),
+
+        setQuestionLock: (approvalId, lockedBy, lockedByName) =>
+          set((state) => {
+            const existing = state.approvals[approvalId];
+            if (!existing) return state;
+            return {
+              approvals: {
+                ...state.approvals,
+                [approvalId]: { ...existing, lockedBy, lockedByName },
+              },
+            };
+          }),
+
+        unlockQuestion: (approvalId) =>
+          set((state) => {
+            const existing = state.approvals[approvalId];
+            if (!existing) return state;
+            return {
+              approvals: {
+                ...state.approvals,
+                [approvalId]: { ...existing, lockedBy: undefined, lockedByName: undefined },
+              },
+            };
+          }),
+
+        openPairingModal: (pairingAgent, mcpUrl, bootstrapPrompt) =>
+          set({
+            isPairingModalOpen: true,
+            pairingAgent,
+            pairingSession: mcpUrl
+              ? { agent: pairingAgent, mcpUrl, bootstrapPrompt: bootstrapPrompt || '' }
+              : null,
+          }),
+
+        closePairingModal: () =>
+          set({ isPairingModalOpen: false, pairingAgent: null, pairingSession: null }),
+
+        openCreateAgentModal: () => set({ isCreateAgentModalOpen: true }),
+        closeCreateAgentModal: () => set({ isCreateAgentModalOpen: false }),
+        openDecommissionModal: (decommissionTarget) => set({ decommissionTarget }),
+        closeDecommissionModal: () => set({ decommissionTarget: null }),
+        setUserRole: (userRole) => set({ userRole }),
+        setShareModalOpen: (isShareModalOpen) => set({ isShareModalOpen }),
+        setHandoffPreview: (handoffPreview) => set({ handoffPreview }),
+
+        switchWorkspace: (workspaceId) =>
+          set((state) => {
+            const target = state.workspaces.find((w) => w.id === workspaceId);
+            if (!target) return state;
+
+            // Snapshot current active workspace's nodes and edges
+            const currentWorkspaceNodes = {
+              ...state.workspaceNodes,
+              [state.activeWorkspaceId]: state.nodes,
+            };
+            const currentWorkspaceEdges = {
+              ...state.workspaceEdges,
+              [state.activeWorkspaceId]: state.edges,
+            };
+
+            // Use saved nodes if previously stored, otherwise fall back to defaults
+            const targetNodes =
+              currentWorkspaceNodes[workspaceId] !== undefined
+                ? currentWorkspaceNodes[workspaceId]
+                : (DEFAULT_WORKSPACE_NODES[workspaceId] ?? []);
+
+            const targetEdges =
+              currentWorkspaceEdges[workspaceId] !== undefined
+                ? currentWorkspaceEdges[workspaceId]
+                : (DEFAULT_WORKSPACE_EDGES[workspaceId] ?? []);
+
+            // Keep all workspace agent counts strictly synchronized
+            const updatedWorkspaces = state.workspaces.map((ws) => {
+              if (ws.id === workspaceId) {
+                return { ...ws, agentCount: targetNodes.length };
+              }
+              if (ws.id === state.activeWorkspaceId) {
+                return { ...ws, agentCount: state.nodes.length };
+              }
+              const savedCount = currentWorkspaceNodes[ws.id]?.length;
+              return savedCount !== undefined ? { ...ws, agentCount: savedCount } : ws;
+            });
+
+            const targetApprovals = { ...state.approvals };
+            if (workspaceId === 'ws-support' && !targetApprovals['app-supp-1']) {
+              if (targetNodes.some((node) => node.id === 'supp-2')) {
+                targetApprovals['app-supp-1'] = {
+                  id: 'app-supp-1',
+                  agentId: 'supp-2',
+                  question: 'Refund payout of $1,250 requested for Acme Corp (Dispute #8921). Authorize refund release?',
+                  options: ['Approve $1,250 Payout', 'Reject SLA Claim', 'Issue $625 Partial Credit'],
+                  reasoningTrace: 'Customer experienced 4.2-hour outage exceeding SLA Section 4.3 uptime guarantee.',
+                  status: 'pending',
+                  createdAt: new Date().toISOString(),
+                };
+              }
+            }
+
+            return {
+              workspaceId: target.id,
+              activeWorkspaceId: target.id,
+              activeWorkspaceName: target.name,
+              userRole: target.role,
+              nodes: targetNodes,
+              edges: targetEdges,
+              workspaceNodes: {
+                ...currentWorkspaceNodes,
+                [workspaceId]: targetNodes,
+              },
+              workspaceEdges: {
+                ...currentWorkspaceEdges,
+                [workspaceId]: targetEdges,
+              },
+              workspaces: updatedWorkspaces,
+              approvals: targetApprovals,
+              selectedAgentId: null,
+            };
+          }),
+
+        createWorkspace: (name, description) => {
+          const newId = `ws-${Date.now()}`;
+          const newWorkspace: WorkspaceItem = {
+            id: newId,
+            name,
+            description: description || 'Clean autonomous agent workspace.',
+            providers: [],
+            agentCount: 0,
+            activeApprovalsCount: 0,
+            membersCount: 1,
+            lastActive: 'Just now',
+            role: 'admin',
+          };
+
+          set((state) => {
+            const updatedWorkspaceNodes = {
+              ...state.workspaceNodes,
+              [state.activeWorkspaceId]: state.nodes,
+              [newId]: [],
+            };
+            const updatedWorkspaceEdges = {
+              ...state.workspaceEdges,
+              [state.activeWorkspaceId]: state.edges,
+              [newId]: [],
+            };
+
+            return {
+              workspaces: [newWorkspace, ...state.workspaces],
+              workspaceId: newId,
+              activeWorkspaceId: newId,
+              activeWorkspaceName: name,
+              userRole: 'admin',
+              nodes: [],
+              edges: [],
+              workspaceNodes: updatedWorkspaceNodes,
+              workspaceEdges: updatedWorkspaceEdges,
+              selectedAgentId: null,
+            };
           });
 
-          // Dispatch async DELETE to backend
-          try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-            fetch(`${apiUrl}/api/v1/agents/${agentId}`, {
-              method: 'DELETE',
-              headers: {
-                'X-User-ID': state.currentUserId,
-                'X-User-Name': state.currentUserName,
-              },
-            }).catch(() => {});
-          } catch {
-            // Non-fatal if offline
-          }
-
-          return {
-            nodes: updatedNodes,
-            edges: updatedEdges,
-            workspaces: updatedWorkspaces,
-            selectedAgentId: state.selectedAgentId === agentId ? null : state.selectedAgentId,
-            thoughts: nextThoughts,
-            approvals: nextApprovals,
-          };
-        }),
-      updateNodePosition: (nodeId, position) =>
-        set((state) => ({
-          nodes: state.nodes.map((node) =>
-            node.id === nodeId ? { ...node, position } : node
-          ),
-        })),
-      updateNodeStatus: (agentId, status) =>
-        set((state) => ({
-          nodes: state.nodes.map((node) =>
-            node.id === agentId ? { ...node, data: { ...node.data, status } } : node
-          ),
-        })),
-      updateNodeThought: (agentId, currentThought, currentStep) =>
-        set((state) => ({
-          nodes: state.nodes.map((node) =>
-            node.id === agentId
-              ? { ...node, data: { ...node.data, currentThought, currentStep, status: 'working' } }
-              : node
-          ),
-        })),
-      setSelectedAgentId: (selectedAgentId) => set({ selectedAgentId }),
-      addThoughtStep: (agentId, step) =>
-        set((state) => ({
-          thoughts: {
-            ...state.thoughts,
-            [agentId]: [step, ...(state.thoughts[agentId] || [])],
-          },
-        })),
-      addApproval: (approval) =>
-        set((state) => ({
-          approvals: { ...state.approvals, [approval.id]: approval },
-        })),
-      resolveApproval: (approvalId) =>
-        set((state) => {
-          const nextApprovals = { ...state.approvals };
-          delete nextApprovals[approvalId];
-          return { approvals: nextApprovals };
-        }),
-      updateCursor: (cursor) =>
-        set((state) => ({
-          cursors: { ...state.cursors, [cursor.userId]: cursor },
-        })),
-      removeCursor: (userId) =>
-        set((state) => {
-          const nextCursors = { ...state.cursors };
-          delete nextCursors[userId];
-          return { cursors: nextCursors };
-        }),
-      setQuestionLock: (approvalId, lockedBy, lockedByName) =>
-        set((state) => {
-          const existing = state.approvals[approvalId];
-          if (!existing) return state;
-          return {
-            approvals: {
-              ...state.approvals,
-              [approvalId]: { ...existing, lockedBy, lockedByName },
-            },
-          };
-        }),
-      unlockQuestion: (approvalId) =>
-        set((state) => {
-          const existing = state.approvals[approvalId];
-          if (!existing) return state;
-          return {
-            approvals: {
-              ...state.approvals,
-              [approvalId]: { ...existing, lockedBy: undefined, lockedByName: undefined },
-            },
-          };
-        }),
-      openPairingModal: (pairingAgent, mcpUrl, bootstrapPrompt) =>
-        set({
-          isPairingModalOpen: true,
-          pairingAgent,
-          pairingSession: mcpUrl
-            ? { agent: pairingAgent, mcpUrl, bootstrapPrompt: bootstrapPrompt || '' }
-            : null,
-        }),
-      closePairingModal: () => set({ isPairingModalOpen: false, pairingAgent: null, pairingSession: null }),
-      openCreateAgentModal: () => set({ isCreateAgentModalOpen: true }),
-      closeCreateAgentModal: () => set({ isCreateAgentModalOpen: false }),
-      openDecommissionModal: (decommissionTarget) => set({ decommissionTarget }),
-      closeDecommissionModal: () => set({ decommissionTarget: null }),
-      setUserRole: (userRole) => set({ userRole }),
-      setShareModalOpen: (isShareModalOpen) => set({ isShareModalOpen }),
-      setHandoffPreview: (handoffPreview) => set({ handoffPreview }),
-
-      switchWorkspace: (workspaceId) =>
-        set((state) => {
-          const target = state.workspaces.find((w) => w.id === workspaceId);
-          if (!target) return state;
-
-          let targetNodes: Node<AgentData>[] = [];
-          let targetEdges: Edge[] = [];
-
-          if (workspaceId === 'ws-prod-sales') {
-            targetNodes = [
-              {
-                id: 'agent-1',
-                type: 'agentNode',
-                position: { x: 100, y: 150 },
-                data: {
-                  id: 'agent-1',
-                  name: 'Sales Research Dot',
-                  provider: 'openai_dot',
-                  goal: 'Scrape high-intent SaaS leads and extract corporate tech stacks.',
-                  status: 'working',
-                  currentThought: 'Analyzing Stripe documentation page for webhook signature format',
-                  currentStep: 'Drafting outbound brief for Grok Copywriter',
-                  lastRunStatus: 'success',
-                  lastRunTime: '4m ago',
-                },
-              },
-              {
-                id: 'agent-2',
-                type: 'agentNode',
-                position: { x: 550, y: 80 },
-                data: {
-                  id: 'agent-2',
-                  name: 'Grok Copywriter',
-                  provider: 'grok_bot',
-                  goal: 'Draft tailored outreach sequences based on incoming technical dossiers.',
-                  status: 'blocked_on_user',
-                  currentThought: 'Generated 3 email variants; awaiting sign-off on pricing mention.',
-                  lastRunStatus: 'success',
-                  lastRunTime: '12m ago',
-                },
-              },
-              {
-                id: 'agent-3',
-                type: 'agentNode',
-                position: { x: 550, y: 320 },
-                data: {
-                  id: 'agent-3',
-                  name: 'Claude Compliance',
-                  provider: 'claude',
-                  goal: 'Verify outbound emails adhere to GDPR and company privacy policies.',
-                  status: 'resting',
-                  lastRunStatus: 'success',
-                  lastRunTime: '1h ago',
-                  nextScheduledTime: 'Tomorrow 9:00 AM',
-                },
-              },
-            ];
-
-            targetEdges = [
-              {
-                id: 'edge-1-2',
-                source: 'agent-1',
-                target: 'agent-2',
-                sourceHandle: 'handle-right',
-                targetHandle: 'handle-left',
-                type: 'pulseEdge',
-                data: { toolName: 'delegate_task_to_grok_copywriter' },
-              },
-              {
-                id: 'edge-2-3',
-                source: 'agent-2',
-                target: 'agent-3',
-                sourceHandle: 'handle-bottom',
-                targetHandle: 'handle-top',
-                type: 'pulseEdge',
-                data: { toolName: 'delegate_task_to_claude_compliance' },
-              },
-            ];
-          } else if (workspaceId === 'ws-secops') {
-            targetNodes = [
-              {
-                id: 'sec-1',
-                type: 'agentNode',
-                position: { x: 120, y: 180 },
-                data: {
-                  id: 'sec-1',
-                  name: 'Meta Muse Recon',
-                  provider: 'meta_muse',
-                  goal: 'Port scan perimeter infrastructure and flag open ingress points.',
-                  status: 'working',
-                  currentThought: 'Running syn scan against public cloud CIDR blocks',
-                  currentStep: 'Summarizing CVE vulnerabilities',
-                  lastRunStatus: 'success',
-                  lastRunTime: '18m ago',
-                },
-              },
-              {
-                id: 'sec-2',
-                type: 'agentNode',
-                position: { x: 580, y: 180 },
-                data: {
-                  id: 'sec-2',
-                  name: 'Claude Auditor',
-                  provider: 'claude',
-                  goal: 'Audit security logs and enforce CIS benchmark compliance.',
-                  status: 'resting',
-                  lastRunStatus: 'success',
-                  lastRunTime: '30m ago',
-                },
-              },
-            ];
-
-            targetEdges = [
-              {
-                id: 'edge-sec-1-2',
-                source: 'sec-1',
-                target: 'sec-2',
-                sourceHandle: 'handle-right',
-                targetHandle: 'handle-left',
-                type: 'pulseEdge',
-                data: { toolName: 'delegate_task_to_claude_auditor' },
-              },
-            ];
-          } else if (workspaceId === 'ws-support') {
-            targetNodes = [
-              {
-                id: 'supp-1',
-                type: 'agentNode',
-                position: { x: 120, y: 180 },
-                data: {
-                  id: 'supp-1',
-                  name: 'Triage OpenAI Dot',
-                  provider: 'openai_dot',
-                  goal: 'Classify incoming customer dispute tickets, compute SLA uptime breaches, and draft refund authorizations.',
-                  status: 'working',
-                  currentThought: 'Evaluating SLA outage dispute for Acme Corp (#8921); requesting $1,250 refund.',
-                  currentStep: 'Forwarding SLA breach analysis to Claude Escalation Specialist',
-                  lastRunStatus: 'success',
-                  lastRunTime: '3m ago',
-                },
-              },
-              {
-                id: 'supp-2',
-                type: 'agentNode',
-                position: { x: 580, y: 180 },
-                data: {
-                  id: 'supp-2',
-                  name: 'Claude Escalation Specialist',
-                  provider: 'claude',
-                  goal: 'Audit refund payouts against corporate policy and gate payouts behind human operator approval.',
-                  status: 'blocked_on_user',
-                  currentThought: 'Payout exceeds $500 threshold ($1,250). Initiating 45s operator hold.',
-                  lastRunStatus: 'success',
-                  lastRunTime: '1m ago',
-                },
-              },
-            ];
-
-            targetEdges = [
-              {
-                id: 'edge-supp-1-2',
-                source: 'supp-1',
-                target: 'supp-2',
-                sourceHandle: 'handle-right',
-                targetHandle: 'handle-left',
-                type: 'pulseEdge',
-                data: { toolName: 'delegate_task_to_claude_escalation_specialist' },
-              },
-            ];
-          }
-
-          const targetApprovals = { ...state.approvals };
-          if (workspaceId === 'ws-support' && !targetApprovals['app-supp-1']) {
-            targetApprovals['app-supp-1'] = {
-              id: 'app-supp-1',
-              agentId: 'supp-2',
-              question: 'Refund payout of $1,250 requested for Acme Corp (Dispute #8921). Authorize refund release?',
-              options: ['Approve $1,250 Payout', 'Reject SLA Claim', 'Issue $625 Partial Credit'],
-              reasoningTrace: 'Customer experienced 4.2-hour outage exceeding SLA Section 4.3 uptime guarantee.',
-              status: 'pending',
-              createdAt: new Date().toISOString(),
-            };
-          }
-
-          return {
-            workspaceId: target.id,
-            activeWorkspaceId: target.id,
-            activeWorkspaceName: target.name,
-            userRole: target.role,
-            nodes: targetNodes,
-            edges: targetEdges,
-            approvals: targetApprovals,
-            selectedAgentId: null,
-          };
-        }),
-
-      createWorkspace: (name, description) => {
-        const newId = `ws-${Date.now()}`;
-        const newWorkspace: WorkspaceItem = {
-          id: newId,
-          name,
-          description: description || 'Clean autonomous agent workspace.',
-          providers: [],
-          agentCount: 0,
-          activeApprovalsCount: 0,
-          membersCount: 1,
-          lastActive: 'Just now',
-          role: 'admin',
-        };
-
-        set((state) => ({
-          workspaces: [newWorkspace, ...state.workspaces],
-          workspaceId: newId,
-          activeWorkspaceId: newId,
-          activeWorkspaceName: name,
-          userRole: 'admin',
-          nodes: [],
-          edges: [],
-          selectedAgentId: null,
-        }));
-
-        return newWorkspace;
-      },
-    };
-  },
+          return newWorkspace;
+        },
+      };
+    },
     {
       name: 'dotdeck-workspaces-store',
       partialize: (state) => ({
         workspaces: state.workspaces,
         activeWorkspaceId: state.activeWorkspaceId,
         activeWorkspaceName: state.activeWorkspaceName,
+        workspaceNodes: state.workspaceNodes,
+        workspaceEdges: state.workspaceEdges,
+        nodes: state.nodes,
+        edges: state.edges,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        if (!state.workspaceNodes || Object.keys(state.workspaceNodes).length === 0) {
+          state.workspaceNodes = { ...DEFAULT_WORKSPACE_NODES };
+        }
+        if (!state.workspaceEdges || Object.keys(state.workspaceEdges).length === 0) {
+          state.workspaceEdges = { ...DEFAULT_WORKSPACE_EDGES };
+        }
+        for (const key of Object.keys(DEFAULT_WORKSPACE_NODES)) {
+          if (!state.workspaceNodes[key]) {
+            state.workspaceNodes[key] = DEFAULT_WORKSPACE_NODES[key];
+          }
+          if (!state.workspaceEdges[key]) {
+            state.workspaceEdges[key] = DEFAULT_WORKSPACE_EDGES[key];
+          }
+        }
+        const currentActiveId = state.activeWorkspaceId || 'ws-prod-sales';
+        if (!state.nodes || state.nodes.length === 0) {
+          state.nodes = state.workspaceNodes[currentActiveId] ?? DEFAULT_WORKSPACE_NODES[currentActiveId] ?? [];
+        }
+        if (!state.edges || state.edges.length === 0) {
+          state.edges = state.workspaceEdges[currentActiveId] ?? DEFAULT_WORKSPACE_EDGES[currentActiveId] ?? [];
+        }
+        if (state.workspaces && state.workspaces.length > 0) {
+          state.workspaces = state.workspaces.map((ws) => {
+            const savedNodes = state.workspaceNodes?.[ws.id];
+            if (savedNodes !== undefined) {
+              return { ...ws, agentCount: savedNodes.length };
+            }
+            return ws;
+          });
+        }
+      },
     }
   )
 );

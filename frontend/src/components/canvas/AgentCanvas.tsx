@@ -106,6 +106,7 @@ export function AgentCanvas() {
     setNodes: setStoreNodes,
     addEdgeToWorkspace,
     removeEdgeFromWorkspace,
+    updateNodePosition,
     cursors,
     handoffPreview,
     setHandoffPreview,
@@ -276,6 +277,14 @@ export function AgentCanvas() {
     [sendCursor]
   );
 
+  const handleNodeDragStop = useCallback(
+    (_event: unknown, node: Node) => {
+      if (userRole === 'read') return;
+      updateNodePosition(node.id, node.position);
+    },
+    [userRole, updateNodePosition]
+  );
+
   return (
     <div className="relative w-full h-full bg-[#f8f9fa] dark:bg-[#07080b] overflow-hidden" onMouseMove={handleMouseMove}>
       <ReactFlow
@@ -285,6 +294,7 @@ export function AgentCanvas() {
         edgeTypes={edgeTypes}
         onNodesChange={userRole !== 'read' ? onNodesChange : undefined}
         onEdgesChange={handleEdgesChange}
+        onNodeDragStop={handleNodeDragStop}
         onConnect={userRole !== 'read' ? onConnect : undefined}
         isValidConnection={isValidConnection}
         connectionMode={ConnectionMode.Loose}
