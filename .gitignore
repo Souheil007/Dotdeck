@@ -40,6 +40,7 @@ Thumbs.db
 
 # Database / Local storage
 data/
+backend/data/
 *.sqlite
 *.sqlite3
 

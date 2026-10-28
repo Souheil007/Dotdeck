@@ -4,7 +4,10 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -24,6 +27,69 @@ type MemoryStore struct {
 	approvals  map[string]*domain.ApprovalRequest
 }
 
+type memoryStoreData struct {
+	Agents    map[string]*mcp.AgentContext       `json:"agents"`
+	ByID      map[string]*mcp.AgentContext       `json:"by_id"`
+	Edges     map[string][]mcp.EdgeContext       `json:"edges"`
+	Thoughts  map[string][]domain.ThoughtEvent   `json:"thoughts"`
+	Approvals map[string]*domain.ApprovalRequest `json:"approvals"`
+}
+
+func getStoreFilePath() string {
+	if _, err := os.Stat("data"); err == nil {
+		return filepath.Join("data", "memory_store.json")
+	}
+	if _, err := os.Stat("backend"); err == nil {
+		_ = os.MkdirAll(filepath.Join("backend", "data"), 0755)
+		return filepath.Join("backend", "data", "memory_store.json")
+	}
+	_ = os.MkdirAll("data", 0755)
+	return filepath.Join("data", "memory_store.json")
+}
+
+func (store *MemoryStore) persistToDiskLocked() {
+	filePath := getStoreFilePath()
+	data := memoryStoreData{
+		Agents:    store.agents,
+		ByID:      store.byID,
+		Edges:     store.edges,
+		Thoughts:  store.thoughts,
+		Approvals: store.approvals,
+	}
+	bytes, err := json.MarshalIndent(data, "", "  ")
+	if err == nil {
+		_ = os.WriteFile(filePath, bytes, 0644)
+	}
+}
+
+func (store *MemoryStore) loadFromDisk() bool {
+	filePath := getStoreFilePath()
+	bytes, err := os.ReadFile(filePath)
+	if err != nil {
+		return false
+	}
+	var data memoryStoreData
+	if err := json.Unmarshal(bytes, &data); err != nil {
+		return false
+	}
+	if data.Agents != nil {
+		store.agents = data.Agents
+	}
+	if data.ByID != nil {
+		store.byID = data.ByID
+	}
+	if data.Edges != nil {
+		store.edges = data.Edges
+	}
+	if data.Thoughts != nil {
+		store.thoughts = data.Thoughts
+	}
+	if data.Approvals != nil {
+		store.approvals = data.Approvals
+	}
+	return true
+}
+
 // NewMemoryStore initializes an in-memory store pre-seeded with development agents.
 func NewMemoryStore() *MemoryStore {
 	storeInstance := &MemoryStore{
@@ -34,44 +100,63 @@ func NewMemoryStore() *MemoryStore {
 		approvals: make(map[string]*domain.ApprovalRequest),
 	}
 
-	// Seed development fleet matching canvas demo nodes
-	storeInstance.SaveAgent("dev-token-123", &mcp.AgentContext{
-		ID:          "agent-1",
-		WorkspaceID: "default-workspace",
-		Name:        "Sales Research Dot",
-		Provider:    "openai_dot",
-		Goal:        "Scrape high-intent B2B leads and enrich company technical profiles.",
-		Status:      "working",
-	})
-	storeInstance.SaveAgent("dev-token-456", &mcp.AgentContext{
-		ID:          "agent-2",
-		WorkspaceID: "default-workspace",
-		Name:        "Grok Copywriter",
-		Provider:    "grok_bot",
-		Goal:        "Draft high-impact marketing copy and personalized cold outreach emails.",
-		Status:      "blocked_on_user",
-	})
-	storeInstance.SaveAgent("dev-token-789", &mcp.AgentContext{
-		ID:          "agent-3",
-		WorkspaceID: "default-workspace",
-		Name:        "Claude Compliance",
-		Provider:    "claude",
-		Goal:        "Audit outgoing drafts for security policies and compliance regulations.",
-		Status:      "resting",
-	})
+	loaded := storeInstance.loadFromDisk()
 
-	storeInstance.AddEdge("agent-1", mcp.EdgeContext{
-		TargetAgentID:   "agent-2",
-		TargetAgentName: "Grok Copywriter",
-		TargetAgentGoal: "Draft high-impact marketing copy and personalized cold outreach emails.",
-		ToolName:        "delegate_task_to_grok_copywriter",
-	})
-	storeInstance.AddEdge("agent-2", mcp.EdgeContext{
-		TargetAgentID:   "agent-3",
-		TargetAgentName: "Claude Compliance",
-		TargetAgentGoal: "Audit outgoing drafts for security policies and compliance regulations.",
-		ToolName:        "delegate_task_to_claude_compliance",
-	})
+	// Seed development fleet matching canvas demo nodes if store is clean
+	if !loaded || len(storeInstance.agents) == 0 {
+		storeInstance.SaveAgent("dev-token-123", &mcp.AgentContext{
+			ID:          "agent-1",
+			WorkspaceID: "default-workspace",
+			Name:        "Sales Research Dot",
+			Provider:    "openai_dot",
+			Goal:        "Scrape high-intent B2B leads and enrich company technical profiles.",
+			Status:      "working",
+		})
+		storeInstance.SaveAgent("dev-token-456", &mcp.AgentContext{
+			ID:          "agent-2",
+			WorkspaceID: "default-workspace",
+			Name:        "Grok Copywriter",
+			Provider:    "grok_bot",
+			Goal:        "Draft high-impact marketing copy and personalized cold outreach emails.",
+			Status:      "blocked_on_user",
+		})
+		storeInstance.SaveAgent("dev-token-789", &mcp.AgentContext{
+			ID:          "agent-3",
+			WorkspaceID: "default-workspace",
+			Name:        "Claude Compliance",
+			Provider:    "claude",
+			Goal:        "Audit outgoing drafts for security policies and compliance regulations.",
+			Status:      "resting",
+		})
+
+		storeInstance.AddEdge("agent-1", mcp.EdgeContext{
+			TargetAgentID:   "agent-2",
+			TargetAgentName: "Grok Copywriter",
+			TargetAgentGoal: "Draft high-impact marketing copy and personalized cold outreach emails.",
+			ToolName:        "delegate_task_to_grok_copywriter",
+		})
+		storeInstance.AddEdge("agent-2", mcp.EdgeContext{
+			TargetAgentID:   "agent-3",
+			TargetAgentName: "Claude Compliance",
+			TargetAgentGoal: "Audit outgoing drafts for security policies and compliance regulations.",
+			ToolName:        "delegate_task_to_claude_compliance",
+		})
+	}
+
+	// Always ensure the email agent and both of its active tokens are bound
+	emailAgent := &mcp.AgentContext{
+		ID:          "f955f07a-fb4a-4632-a373-847425ea0d81",
+		WorkspaceID: "ws-1793204517707",
+		Name:        "email",
+		Provider:    "grok_bot",
+		Goal:        "views latest 5 email viewer and tells whether there is something urgent",
+		Status:      "unpaired",
+	}
+	if existing, exists := storeInstance.byID[emailAgent.ID]; exists {
+		emailAgent = existing
+	}
+	storeInstance.SaveAgent("0dfe2532dbbad0d6fcca732b0207016b", emailAgent)
+	storeInstance.SaveAgent("86fd5c4c8f85bd1b5f032658b48e6347", emailAgent)
 
 	return storeInstance
 }
@@ -82,6 +167,7 @@ func (store *MemoryStore) SaveAgent(token string, agent *mcp.AgentContext) {
 	defer store.storeMutex.Unlock()
 	store.agents[token] = agent
 	store.byID[agent.ID] = agent
+	store.persistToDiskLocked()
 }
 
 // AddEdge registers a directed delegation link between two agents.
@@ -89,6 +175,7 @@ func (store *MemoryStore) AddEdge(sourceID string, edge mcp.EdgeContext) {
 	store.storeMutex.Lock()
 	defer store.storeMutex.Unlock()
 	store.edges[sourceID] = append(store.edges[sourceID], edge)
+	store.persistToDiskLocked()
 }
 
 // CreateEdge satisfies the repository interface by registering a directed edge on the canvas.
@@ -111,6 +198,7 @@ func (store *MemoryStore) CreateEdge(requestContext context.Context, edge domain
 	}
 
 	store.edges[edge.SourceAgentID] = append(store.edges[edge.SourceAgentID], edgeContext)
+	store.persistToDiskLocked()
 	return &edge, nil
 }
 
@@ -127,6 +215,7 @@ func (store *MemoryStore) DeleteEdge(requestContext context.Context, workspaceID
 		}
 	}
 	store.edges[sourceAgentID] = updatedEdges
+	store.persistToDiskLocked()
 	return nil
 }
 
@@ -184,6 +273,7 @@ func (store *MemoryStore) CreateAgent(requestContext context.Context, agent doma
 
 	store.agents[agent.Token] = agentContext
 	store.byID[agent.ID] = agentContext
+	store.persistToDiskLocked()
 
 	return &agent, nil
 }
@@ -211,6 +301,7 @@ func (store *MemoryStore) DeleteAgent(requestContext context.Context, agentID st
 		}
 		store.edges[sourceID] = filteredEdges
 	}
+	store.persistToDiskLocked()
 
 	return nil
 }
@@ -221,6 +312,7 @@ func (store *MemoryStore) UpdateStatus(agentID, status string) error {
 	defer store.storeMutex.Unlock()
 	if agent, exists := store.byID[agentID]; exists {
 		agent.Status = status
+		store.persistToDiskLocked()
 	}
 	return nil
 }
@@ -249,6 +341,7 @@ func (store *MemoryStore) RecordThought(agentID string, step int, trace, nextSte
 	}
 
 	store.thoughts[agentID] = append([]domain.ThoughtEvent{thoughtRecord}, store.thoughts[agentID]...)
+	store.persistToDiskLocked()
 	return nil
 }
 
@@ -281,6 +374,7 @@ func (store *MemoryStore) RecordApproval(workspaceID, agentID, question string, 
 		Status:         domain.ApprovalStatusPending,
 		CreatedAt:      time.Now().UTC(),
 	}
+	store.persistToDiskLocked()
 	return approvalIdentifier, nil
 }
 
