@@ -120,12 +120,12 @@ export function App() {
     <div className="relative w-screen h-screen flex flex-col bg-[#f8f9fa] dark:bg-[#07080b] text-[#202124] dark:text-zinc-100 select-none overflow-hidden font-sans">
       {/* Public Showcase Banner */}
       {isShowcase && (
-        <div className="h-8 bg-gradient-to-r from-emerald-100 via-white to-indigo-100 dark:from-emerald-950 dark:via-zinc-900 dark:to-indigo-950 border-b border-emerald-300 dark:border-emerald-700/60 px-4 flex items-center justify-between text-xs text-emerald-900 dark:text-emerald-300 z-40 shrink-0">
+        <div className="h-8 bg-emerald-500/10 border-b border-emerald-500/30 px-4 flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-300 z-40 shrink-0 font-mono">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-ping" />
-            <span className="font-semibold">Public Read-Only Showcase</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+            <span className="font-bold uppercase tracking-wider text-[11px]">Public Read-Only Fleet Monitor</span>
             <span className="text-zinc-400 dark:text-zinc-600">•</span>
-            <span className="text-[11px] text-zinc-600 dark:text-zinc-400">Live 24/7 Cloud Agent Telemetry Feed</span>
+            <span className="text-[11px] text-zinc-600 dark:text-zinc-400 font-sans">Live 24/7 Cloud Agent Telemetry Feed</span>
           </div>
           <button
             onClick={() => {
@@ -134,33 +134,33 @@ export function App() {
               setUserRole('write');
               setActiveView('dashboard');
             }}
-            className="text-[10px] underline hover:text-black dark:hover:text-white font-mono transition-colors"
+            className="text-[11px] hover:text-black dark:hover:text-white transition-colors underline decoration-dashed"
           >
-            Exit Showcase & Go to Dashboard
+            Exit Showcase &amp; Enter Cockpit &rarr;
           </button>
         </div>
       )}
 
       {/* Top Command Bar & Switchboard Navigation */}
-      <header className="h-14 border-b border-zinc-200 dark:border-zinc-800/80 px-4 flex items-center justify-between bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md z-30 shrink-0">
+      <header className="h-14 border-b border-zinc-200 dark:border-zinc-800/80 px-4 flex items-center justify-between bg-white/90 dark:bg-[#07080b]/90 backdrop-blur-md z-30 shrink-0 font-sans">
         <div className="flex items-center gap-3">
           {/* Back to Workspaces */}
           <button
             onClick={() => setActiveView('dashboard')}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white dark:bg-zinc-900/90 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white text-xs font-medium transition-colors shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-[#121318] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-250 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white text-xs font-mono font-medium transition-colors shadow-xs"
             title="Return to Workspace Hub"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Workspaces</span>
+            <span className="hidden sm:inline">Hub</span>
           </button>
 
-          <span className="text-zinc-400 dark:text-zinc-700">/</span>
+          <span className="text-zinc-300 dark:text-zinc-700">/</span>
 
           {/* Workspace Switcher Dropdown */}
           <div className="relative">
             <button
               onClick={() => setIsWorkspaceSwitcherOpen(!isWorkspaceSwitcherOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-900/90 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-cyan-500/30 text-zinc-900 dark:text-white text-xs font-semibold shadow-sm transition-all"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-[#121318] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-300 dark:border-zinc-750 text-zinc-900 dark:text-zinc-100 text-xs font-semibold shadow-xs transition-all font-display"
             >
               <FolderKanban className="w-3.5 h-3.5 text-blue-600 dark:text-cyan-400" />
               <span>{activeWorkspaceName || 'Active Workspace'}</span>
@@ -168,9 +168,9 @@ export function App() {
             </button>
 
             {isWorkspaceSwitcherOpen && (
-              <div className="absolute top-full left-0 mt-1.5 w-64 rounded-xl bg-white dark:bg-[#131418] border border-zinc-200 dark:border-cyan-500/30 py-1 shadow-2xl z-50 text-xs">
-                <div className="px-3 py-1.5 text-[10px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
-                  Select Workspace
+              <div className="absolute top-full left-0 mt-1.5 w-64 rounded-xl bg-white dark:bg-[#121318] border border-zinc-200 dark:border-zinc-700 py-1 shadow-2xl z-50 text-xs">
+                <div className="px-3 py-1.5 text-[10px] font-mono text-zinc-400 dark:text-zinc-500 uppercase tracking-wider font-bold">
+                  Fleet Workspaces
                 </div>
                 {workspaces.map((ws) => (
                   <button
@@ -191,20 +191,23 @@ export function App() {
             )}
           </div>
 
-          <div className="hidden lg:flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 font-mono">
+          <div className="hidden lg:flex items-center gap-2 text-xs font-mono">
             <span className="text-zinc-300 dark:text-zinc-700">•</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{nodes.length} Agents Online</span>
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>{nodes.length} Agents Live</span>
+            </div>
           </div>
         </div>
 
         {/* Right Controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {/* Theme Toggle Button */}
           <ThemeToggle />
 
           {/* Workspace Role Badge */}
           <div
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-mono font-medium shadow-sm ${currentRoleConfig.badgeClass}`}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[11px] font-mono font-medium shadow-xs ${currentRoleConfig.badgeClass}`}
             title={`Your Workspace Role: ${currentRoleConfig.label}`}
           >
             <RoleIcon className="w-3 h-3" />
@@ -213,7 +216,7 @@ export function App() {
 
           {/* Teammate Presence Avatars */}
           <div className="flex items-center -space-x-1.5 overflow-hidden">
-            <div className="w-6 h-6 rounded-full bg-blue-600 dark:bg-cyan-600 ring-2 ring-white dark:ring-[#07080b] flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
+            <div className="w-6 h-6 rounded-full bg-blue-600 dark:bg-cyan-600 ring-2 ring-white dark:ring-[#07080b] flex items-center justify-center text-[10px] font-bold text-white shadow-xs">
               {user ? user.avatar : 'You'}
             </div>
             {Object.values(cursors)
@@ -222,7 +225,7 @@ export function App() {
                 <div
                   key={teammateCursor.userId}
                   style={{ backgroundColor: teammateCursor.color }}
-                  className="w-6 h-6 rounded-full ring-2 ring-white dark:ring-[#07080b] flex items-center justify-center text-[10px] font-bold text-white shadow-sm"
+                  className="w-6 h-6 rounded-full ring-2 ring-white dark:ring-[#07080b] flex items-center justify-center text-[10px] font-bold text-white shadow-xs"
                   title={teammateCursor.userName}
                 >
                   {teammateCursor.userName.slice(0, 2).toUpperCase()}
@@ -232,7 +235,7 @@ export function App() {
 
           <button
             onClick={() => setShareModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-900/90 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-medium transition-colors shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-[#121318] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-250 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-mono font-medium transition-colors shadow-xs"
           >
             <Share2 className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Share</span>
@@ -241,7 +244,7 @@ export function App() {
           <button
             onClick={openCreateAgentModal}
             disabled={userRole === 'read'}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 dark:bg-gradient-to-r dark:from-cyan-500 dark:to-blue-600 text-white text-xs font-semibold shadow-md shadow-blue-500/10 dark:shadow-cyan-500/20 disabled:opacity-40 transition-all"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 dark:bg-cyan-500 dark:hover:bg-cyan-400 dark:text-black text-white text-xs font-mono font-bold shadow-xs transition-all active:scale-[0.98] disabled:opacity-40"
             title={userRole === 'read' ? 'Read-only observer mode (Write permissions required)' : 'Add agent node'}
           >
             <Plus className="w-3.5 h-3.5" />
@@ -252,7 +255,7 @@ export function App() {
           <button
             onClick={() => setActiveView('landing')}
             title="Landing Home"
-            className="p-1.5 rounded-xl bg-white dark:bg-zinc-900/80 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors shadow-sm"
+            className="p-1.5 rounded-lg bg-white dark:bg-[#121318] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-250 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors shadow-xs"
           >
             <Home className="w-4 h-4" />
           </button>
@@ -265,7 +268,7 @@ export function App() {
                 setActiveView('landing');
               }}
               title="Sign Out"
-              className="p-1.5 rounded-xl bg-white dark:bg-zinc-900/80 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors shadow-sm"
+              className="p-1.5 rounded-lg bg-white dark:bg-[#121318] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-250 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors shadow-xs"
             >
               <LogOut className="w-4 h-4" />
             </button>

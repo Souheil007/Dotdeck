@@ -4,60 +4,102 @@
 
 @layer base {
   :root {
-    /* Google Clean White Theme */
-    --google-bg: #f8f9fa;
+    /* Dotdeck Telemetry: Surgical Slate Console */
+    --color-ground: #f4f5f7;
+    --color-surface: #ffffff;
+    --color-panel: #ffffff;
+    --color-border: #dfe1e6;
+    --color-border-subtle: #ebecf0;
+    --color-ink: #121417;
+    --color-ink-muted: #5e6c84;
+    --color-photonic: #0052cc;
+    --color-working: #00875a;
+    --color-hold: #ff8b00;
+    --color-alarm: #de350b;
+
+    /* Google Compatible Backwards-Compatibility */
+    --google-bg: #f4f5f7;
     --google-surface: #ffffff;
     --google-card: #ffffff;
-    --google-border: #dadce0;
-    --google-text: #202124;
-    --google-secondary: #5f6368;
-    --google-blue: #1a73e8;
-    --google-green: #1e8e3e;
-    --google-amber: #f9ab00;
-    --google-red: #d93025;
+    --google-border: #dfe1e6;
+    --google-text: #121417;
+    --google-secondary: #5e6c84;
+    --google-blue: #0052cc;
+    --google-green: #00875a;
+    --google-amber: #ff8b00;
+    --google-red: #de350b;
   }
 
   html.dark {
-    /* Google Clean Night Theme */
-    --google-bg: #131314;
-    --google-surface: #1e1f20;
-    --google-card: #282a2c;
-    --google-border: #3c4043;
-    --google-text: #e8eaed;
-    --google-secondary: #9aa0a6;
-    --google-blue: #8ab4f8;
-    --google-green: #81c995;
-    --google-amber: #fdd663;
-    --google-red: #f28b82;
+    /* Dotdeck Telemetry: Tactical Obsidian Void */
+    --color-ground: #07080b;
+    --color-surface: #111317;
+    --color-panel: #171a21;
+    --color-border: #22262e;
+    --color-border-subtle: #1c2027;
+    --color-ink: #f0f2f5;
+    --color-ink-muted: #8c96a5;
+    --color-photonic: #2684ff;
+    --color-working: #36b37e;
+    --color-hold: #ffab00;
+    --color-alarm: #ff5630;
+
+    /* Google Compatible Backwards-Compatibility */
+    --google-bg: #07080b;
+    --google-surface: #111317;
+    --google-card: #171a21;
+    --google-border: #22262e;
+    --google-text: #f0f2f5;
+    --google-secondary: #8c96a5;
+    --google-blue: #2684ff;
+    --google-green: #36b37e;
+    --google-amber: #ffab00;
+    --google-red: #ff5630;
   }
 
   body {
-    background-color: var(--google-bg);
-    color: var(--google-text);
-    @apply font-sans antialiased selection:bg-blue-500/20 selection:text-blue-500;
+    background-color: var(--color-ground);
+    color: var(--color-ink);
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    @apply antialiased selection:bg-blue-500/20 selection:text-blue-500;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: -0.025em;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
   }
 }
 
-/* Adaptive panel styles based on light/dark mode */
-.google-panel {
-  background: var(--google-surface);
-  border: 1px solid var(--google-border);
+/* Tactical Architectural Panels & Hairlines */
+.border-hairline {
+  border-width: 1px;
+  border-color: var(--color-border);
 }
 
-.google-card {
-  background: var(--google-card);
-  border: 1px solid var(--google-border);
-  box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.08), 0 1px 3px 1px rgba(60, 64, 67, 0.06);
+.tactical-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
 }
 
-html.dark .google-card {
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+.tactical-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
 }
 
-/* Signature AgentGrid Clean Blueprint Grid */
+html.dark .tactical-card {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* Signature Tactical Telemetry Grid Background */
 .agentgrid-bg {
   position: relative;
-  background-color: var(--google-bg);
+  background-color: var(--color-ground);
 }
 
 .agentgrid-grid-overlay {
@@ -67,60 +109,45 @@ html.dark .google-card {
   background-image: 
     linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
-  background-size: 36px 36px;
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 25%, black 40%, transparent 95%);
-  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 25%, black 40%, transparent 95%);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 20%, black 50%, transparent 95%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 20%, black 50%, transparent 95%);
 }
 
 html.dark .agentgrid-grid-overlay {
   background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
 }
 
-/* Cybernetic glassmorphism and subtle glowing borders */
+/* Avionics glass panels & tactical glowing edges */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(16px);
-  border: 1px solid #dadce0;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
 }
 
 html.dark .glass-panel {
-  background: rgba(30, 31, 32, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(17, 19, 23, 0.9);
+  border: 1px solid var(--color-border);
 }
 
 .glass-panel-glow {
-  background: #ffffff;
-  border: 1px solid #dadce0;
-  box-shadow: 0 4px 20px -2px rgba(26, 115, 232, 0.12);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 20px -2px rgba(0, 82, 204, 0.1);
 }
 
 html.dark .glass-panel-glow {
-  background: rgba(40, 42, 44, 0.9);
-  border: 1px solid rgba(138, 180, 248, 0.25);
-  box-shadow: 0 0 25px -5px rgba(138, 180, 248, 0.15);
+  box-shadow: 0 0 25px -5px rgba(38, 132, 255, 0.15);
 }
 
-/* Custom sleek scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #dadce0;
-  border-radius: 9999px;
-}
-html.dark ::-webkit-scrollbar-thumb {
-  background: #3c4043;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #1a73e8;
+/* React Flow Canvas Custom Overrides */
+.react-flow__handle {
+  transition: box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease !important;
 }
 
+/* Pulse animation for active wires */
 @keyframes dash {
   from {
     stroke-dashoffset: 20;
@@ -130,25 +157,32 @@ html.dark ::-webkit-scrollbar-thumb {
   }
 }
 
-/* React Flow Controls Light/Dark Adaptive Theming */
-.react-flow__controls-button {
-  background: transparent !important;
-  border-bottom: 1px solid #dadce0 !important;
-  color: #5f6368 !important;
-  fill: #5f6368 !important;
+.animate-pulse-dash {
+  animation: dash 1s linear infinite;
 }
-.react-flow__controls-button:hover {
-  background: #f1f3f4 !important;
-  color: #1a73e8 !important;
-  fill: #1a73e8 !important;
+
+/* Custom sleek high-precision scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
 }
-html.dark .react-flow__controls-button {
-  border-bottom: 1px solid #3c4043 !important;
-  color: #9aa0a6 !important;
-  fill: #9aa0a6 !important;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
-html.dark .react-flow__controls-button:hover {
-  background: #282a2c !important;
-  color: #8ab4f8 !important;
-  fill: #8ab4f8 !important;
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ink-muted);
+}
+
+/* Accessibility: Full Respect for Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -296,37 +296,40 @@ export function AgentCanvas() {
         defaultViewport={{ x: 80, y: 80, zoom: 0.85 }}
         className="bg-[#f8f9fa] dark:bg-[#07080b]"
       >
-        <Background color={theme === 'dark' ? '#27272a' : '#dadce0'} gap={22} size={1} />
-        <Controls className="!bg-white/95 dark:!bg-zinc-900/90 !border-zinc-200 dark:!border-zinc-800 !text-zinc-700 dark:!text-zinc-200 fill-zinc-700 dark:fill-zinc-200 shadow-xl backdrop-blur-md rounded-xl overflow-hidden">
-          <ControlButton onClick={handleTidyLayout} title="Tidy Canvas (Auto Layout)">
-            <LayoutGrid className="w-4 h-4 text-blue-600 dark:text-indigo-400 hover:text-blue-700 dark:hover:text-indigo-300" />
+        <Background color={theme === 'dark' ? '#22262e' : '#dadce0'} gap={24} size={1} />
+        <Controls className="!bg-white/95 dark:!bg-[#121318]/95 !border-zinc-200 dark:!border-zinc-800 !text-zinc-700 dark:!text-zinc-200 fill-zinc-700 dark:fill-zinc-200 shadow-xl backdrop-blur-md rounded-lg overflow-hidden">
+          <ControlButton onClick={handleTidyLayout} title="Auto-Organize Switchboard">
+            <LayoutGrid className="w-4 h-4 text-blue-600 dark:text-cyan-400 hover:text-blue-700 dark:hover:text-cyan-300" />
           </ControlButton>
         </Controls>
         <MiniMap
-          nodeColor={theme === 'dark' ? '#3f3f46' : '#cbd5e1'}
-          maskColor={theme === 'dark' ? 'rgba(9, 9, 11, 0.75)' : 'rgba(240, 242, 245, 0.8)'}
-          className="!bg-white/95 dark:!bg-zinc-900/80 !border-zinc-200 dark:!border-zinc-800 rounded-xl overflow-hidden shadow-xl backdrop-blur-md"
+          nodeColor={theme === 'dark' ? '#2c313a' : '#cbd5e1'}
+          maskColor={theme === 'dark' ? 'rgba(7, 8, 11, 0.85)' : 'rgba(240, 242, 245, 0.8)'}
+          className="!bg-white/95 dark:!bg-[#0c0d10]/90 !border-zinc-250 dark:!border-zinc-800 rounded-lg overflow-hidden shadow-xl backdrop-blur-md"
         />
       </ReactFlow>
 
       {/* Empty Canvas Call to Action */}
       {nodes.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-          <div className="text-center p-8 max-w-sm rounded-2xl bg-white/95 dark:bg-zinc-900/95 border border-dashed border-zinc-300 dark:border-zinc-700 pointer-events-auto shadow-xl backdrop-blur-md">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-cyan-500/10 border border-blue-200 dark:border-cyan-500/30 flex items-center justify-center text-blue-600 dark:text-cyan-400 mx-auto mb-3">
+          <div className="text-center p-8 max-w-sm rounded-xl bg-white/95 dark:bg-[#121318]/95 border border-dashed border-zinc-300 dark:border-zinc-750 pointer-events-auto shadow-2xl backdrop-blur-md font-sans">
+            <div className="w-12 h-12 rounded-lg bg-blue-50 dark:bg-cyan-500/10 border border-blue-200 dark:border-cyan-500/30 flex items-center justify-center text-blue-600 dark:text-cyan-400 mx-auto mb-3">
               <Bot className="w-6 h-6" />
             </div>
-            <h3 className="font-bold text-sm text-[#202124] dark:text-white mb-1">Clean Switchboard</h3>
-            <p className="text-xs text-[#5f6368] dark:text-zinc-400 mb-4">
-              This workspace has zero agents. Add your first cloud agent to begin orchestrating.
+            <div className="font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-1">
+              Command Bus Empty
+            </div>
+            <h3 className="font-display font-bold text-sm text-[#202124] dark:text-white mb-1.5">Zero Agents Registered</h3>
+            <p className="text-xs text-[#5f6368] dark:text-zinc-400 mb-4 leading-relaxed">
+              This switchboard workspace has no active agent nodes. Provision your first Tier 3 cloud agent to synthesize delegated tool pipelines.
             </p>
             <button
               onClick={openCreateAgentModal}
               disabled={userRole === 'read'}
-              className="py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 dark:bg-gradient-to-r dark:from-cyan-500 dark:to-blue-600 text-white font-semibold text-xs inline-flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
+              className="py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 dark:bg-cyan-500 dark:hover:bg-cyan-400 dark:text-black text-white font-mono font-bold text-xs inline-flex items-center gap-1.5 shadow-sm transition-all active:scale-[0.98]"
             >
               <Plus className="w-4 h-4" />
-              <span>Add First Agent Node</span>
+              <span>Provision Agent Node</span>
             </button>
           </div>
         </div>

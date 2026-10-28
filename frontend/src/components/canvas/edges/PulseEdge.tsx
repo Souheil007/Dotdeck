@@ -37,11 +37,13 @@ export const PulseEdge = memo(({
         path={edgePath}
         markerEnd={markerEnd}
         style={{
-          stroke: isActive ? '#10b981' : '#6366f1',
+          stroke: isActive ? '#36b37e' : '#2684ff',
           strokeWidth: isActive ? 2.5 : 2,
           strokeDasharray: '6 4',
-          animation: 'dash 1.2s linear infinite',
-          filter: isActive ? 'drop-shadow(0 0 6px rgba(16,185,129,0.5))' : 'drop-shadow(0 0 4px rgba(99,102,241,0.3))',
+          animation: 'dash 1s linear infinite',
+          filter: isActive
+            ? 'drop-shadow(0 0 6px rgba(54,179,126,0.5))'
+            : 'drop-shadow(0 0 4px rgba(38,132,255,0.35))',
           ...style,
         }}
       />
@@ -65,12 +67,12 @@ export const PulseEdge = memo(({
                 payload: data?.payload,
               });
             }}
-            className="group px-3 py-1 rounded-full bg-white/95 dark:bg-zinc-950/90 border border-indigo-200 dark:border-indigo-500/40 hover:border-indigo-500 dark:hover:border-indigo-400 text-[11px] font-mono text-indigo-700 dark:text-indigo-300 hover:text-indigo-900 dark:hover:text-white hover:bg-indigo-50/50 dark:hover:bg-zinc-900 transition-all shadow-md flex items-center gap-1.5 backdrop-blur-md cursor-pointer select-none ring-1 ring-black/5 dark:ring-white/5"
+            className="group px-2.5 py-0.5 rounded-full bg-white/95 dark:bg-[#111317]/95 border border-[#dfe1e6] dark:border-[#22262e] hover:border-[#0052cc] dark:hover:border-[#2684ff] text-[11px] font-mono text-[#0052cc] dark:text-[#2684ff] hover:text-[#0747a6] dark:hover:text-white transition-all shadow-tactical-sm flex items-center gap-1.5 backdrop-blur-md cursor-pointer select-none"
             title="Inspect synthesized MCP cross-agent tool"
           >
-            <Sparkles className="w-3 h-3 text-indigo-500 dark:text-indigo-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors animate-pulse" />
+            <Sparkles className="w-3 h-3 text-[#0052cc] dark:text-[#2684ff] transition-colors animate-pulse" />
             <span className="font-semibold">{toolName}</span>
-            <ArrowRight className="w-3 h-3 text-zinc-400 dark:text-zinc-500 group-hover:translate-x-0.5 transition-transform" />
+            <ArrowRight className="w-3 h-3 text-[#5e6c84] dark:text-[#8c96a5] group-hover:translate-x-0.5 transition-transform" />
           </button>
 
           {/* Delete Link Button */}
@@ -90,7 +92,7 @@ export const PulseEdge = memo(({
                   }),
                 }).catch(() => {});
               }}
-              className="p-1 rounded-full bg-white/95 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 dark:hover:border-rose-800 shadow-sm transition-all"
+              className="p-1 rounded-full bg-white/95 dark:bg-[#111317] border border-[#dfe1e6] dark:border-[#22262e] text-[#5e6c84] dark:text-[#8c96a5] hover:text-[#de350b] dark:hover:text-[#ff5630] hover:bg-rose-50 dark:hover:bg-rose-950/40 shadow-xs transition-all"
               title="Delete connection link"
             >
               <Trash2 className="w-3 h-3" />
