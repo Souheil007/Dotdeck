@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -113,7 +113,8 @@ function AgentCanvasInner() {
     handoffPreview,
     setHandoffPreview,
     openCreateAgentModal,
-    selectedAgentId,
+    focusAgentId,
+    setFocusAgentId,
   } = useWorkspaceStore();
 
   const { theme } = useThemeStore();
@@ -131,30 +132,18 @@ function AgentCanvasInner() {
     setEdges(storeEdges);
   }, [storeEdges, setEdges]);
 
-  // Reactive camera: automatically re-fit view whenever agents are added or removed
-  const previousNodesLengthRef = useRef(storeNodes.length);
+  // One-shot camera centering trigger: only runs when a new agent is created or focused
   useEffect(() => {
-    if (storeNodes.length > 0 && previousNodesLengthRef.current !== storeNodes.length) {
-      const timer = setTimeout(() => {
-        fitView({ padding: 0.35, duration: 400 });
-      }, 50);
-      previousNodesLengthRef.current = storeNodes.length;
-      return () => clearTimeout(timer);
-    }
-    previousNodesLengthRef.current = storeNodes.length;
-  }, [storeNodes.length, fitView]);
-
-  // Center & zoom on newly paired or selected agent
-  useEffect(() => {
-    if (!selectedAgentId) return;
-    const targetNode = storeNodes.find((node) => node.id === selectedAgentId);
+    if (!focusAgentId) return;
+    const targetNode = storeNodes.find((node) => node.id === focusAgentId);
     if (targetNode) {
       const timer = setTimeout(() => {
         setCenter(targetNode.position.x + 180, targetNode.position.y + 140, { zoom: 0.9, duration: 400 });
       }, 50);
+      setFocusAgentId(null);
       return () => clearTimeout(timer);
     }
-  }, [selectedAgentId, storeNodes, setCenter]);
+  }, [focusAgentId, storeNodes, setCenter, setFocusAgentId]);
 
   const baseWsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
   const websocketUrl = `${baseWsUrl}?user_id=${encodeURIComponent(currentUserId)}&user_name=${encodeURIComponent(currentUserName)}&workspace_id=${encodeURIComponent(workspaceId)}&role=${userRole}`;

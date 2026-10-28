@@ -267,6 +267,7 @@ interface WorkspaceState {
   nodes: Node<AgentData>[];
   edges: Edge[];
   selectedAgentId: string | null;
+  focusAgentId: string | null;
   thoughts: Record<string, ThoughtStep[]>;
   approvals: Record<string, ApprovalRequest>;
   cursors: Record<string, TeammateCursor>;
@@ -288,6 +289,7 @@ interface WorkspaceState {
   updateNodeThought: (agentId: string, thought: string, nextStep: string) => void;
   updateNodeOutput: (agentId: string, output: string) => void;
   setSelectedAgentId: (agentId: string | null) => void;
+  setFocusAgentId: (agentId: string | null) => void;
   addThoughtStep: (agentId: string, step: ThoughtStep) => void;
   addApproval: (approval: ApprovalRequest) => void;
   resolveApproval: (approvalId: string, approved: boolean, answer: string) => void;
@@ -363,6 +365,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         nodes: DEFAULT_WORKSPACE_NODES['ws-prod-sales'] || [],
         edges: DEFAULT_WORKSPACE_EDGES['ws-prod-sales'] || [],
         selectedAgentId: null,
+        focusAgentId: null,
         thoughts: {},
         approvals: {},
         cursors: {},
@@ -444,6 +447,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               nodes: updatedNodes,
               workspaceNodes: updatedWorkspaceNodes,
               workspaces: updatedWorkspaces,
+              focusAgentId: agent.id,
             };
           }),
 
@@ -572,6 +576,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           }),
 
         setSelectedAgentId: (selectedAgentId) => set({ selectedAgentId }),
+        setFocusAgentId: (focusAgentId) => set({ focusAgentId }),
         addThoughtStep: (agentId, step) =>
           set((state) => {
             const existingSteps = state.thoughts[agentId] || [];

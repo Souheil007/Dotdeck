@@ -28,6 +28,7 @@ export function PairingWizard() {
     pairingSession,
     closePairingModal,
     setSelectedAgentId,
+    setFocusAgentId,
     nodes,
   } = useWorkspaceStore();
   const [copiedUrl, setCopiedUrl] = useState(false);
@@ -42,6 +43,7 @@ export function PairingWizard() {
   const handleCompleteAndFocus = () => {
     if (pairingAgent) {
       setSelectedAgentId(pairingAgent.id);
+      setFocusAgentId(pairingAgent.id);
     }
     closePairingModal();
   };
@@ -92,7 +94,7 @@ ${pairingAgent.goal}
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="relative w-full max-w-xl rounded-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-6 shadow-2xl my-8 text-[#202124] dark:text-zinc-100">
         <button
-          onClick={closePairingModal}
+          onClick={handleCompleteAndFocus}
           className="absolute top-4 right-4 p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
           title="Close (Esc)"
         >
