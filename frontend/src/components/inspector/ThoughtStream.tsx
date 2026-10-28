@@ -32,11 +32,13 @@ type VirtualItemData =
       startTime: string;
       stepCount: number;
       isCollapsed: boolean;
+      isLatest: boolean;
     }
   | {
       type: 'thought_step';
       id: string;
       runId: string;
+      stepNumber: number;
       step: ThoughtStep;
     };
 
@@ -45,47 +47,65 @@ export function ThoughtStream({ thoughts }: ThoughtStreamProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
 
-  // Group thoughts into execution runs
+  // Group thoughts into chronological execution runs with ordered steps
   const runGroups = useMemo(() => {
     if (!thoughts || thoughts.length === 0) return [];
 
+    // 1. Sort all thoughts chronologically (oldest first, newest last)
+    const sortedThoughts = [...thoughts].sort((a, b) => {
+      const timeA = new Date(a.timestamp).getTime() || 0;
+      const timeB = new Date(b.timestamp).getTime() || 0;
+      return timeA - timeB;
+    });
+
     const groups: RunGroup[] = [];
     let currentGroup: RunGroup | null = null;
-    let groupIndex = 1;
+    let runNumber = 1;
 
-    for (let index = 0; index < thoughts.length; index++) {
-      const step = thoughts[index];
-      const previousStep = index > 0 ? thoughts[index - 1] : null;
+    for (let index = 0; index < sortedThoughts.length; index++) {
+      const step = sortedThoughts[index];
+      const previousStep = index > 0 ? sortedThoughts[index - 1] : null;
 
-      // New run if step index resets to 0 or gap > 5 minutes
+      const timeGap = previousStep
+        ? (new Date(step.timestamp).getTime() || 0) - (new Date(previousStep.timestamp).getTime() || 0)
+        : 0;
+
+      // New run if stepIndex resets to 0 (after a previous step > 0) or gap > 5 minutes
       const isNewRun =
         index === 0 ||
-        step.stepIndex === 0 ||
-        (previousStep &&
-          Math.abs(new Date(step.timestamp).getTime() - new Date(previousStep.timestamp).getTime()) >
-            5 * 60 * 1000);
+        (previousStep !== null && (
+          (step.stepIndex === 0 && previousStep.stepIndex > 0) ||
+          timeGap > 5 * 60 * 1000
+        ));
 
       if (isNewRun) {
         currentGroup = {
-          runId: `run-${groupIndex}`,
-          runNumber: 0,
+          runId: `run-${runNumber}`,
+          runNumber: runNumber,
           startTime: step.timestamp,
           steps: [step],
         };
         groups.push(currentGroup);
-        groupIndex++;
+        runNumber++;
       } else if (currentGroup) {
         currentGroup.steps.push(step);
       }
     }
 
-    // Number runs chronologically: oldest is Run #1, newest is Run #totalRuns
-    const totalRuns = groups.length;
-    groups.forEach((group, idx) => {
-      group.runNumber = totalRuns - idx;
+    // Inside each run, ensure steps are sorted in ascending order (Step 1 first, Step 2 second, etc.)
+    groups.forEach((group) => {
+      group.steps.sort((a, b) => {
+        if (a.stepIndex !== b.stepIndex && a.stepIndex > 0 && b.stepIndex > 0) {
+          return a.stepIndex - b.stepIndex;
+        }
+        const timeA = new Date(a.timestamp).getTime() || 0;
+        const timeB = new Date(b.timestamp).getTime() || 0;
+        return timeA - timeB;
+      });
     });
 
-    return groups;
+    // Display runs with Latest Run at the top for operator flight control
+    return [...groups].reverse();
   }, [thoughts]);
 
   const allCollapsed = useMemo(() => {
@@ -107,9 +127,11 @@ export function ThoughtStream({ thoughts }: ThoughtStreamProps) {
   // Flatten groups for virtual scrolling
   const flatItems: VirtualItemData[] = useMemo(() => {
     const items: VirtualItemData[] = [];
+    const totalRuns = runGroups.length;
 
     runGroups.forEach((group) => {
       const isCollapsed = Boolean(collapsedRuns[group.runId]);
+      const isLatest = group.runNumber === totalRuns;
 
       items.push({
         type: 'run_header',
@@ -119,14 +141,16 @@ export function ThoughtStream({ thoughts }: ThoughtStreamProps) {
         startTime: group.startTime,
         stepCount: group.steps.length,
         isCollapsed,
+        isLatest,
       });
 
       if (!isCollapsed) {
-        group.steps.forEach((step) => {
+        group.steps.forEach((step, stepIndexInRun) => {
           items.push({
             type: 'thought_step',
-            id: `step-${step.id || step.stepIndex}-${step.timestamp}`,
+            id: `step-${group.runId}-${stepIndexInRun}-${step.id || step.timestamp}`,
             runId: group.runId,
+            stepNumber: stepIndexInRun + 1,
             step,
           });
         });
@@ -235,7 +259,7 @@ export function ThoughtStream({ thoughts }: ThoughtStreamProps) {
                       <span className="text-xs font-mono font-semibold text-zinc-800 dark:text-zinc-200">
                         EXECUTION RUN #{item.runNumber}
                       </span>
-                      {item.runNumber === runGroups.length && (
+                      {item.isLatest && (
                         <span className="px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 text-[9px] font-mono font-bold uppercase">
                           Latest Run
                         </span>
@@ -274,7 +298,7 @@ export function ThoughtStream({ thoughts }: ThoughtStreamProps) {
                   <div className="flex items-center justify-between text-zinc-500 mb-2 text-[10px]">
                     <div className="flex items-center gap-2">
                       <span className="px-1.5 py-0.5 rounded bg-blue-50 dark:bg-cyan-950/60 text-blue-700 dark:text-cyan-300 border border-blue-200 dark:border-cyan-800/80 font-bold font-mono">
-                        STEP #{String(step.stepIndex + 1).padStart(2, '0')}
+                        STEP #{String(item.stepNumber).padStart(2, '0')}
                       </span>
                       <span className="flex items-center gap-1 text-zinc-400 dark:text-zinc-500 font-mono tabular-nums">
                         <Clock className="w-3 h-3" />
