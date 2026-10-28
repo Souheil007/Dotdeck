@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -19,14 +20,18 @@ type MemoryStore struct {
 	agents     map[string]*mcp.AgentContext // token -> AgentContext
 	byID       map[string]*mcp.AgentContext // id -> AgentContext
 	edges      map[string][]mcp.EdgeContext // source_agent_id -> edges
+	thoughts   map[string][]domain.ThoughtEvent
+	approvals  map[string]*domain.ApprovalRequest
 }
 
 // NewMemoryStore initializes an in-memory store pre-seeded with development agents.
 func NewMemoryStore() *MemoryStore {
 	storeInstance := &MemoryStore{
-		agents: make(map[string]*mcp.AgentContext),
-		byID:   make(map[string]*mcp.AgentContext),
-		edges:  make(map[string][]mcp.EdgeContext),
+		agents:    make(map[string]*mcp.AgentContext),
+		byID:      make(map[string]*mcp.AgentContext),
+		edges:     make(map[string][]mcp.EdgeContext),
+		thoughts:  make(map[string][]domain.ThoughtEvent),
+		approvals: make(map[string]*domain.ApprovalRequest),
 	}
 
 	// Seed development fleet matching canvas demo nodes
@@ -222,11 +227,73 @@ func (store *MemoryStore) UpdateStatus(agentID, status string) error {
 
 // RecordThought saves an agent's analytical milestone for time-travel playback and virtual logs.
 func (store *MemoryStore) RecordThought(agentID string, step int, trace, nextStep, tool string, payload interface{}) error {
-	// Persisted for audit logging and timeline replay
+	store.storeMutex.Lock()
+	defer store.storeMutex.Unlock()
+
+	workspaceID := "default-workspace"
+	if agent, exists := store.byID[agentID]; exists {
+		workspaceID = agent.WorkspaceID
+	}
+
+	thoughtRecord := domain.ThoughtEvent{
+		ID:              uuid.New().String(),
+		WorkspaceID:     workspaceID,
+		AgentID:         agentID,
+		RunID:           uuid.New().String(),
+		StepIndex:       step,
+		ReasoningTrace:  trace,
+		NextPlannedStep: nextStep,
+		ToolCalled:      tool,
+		ToolPayload:     payload,
+		CreatedAt:       time.Now().UTC(),
+	}
+
+	store.thoughts[agentID] = append([]domain.ThoughtEvent{thoughtRecord}, store.thoughts[agentID]...)
 	return nil
+}
+
+// GetThoughts retrieves historical analytical milestones recorded for an agent.
+func (store *MemoryStore) GetThoughts(requestContext context.Context, agentID string) ([]domain.ThoughtEvent, error) {
+	store.storeMutex.RLock()
+	defer store.storeMutex.RUnlock()
+
+	if list, exists := store.thoughts[agentID]; exists {
+		copiedList := make([]domain.ThoughtEvent, len(list))
+		copy(copiedList, list)
+		return copiedList, nil
+	}
+	return []domain.ThoughtEvent{}, nil
 }
 
 // RecordApproval generates an identifier and saves the pending decision in-memory.
 func (store *MemoryStore) RecordApproval(workspaceID, agentID, question string, options []string, trace string) (string, error) {
-	return uuid.New().String(), nil
+	store.storeMutex.Lock()
+	defer store.storeMutex.Unlock()
+
+	approvalIdentifier := uuid.New().String()
+	store.approvals[approvalIdentifier] = &domain.ApprovalRequest{
+		ID:             approvalIdentifier,
+		WorkspaceID:    workspaceID,
+		AgentID:        agentID,
+		Question:       question,
+		Options:        options,
+		ReasoningTrace: trace,
+		Status:         domain.ApprovalStatusPending,
+		CreatedAt:      time.Now().UTC(),
+	}
+	return approvalIdentifier, nil
+}
+
+// GetApprovals retrieves all pending approvals belonging to a specific workspace.
+func (store *MemoryStore) GetApprovals(requestContext context.Context, workspaceID string) ([]domain.ApprovalRequest, error) {
+	store.storeMutex.RLock()
+	defer store.storeMutex.RUnlock()
+
+	var pendingApprovals []domain.ApprovalRequest
+	for _, approvalItem := range store.approvals {
+		if approvalItem.WorkspaceID == workspaceID {
+			pendingApprovals = append(pendingApprovals, *approvalItem)
+		}
+	}
+	return pendingApprovals, nil
 }

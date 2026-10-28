@@ -58,6 +58,10 @@ func (repo *mockAgentSteeringRepository) RecordThought(agentID string, step int,
 	return nil
 }
 
+func (repo *mockAgentSteeringRepository) GetThoughts(requestContext context.Context, agentID string) ([]domain.ThoughtEvent, error) {
+	return []domain.ThoughtEvent{}, nil
+}
+
 type mockAgentWakeDispatcher struct {
 	wokenAgent  *domain.Agent
 	wokenPrompt string

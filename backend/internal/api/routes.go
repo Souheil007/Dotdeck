@@ -23,6 +23,7 @@ func RegisterRoutes(rootRouter chi.Router, config RouterConfig) {
 		// Public & Showcase endpoints (accessible without mutation roles)
 		apiRouter.Get("/workspaces/{id}/showcase", config.WorkspaceHandler.GetShowcase)
 		apiRouter.Post("/workspaces/{id}/showcase-link", config.WorkspaceHandler.GenerateShowcaseLink)
+		apiRouter.Get("/agents/{id}/thoughts", config.AgentHandler.ListThoughts)
 
 		// Workspace Administration (Admin role required)
 		apiRouter.Group(func(adminRouter chi.Router) {

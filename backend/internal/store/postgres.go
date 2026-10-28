@@ -138,6 +138,40 @@ func (store *PostgresStore) RecordThought(agentID string, step int, trace, nextS
 	return insertError
 }
 
+// GetThoughts retrieves historical analytical milestones recorded for an agent.
+func (store *PostgresStore) GetThoughts(requestContext context.Context, agentID string) ([]domain.ThoughtEvent, error) {
+	agentUUID, parseError := stringToUUID(agentID)
+	if parseError != nil {
+		return nil, parseError
+	}
+
+	thoughtRows, queryError := store.queries.ListThoughtsByAgent(requestContext, db.ListThoughtsByAgentParams{
+		AgentID: agentUUID,
+		Limit:   50,
+		Offset:  0,
+	})
+	if queryError != nil {
+		return nil, queryError
+	}
+
+	resultEvents := make([]domain.ThoughtEvent, len(thoughtRows))
+	for index, thoughtRow := range thoughtRows {
+		resultEvents[index] = domain.ThoughtEvent{
+			ID:              uuidToString(thoughtRow.ID),
+			WorkspaceID:     uuidToString(thoughtRow.WorkspaceID),
+			AgentID:         uuidToString(thoughtRow.AgentID),
+			RunID:           thoughtRow.RunID,
+			StepIndex:       int(thoughtRow.StepIndex),
+			ReasoningTrace:  thoughtRow.ReasoningTrace,
+			NextPlannedStep: thoughtRow.NextPlannedStep,
+			ToolCalled:      thoughtRow.ToolCalled,
+			CreatedAt:       thoughtRow.CreatedAt.Time,
+		}
+	}
+
+	return resultEvents, nil
+}
+
 // GetAgentByID fetches a single agent by its UUID primary key.
 func (store *PostgresStore) GetAgentByID(requestContext context.Context, agentID string) (*domain.Agent, error) {
 	agentUUID, parseError := stringToUUID(agentID)

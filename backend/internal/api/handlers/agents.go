@@ -29,6 +29,7 @@ type AgentSteeringRepository interface {
 	DeleteEdge(requestContext context.Context, workspaceID, sourceAgentID, targetAgentID string) error
 	UpdateStatus(agentID, status string) error
 	RecordThought(agentID string, step int, trace, nextStep, tool string, payload interface{}) error
+	GetThoughts(requestContext context.Context, agentID string) ([]domain.ThoughtEvent, error)
 }
 
 // AgentWakeDispatcher abstracts outbound wake-up bridge dispatching.
@@ -306,6 +307,28 @@ func (handler *AgentHandler) Steer(writer http.ResponseWriter, request *http.Req
 	})
 }
 
+// ListThoughts returns recorded analytical milestones for a specific agent.
+func (handler *AgentHandler) ListThoughts(writer http.ResponseWriter, request *http.Request) {
+	agentIdentifier := chi.URLParam(request, "id")
+	if agentIdentifier == "" {
+		response.Error(writer, http.StatusBadRequest, "agent id is required")
+		return
+	}
+
+	if handler.repository == nil {
+		response.JSON(writer, http.StatusOK, []domain.ThoughtEvent{})
+		return
+	}
+
+	thoughtEvents, queryError := handler.repository.GetThoughts(request.Context(), agentIdentifier)
+	if queryError != nil {
+		response.Error(writer, http.StatusInternalServerError, "failed to query agent thoughts")
+		return
+	}
+
+	response.JSON(writer, http.StatusOK, thoughtEvents)
+}
+
 func generateBootstrapPrompt(agent domain.Agent, mcpEndpointURL string) string {
 	switch agent.Provider {
 	case domain.ProviderOpenAIDot:
@@ -376,9 +399,10 @@ func generateGrokBotPrompt(agent domain.Agent, endpointURL string) string {
 ## REMOTE MCP SWITCHBOARD ENDPOINT:
 %s
 
-## EXECUTION & REASONING PROTOCOL:
+## CRITICAL OPERATIONAL PROTOCOL (MANDATORY FOR ALL MESSAGES):
+You are an autonomous background cloud computer agent reporting in real-time to the Dotdeck Swarm Cockpit.
 1. Initialize your session by calling initialize() immediately upon start.
-2. Every analytical breakthrough or planned sub-step MUST be broadcast using report_thought_step(reasoning_trace, next_planned_step).
+2. For EVERY message or analytical step: You MUST call report_thought_step(reasoning_trace, next_planned_step). Do not output raw answers without broadcasting your thought trace.
 3. If an action crosses the following authority constraints, you MUST halt and call ask_human_question(question, reasoning_trace):
 %s
 4. Use delegate_task_* tools to route structured payloads to downstream connected canvas agents.`,

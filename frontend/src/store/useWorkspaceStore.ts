@@ -754,12 +754,15 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       name: 'dotdeck-workspaces-store',
       partialize: (state) => ({
         workspaces: state.workspaces,
+        workspaceId: state.workspaceId,
         activeWorkspaceId: state.activeWorkspaceId,
         activeWorkspaceName: state.activeWorkspaceName,
         workspaceNodes: state.workspaceNodes,
         workspaceEdges: state.workspaceEdges,
         nodes: state.nodes,
         edges: state.edges,
+        thoughts: state.thoughts,
+        approvals: state.approvals,
       }),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
@@ -777,12 +780,21 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             state.workspaceEdges[key] = DEFAULT_WORKSPACE_EDGES[key];
           }
         }
-        const currentActiveId = state.activeWorkspaceId || 'ws-prod-sales';
+        const currentActiveId = state.activeWorkspaceId || state.workspaceId || 'ws-prod-sales';
+        state.activeWorkspaceId = currentActiveId;
+        state.workspaceId = currentActiveId;
+
         if (!state.nodes || state.nodes.length === 0) {
           state.nodes = state.workspaceNodes[currentActiveId] ?? DEFAULT_WORKSPACE_NODES[currentActiveId] ?? [];
         }
         if (!state.edges || state.edges.length === 0) {
           state.edges = state.workspaceEdges[currentActiveId] ?? DEFAULT_WORKSPACE_EDGES[currentActiveId] ?? [];
+        }
+        if (!state.thoughts) {
+          state.thoughts = {};
+        }
+        if (!state.approvals) {
+          state.approvals = {};
         }
         if (state.workspaces && state.workspaces.length > 0) {
           state.workspaces = state.workspaces.map((ws) => {

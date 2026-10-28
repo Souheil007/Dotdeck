@@ -95,9 +95,33 @@ export function InspectorDrawer() {
     approvals,
     openDecommissionModal,
     userRole,
+    addThoughtStep,
   } = useWorkspaceStore();
   const [activeTab, setActiveTab] = useState<'thoughts' | 'approvals'>('thoughts');
   const [copiedGoal, setCopiedGoal] = useState(false);
+
+  // Synchronize historical thoughts from backend when agent is selected
+  useEffect(() => {
+    if (!selectedAgentId) return;
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+    fetch(`${apiUrl}/api/v1/agents/${selectedAgentId}/thoughts`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: Array<{ id: string; agent_id: string; step_index?: number; reasoning_trace: string; next_planned_step: string; created_at?: string }>) => {
+        if (Array.isArray(data)) {
+          data.forEach((item) => {
+            addThoughtStep(selectedAgentId, {
+              id: item.id,
+              agentId: item.agent_id,
+              stepIndex: item.step_index || 0,
+              reasoningTrace: item.reasoning_trace,
+              nextPlannedStep: item.next_planned_step,
+              timestamp: item.created_at || new Date().toISOString(),
+            });
+          });
+        }
+      })
+      .catch(() => {});
+  }, [selectedAgentId, addThoughtStep]);
 
   // Close drawer on Escape key
   useEffect(() => {
