@@ -163,6 +163,7 @@ export function AgentCanvas() {
 
       const targetNode = storeNodes.find((nodeItem) => nodeItem.id === params.target);
       const targetName = targetNode?.data?.name || 'peer';
+      const targetGoal = targetNode?.data?.goal || '';
       const sanitizedName = targetName.toLowerCase().replace(/[^a-z0-9]/g, '_');
       const synthesizedToolName = `delegate_task_to_${sanitizedName}`;
 
@@ -209,6 +210,7 @@ export function AgentCanvas() {
               source_agent_id: params.source,
               target_agent_id: params.target,
               target_name: targetName,
+              target_goal: targetGoal,
             }),
           });
         } catch {
@@ -243,6 +245,7 @@ export function AgentCanvas() {
             source_agent_id: params.source,
             target_agent_id: params.target,
             target_name: targetName,
+            target_goal: targetGoal,
           }),
         });
       } catch {

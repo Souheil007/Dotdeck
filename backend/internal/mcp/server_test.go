@@ -135,6 +135,7 @@ func TestMCPServerToolsList(testingT *testing.T) {
 		{
 			TargetAgentID:   "target-id",
 			TargetAgentName: "Writer Grok Bot",
+			TargetAgentGoal: "Compose high-converting sales copy",
 			ToolName:        "delegate_task_to_writer_grok_bot",
 		},
 	}
@@ -175,6 +176,9 @@ func TestMCPServerToolsList(testingT *testing.T) {
 			foundApproval = true
 		case "delegate_task_to_writer_grok_bot":
 			foundDelegation = true
+			if !strings.Contains(toolItem.Description, "Compose high-converting sales copy") {
+				testingT.Errorf("expected tool description to contain peer goal, got: %q", toolItem.Description)
+			}
 		}
 	}
 

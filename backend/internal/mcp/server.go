@@ -42,6 +42,7 @@ type AgentContext struct {
 	WorkspaceID string
 	Name        string
 	Provider    string
+	Goal        string
 	Status      string
 }
 
@@ -49,6 +50,7 @@ type AgentContext struct {
 type EdgeContext struct {
 	TargetAgentID   string
 	TargetAgentName string
+	TargetAgentGoal string
 	ToolName        string
 }
 
@@ -342,7 +344,7 @@ func (server *Server) handleMethod(request *http.Request, agentContext *AgentCon
 			BuildHumanApprovalTool(),
 		}
 		for _, edge := range edges {
-			toolsList = append(toolsList, BuildDelegationTool(edge.TargetAgentName, edge.ToolName))
+			toolsList = append(toolsList, BuildDelegationTool(edge.TargetAgentName, edge.TargetAgentGoal, edge.ToolName))
 		}
 		return JSONRPCResponse{
 			JSONRPC: "2.0",

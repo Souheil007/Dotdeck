@@ -1,5 +1,7 @@
 package mcp
 
+import "fmt"
+
 // ToolDefinition describes an MCP tool schema exposed to cloud agents.
 type ToolDefinition struct {
 	Name        string                 `json:"name"`
@@ -63,10 +65,17 @@ func BuildHumanApprovalTool() ToolDefinition {
 }
 
 // BuildDelegationTool dynamically generates an MCP tool for dispatching work across canvas edges.
-func BuildDelegationTool(targetAgentName, toolName string) ToolDefinition {
+// It incorporates both the target peer's identity and its operational objective/mission so calling agents
+// understand the peer's domain specialization and make informed delegation decisions.
+func BuildDelegationTool(targetAgentName, targetAgentGoal, toolName string) ToolDefinition {
+	descriptionText := fmt.Sprintf("Hands off a structured subtask to peer agent %s via the Dotdeck switchboard.", targetAgentName)
+	if targetAgentGoal != "" {
+		descriptionText = fmt.Sprintf("Hands off a structured subtask to peer agent %s via the Dotdeck switchboard. Peer Objective & Specialization: %q. Invoke this tool whenever your task requires this peer's domain specialization or downstream handoff.", targetAgentName, targetAgentGoal)
+	}
+
 	return ToolDefinition{
 		Name:        toolName,
-		Description: "Hands off a structured subtask to peer agent " + targetAgentName + " via the Dotdeck switchboard.",
+		Description: descriptionText,
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{

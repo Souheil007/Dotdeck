@@ -45,6 +45,7 @@ func (store *PostgresStore) GetAgentByToken(token string) (*mcp.AgentContext, er
 		WorkspaceID: uuidToString(agentRecord.WorkspaceID),
 		Name:        agentRecord.Name,
 		Provider:    agentRecord.Provider,
+		Goal:        agentRecord.Goal,
 		Status:      agentRecord.Status,
 	}, nil
 }
@@ -77,6 +78,7 @@ func (store *PostgresStore) GetOutboundEdges(agentID string) ([]mcp.EdgeContext,
 				outboundEdges = append(outboundEdges, mcp.EdgeContext{
 					TargetAgentID:   uuidToString(edge.TargetAgentID),
 					TargetAgentName: targetAgent.Name,
+					TargetAgentGoal: targetAgent.Goal,
 					ToolName:        edge.ToolName,
 				})
 			}

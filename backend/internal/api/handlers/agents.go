@@ -139,6 +139,7 @@ type EdgeConnectPayload struct {
 	SourceAgentID string `json:"source_agent_id"`
 	TargetAgentID string `json:"target_agent_id"`
 	TargetName    string `json:"target_name"`
+	TargetGoal    string `json:"target_goal,omitempty"`
 }
 
 // ConnectEdge wires two agent nodes together, dynamically synthesizing an MCP delegation tool.

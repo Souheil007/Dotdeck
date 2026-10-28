@@ -35,6 +35,7 @@ func NewMemoryStore() *MemoryStore {
 		WorkspaceID: "default-workspace",
 		Name:        "Sales Research Dot",
 		Provider:    "openai_dot",
+		Goal:        "Scrape high-intent B2B leads and enrich company technical profiles.",
 		Status:      "working",
 	})
 	storeInstance.SaveAgent("dev-token-456", &mcp.AgentContext{
@@ -42,6 +43,7 @@ func NewMemoryStore() *MemoryStore {
 		WorkspaceID: "default-workspace",
 		Name:        "Grok Copywriter",
 		Provider:    "grok_bot",
+		Goal:        "Draft high-impact marketing copy and personalized cold outreach emails.",
 		Status:      "blocked_on_user",
 	})
 	storeInstance.SaveAgent("dev-token-789", &mcp.AgentContext{
@@ -49,17 +51,20 @@ func NewMemoryStore() *MemoryStore {
 		WorkspaceID: "default-workspace",
 		Name:        "Claude Compliance",
 		Provider:    "claude",
+		Goal:        "Audit outgoing drafts for security policies and compliance regulations.",
 		Status:      "resting",
 	})
 
 	storeInstance.AddEdge("agent-1", mcp.EdgeContext{
 		TargetAgentID:   "agent-2",
 		TargetAgentName: "Grok Copywriter",
+		TargetAgentGoal: "Draft high-impact marketing copy and personalized cold outreach emails.",
 		ToolName:        "delegate_task_to_grok_copywriter",
 	})
 	storeInstance.AddEdge("agent-2", mcp.EdgeContext{
 		TargetAgentID:   "agent-3",
 		TargetAgentName: "Claude Compliance",
+		TargetAgentGoal: "Audit outgoing drafts for security policies and compliance regulations.",
 		ToolName:        "delegate_task_to_claude_compliance",
 	})
 
@@ -87,13 +92,16 @@ func (store *MemoryStore) CreateEdge(requestContext context.Context, edge domain
 	defer store.storeMutex.Unlock()
 
 	targetName := edge.TargetAgentID
+	targetGoal := ""
 	if targetAgent, exists := store.byID[edge.TargetAgentID]; exists {
 		targetName = targetAgent.Name
+		targetGoal = targetAgent.Goal
 	}
 
 	edgeContext := mcp.EdgeContext{
 		TargetAgentID:   edge.TargetAgentID,
 		TargetAgentName: targetName,
+		TargetAgentGoal: targetGoal,
 		ToolName:        edge.ToolName,
 	}
 
@@ -150,6 +158,7 @@ func (store *MemoryStore) GetAgentByID(requestContext context.Context, agentID s
 		WorkspaceID: agentContext.WorkspaceID,
 		Name:        agentContext.Name,
 		Provider:    domain.Provider(agentContext.Provider),
+		Goal:        agentContext.Goal,
 		Status:      domain.AgentStatus(agentContext.Status),
 	}, nil
 }
@@ -164,6 +173,7 @@ func (store *MemoryStore) CreateAgent(requestContext context.Context, agent doma
 		WorkspaceID: agent.WorkspaceID,
 		Name:        agent.Name,
 		Provider:    string(agent.Provider),
+		Goal:        agent.Goal,
 		Status:      string(agent.Status),
 	}
 
