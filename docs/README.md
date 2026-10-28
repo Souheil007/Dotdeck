@@ -19,7 +19,8 @@ Dotdeck/docs/
 └── decisions/                        # Architecture Decision Records (ADRs)
     ├── 0001-tier3-closed-cloud-orchestration.md
     ├── 0002-mcp-and-held-approval-channels.md
-    └── 0003-multiplayer-websockets-and-presence.md
+    ├── 0003-multiplayer-websockets-and-presence.md
+    └── 0004-thought-stream-telemetry-persistence.md
 ```
 
 ---
