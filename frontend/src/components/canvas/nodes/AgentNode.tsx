@@ -1,8 +1,9 @@
 import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { Bot, Sparkles, Clock, AlertCircle, CheckCircle, Zap, ShieldAlert, Cpu, Flame, Globe, Trash2 } from 'lucide-react';
+import { Bot, Clock, AlertCircle, CheckCircle, Zap, ShieldAlert, Trash2 } from 'lucide-react';
 import type { AgentData } from '../../../store/useWorkspaceStore';
 import { useWorkspaceStore } from '../../../store/useWorkspaceStore';
+import { OpenAILogo, GrokLogo, MetaMuseLogo, ClaudeLogo } from '../../common/ProviderLogos';
 
 export interface AgentNodeProps {
   id: string;
@@ -60,29 +61,29 @@ const statusConfig: Record<
 
 const providerMetadata: Record<
   string,
-  { label: string; icon: typeof Bot; badgeColor: string; textColor: string }
+  { label: string; icon: React.ComponentType<{ className?: string; size?: number | string }>; badgeColor: string; textColor: string }
 > = {
   openai_dot: {
     label: 'OpenAI Dot',
-    icon: Cpu,
+    icon: OpenAILogo,
     badgeColor: 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800/60',
     textColor: 'text-emerald-700 dark:text-emerald-400',
   },
   grok_bot: {
     label: 'xAI Grok Bot',
-    icon: Flame,
+    icon: GrokLogo,
     badgeColor: 'bg-sky-50 dark:bg-sky-950/60 border-sky-200 dark:border-sky-800/60',
     textColor: 'text-sky-700 dark:text-sky-400',
   },
   meta_muse: {
     label: 'Meta Muse',
-    icon: Globe,
+    icon: MetaMuseLogo,
     badgeColor: 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-800/60',
     textColor: 'text-indigo-700 dark:text-indigo-400',
   },
   claude: {
     label: 'Claude Cloud',
-    icon: Sparkles,
+    icon: ClaudeLogo,
     badgeColor: 'bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800/60',
     textColor: 'text-amber-700 dark:text-amber-400',
   },

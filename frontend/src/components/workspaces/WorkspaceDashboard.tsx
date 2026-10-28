@@ -18,6 +18,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal';
 import { ThemeToggle } from '../common/ThemeToggle';
 import { UserNavDropdown } from '../navigation/UserNavDropdown';
+import { ProviderLogo } from '../common/ProviderLogos';
 
 interface WorkspaceDashboardProps {
   onSelectWorkspace: (workspaceId: string) => void;
@@ -56,26 +57,30 @@ export function WorkspaceDashboard({ onSelectWorkspace, onGoToLanding, onOpenSet
     switch (provider) {
       case 'openai_dot':
         return (
-          <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-mono text-[10px] font-semibold">
-            OpenAI Dot
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-mono text-[10px] font-semibold">
+            <ProviderLogo provider="openai_dot" size={11} className="shrink-0" />
+            <span>OpenAI Dot</span>
           </span>
         );
       case 'grok_bot':
         return (
-          <span className="px-1.5 py-0.5 rounded bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-800 font-mono text-[10px] font-semibold">
-            xAI Grok
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-800 font-mono text-[10px] font-semibold">
+            <ProviderLogo provider="grok_bot" size={11} className="shrink-0" />
+            <span>xAI Grok</span>
           </span>
         );
       case 'claude':
         return (
-          <span className="px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 font-mono text-[10px] font-semibold">
-            Claude
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 font-mono text-[10px] font-semibold">
+            <ProviderLogo provider="claude" size={11} className="shrink-0" />
+            <span>Claude</span>
           </span>
         );
       case 'meta_muse':
         return (
-          <span className="px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 font-mono text-[10px] font-semibold">
-            Meta Muse
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 font-mono text-[10px] font-semibold">
+            <ProviderLogo provider="meta_muse" size={11} className="shrink-0" />
+            <span>Meta Muse</span>
           </span>
         );
       default:

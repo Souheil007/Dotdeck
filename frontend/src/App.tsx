@@ -8,7 +8,6 @@ import {
   ChevronDown,
   Home,
   FolderKanban,
-  FolderPlus,
 } from 'lucide-react';
 import { AgentCanvas } from './components/canvas/AgentCanvas';
 import { InspectorDrawer } from './components/inspector/InspectorDrawer';
@@ -221,16 +220,6 @@ export function App() {
 
         {/* Right Controls */}
         <div className="flex items-center gap-2.5">
-          {/* Create New Fleet Button */}
-          <button
-            onClick={() => setIsCreateWorkspaceModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-[#121318] hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-250 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-mono font-medium transition-colors shadow-xs"
-            title="Create New Fleet Workspace"
-          >
-            <FolderPlus className="w-3.5 h-3.5 text-blue-600 dark:text-cyan-400" />
-            <span className="hidden md:inline">New Fleet</span>
-          </button>
-
           {/* Teammate Presence Avatars */}
           <div className="hidden sm:flex items-center -space-x-1.5 overflow-hidden">
             <div className="w-6 h-6 rounded-full bg-blue-600 dark:bg-cyan-600 ring-2 ring-white dark:ring-[#07080b] flex items-center justify-center text-[10px] font-bold text-white shadow-xs">

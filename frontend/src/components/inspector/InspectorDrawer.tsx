@@ -2,10 +2,6 @@ import { useState, useEffect } from 'react';
 import {
   X,
   AlertCircle,
-  Sparkles,
-  Flame,
-  Globe,
-  Cpu,
   Clock,
   Zap,
   ShieldAlert,
@@ -13,12 +9,12 @@ import {
   Copy,
   Check,
   Activity,
-  Trash2,
 } from 'lucide-react';
 import { useWorkspaceStore, type AgentStatus } from '../../store/useWorkspaceStore';
 import { ThoughtStream } from './ThoughtStream';
 import { ApprovalBox } from './ApprovalBox';
 import { ChatBox } from './ChatBox';
+import { OpenAILogo, GrokLogo, MetaMuseLogo, ClaudeLogo } from '../common/ProviderLogos';
 
 const statusConfig: Record<
   AgentStatus,
@@ -62,25 +58,28 @@ const statusConfig: Record<
   },
 };
 
-const providerConfig: Record<string, { label: string; icon: typeof Sparkles; colorClass: string }> = {
+const providerConfig: Record<
+  string,
+  { label: string; icon: React.ComponentType<{ className?: string; size?: number | string }>; colorClass: string }
+> = {
   openai_dot: {
     label: 'OpenAI Dot',
-    icon: Sparkles,
+    icon: OpenAILogo,
     colorClass: 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800/80',
   },
   grok_bot: {
     label: 'xAI Grok Bot',
-    icon: Flame,
-    colorClass: 'text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/60 border-orange-200 dark:border-orange-800/80',
+    icon: GrokLogo,
+    colorClass: 'text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 border-sky-200 dark:border-sky-800/80',
   },
   meta_muse: {
     label: 'Meta Muse',
-    icon: Globe,
-    colorClass: 'text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border-blue-200 dark:border-blue-800/80',
+    icon: MetaMuseLogo,
+    colorClass: 'text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 border-indigo-200 dark:border-indigo-800/80',
   },
   claude: {
     label: 'Claude Cloud',
-    icon: Cpu,
+    icon: ClaudeLogo,
     colorClass: 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800/80',
   },
 };
@@ -90,11 +89,8 @@ export function InspectorDrawer() {
     selectedAgentId,
     setSelectedAgentId,
     nodes,
-    edges,
     thoughts,
     approvals,
-    openDecommissionModal,
-    userRole,
     addThoughtStep,
   } = useWorkspaceStore();
   const [activeTab, setActiveTab] = useState<'thoughts' | 'approvals'>('thoughts');
@@ -192,26 +188,6 @@ export function InspectorDrawer() {
           </div>
 
           <div className="flex items-center gap-1 shrink-0">
-            {userRole !== 'read' && (
-              <button
-                onClick={() => {
-                  const connectedWiresCount = edges.filter(
-                    (edge) => edge.source === agent.id || edge.target === agent.id
-                  ).length;
-                  openDecommissionModal({
-                    id: agent.id,
-                    name: agent.name,
-                    provider: agent.provider,
-                    connectedWiresCount,
-                  });
-                }}
-                className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                title="Decommission & Destroy Agent"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            )}
-
             <button
               onClick={() => setSelectedAgentId(null)}
               className="flex items-center gap-1 px-2 py-1 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors shrink-0 font-mono text-[10px]"

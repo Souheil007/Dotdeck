@@ -1,47 +1,48 @@
 import { useState } from 'react';
-import { X, Sparkles, Flame, Globe, Cpu, ShieldAlert, Clock, Plus, Trash2, Loader2, Bot } from 'lucide-react';
+import { X, Sparkles, ShieldAlert, Clock, Plus, Trash2, Loader2, Bot } from 'lucide-react';
 import { useWorkspaceStore, type AgentData } from '../../store/useWorkspaceStore';
+import { OpenAILogo, GrokLogo, MetaMuseLogo, ClaudeLogo } from '../common/ProviderLogos';
 
 const providerOptions = [
   {
     id: 'openai_dot',
     name: 'OpenAI Dot',
     description: 'Tier 3 OpenAI cloud computer with autonomous tool execution.',
-    icon: Sparkles,
+    icon: OpenAILogo,
     color: 'emerald',
-    borderColor: 'border-emerald-600',
-    bgColor: 'bg-emerald-950/40',
-    textColor: 'text-emerald-400',
+    borderColor: 'border-emerald-500/80',
+    bgColor: 'bg-emerald-50/50 dark:bg-emerald-950/40',
+    textColor: 'text-emerald-600 dark:text-emerald-400',
   },
   {
     id: 'grok_bot',
-    name: 'Grok Bot',
+    name: 'xAI Grok Bot',
     description: 'xAI cloud agent with real-time reasoning and computer tools.',
-    icon: Flame,
-    color: 'orange',
-    borderColor: 'border-orange-600',
-    bgColor: 'bg-orange-950/40',
-    textColor: 'text-orange-400',
+    icon: GrokLogo,
+    color: 'sky',
+    borderColor: 'border-sky-500/80',
+    bgColor: 'bg-sky-50/50 dark:bg-sky-950/40',
+    textColor: 'text-sky-600 dark:text-sky-400',
   },
   {
     id: 'meta_muse',
     name: 'Meta Muse',
     description: 'Meta Muse secure VM agent with webhook check-in fallback.',
-    icon: Globe,
-    color: 'blue',
-    borderColor: 'border-blue-600',
-    bgColor: 'bg-blue-950/40',
-    textColor: 'text-blue-400',
+    icon: MetaMuseLogo,
+    color: 'indigo',
+    borderColor: 'border-indigo-500/80',
+    bgColor: 'bg-indigo-50/50 dark:bg-indigo-950/40',
+    textColor: 'text-indigo-600 dark:text-indigo-400',
   },
   {
     id: 'claude',
-    name: 'Claude Agent',
+    name: 'Claude Cloud',
     description: 'Anthropic Claude cloud agent with high reasoning density.',
-    icon: Cpu,
+    icon: ClaudeLogo,
     color: 'amber',
-    borderColor: 'border-amber-600',
-    bgColor: 'bg-amber-950/40',
-    textColor: 'text-amber-400',
+    borderColor: 'border-amber-500/80',
+    bgColor: 'bg-amber-50/50 dark:bg-amber-950/40',
+    textColor: 'text-amber-600 dark:text-amber-400',
   },
 ] as const;
 
