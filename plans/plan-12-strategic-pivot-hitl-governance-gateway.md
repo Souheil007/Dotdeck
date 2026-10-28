@@ -1,32 +1,40 @@
-# Plan 11: Strategic Pivot to Human-in-the-Loop (HITL) Execution Gateway & Circuit Breaker
+# Plan 12: Strategic Pivot: HITL Governance Gateway (Plan A) & Deterministic A2A Delegation Switchboard (Plan B)
 
 **Status:** Upcoming [ ]
 
 ## Objective
-Pivot Dotdeck from a visual, multiplayer React Flow switchboard for proprietary closed cloud agents into a headless, enterprise-grade **Human-in-the-Loop (HITL) Execution Gateway & Circuit Breaker**. Transform existing high-concurrency Go infrastructure (Hold Engine, distributed mutexes, Slack Block Kit bridge, and partitioned audit trail) into a drop-in governance proxy that allows engineering teams to deploy autonomous AI agents safely without building bespoke approval plumbing.
+Provide two concrete, enterprise-grade strategic pivot options for Dotdeck that repurpose existing high-concurrency Go infrastructure ([`HoldEngine`](file:///C:/GithubProjects/Dotdeck/backend/internal/mcp/hold_engine.go), distributed locks, dynamic MCP switchboard, PostgreSQL partitioned audit store, and Slack/Webhook bridges):
+- **Plan A (HITL Governance Gateway & Circuit Breaker):** An in-line safety firewall that intercepts high-stakes tool executions (financial transactions, infrastructure mutations, external comms) and pauses agents for human sign-off.
+- **Plan B (Deterministic A2A Delegation Switchboard & Contract Gateway):** An infrastructure switchboard that enables autonomous, cross-vendor Agent-to-Agent (A2A) task delegation by eliminating compounding hallucinations, preserving execution sandbox state, and enforcing cost/depth circuit breakers.
 
 ---
 
 ## Strategic Context & Pivot Rationale (Why Shift?)
 
-### 1. The Market Failure of the Visual Canvas Switchboard
+### 1. The Market Failure of the Visual Multiplayer Canvas
 - **Walled Gardens Won't Federate:** Frontier closed-agent platforms (OpenAI, Anthropic, xAI) have zero incentive to expose low-level inter-agent federation to third-party visual switchboards; they are aggressively building native closed ecosystems.
 - **Engineers Reject Visual Canvases for Core Logic:** Software engineers and platform teams do not build production backend logic on visual node graphs (e.g. React Flow). Visual graphs cannot be version-controlled in Git, tested in CI/CD, or audited easily at scale.
 - **The "Watching Bots Run" Anti-Pattern:** Synchronous multiplayer visual watching contradicts the fundamental value proposition of AI automation. Humans cannot sit staring at a canvas waiting for a node to turn yellow; human oversight is inherently asynchronous.
 
-### 2. The Urgent, Unsolved Enterprise Problem: The HITL Iceberg
-- **The Broken Binary:** Autonomous agents with 100% write permissions cause catastrophic data destruction, runaway token bills, and prompt injection exploits. Conversely, agents with 0% write permissions (or that hard-crash on edge cases) destroy automation ROI because humans must redo all the work.
-- **Supervised Autonomy is the Solution:** Agents must perform 95% of the heavy lifting autonomously, but pause and request human authorization for high-stakes operations (refunds, database mutations, external emails).
-- **The Plumbing Trap:** Sending a Slack message via webhook is trivial (1% of the problem). Receiving the inbound button callback securely, preventing double-approval race conditions across teammates, persisting execution state across server restarts, and resuming the agent sub-100ms is a 3-week engineering sinkhole that every AI team dreads building in-house.
+### 2. Plan A Rationale: The HITL Iceberg
+- **The Broken Binary:** Autonomous agents with 100% write permissions cause catastrophic data destruction, runaway token bills, and prompt injection exploits. Conversely, agents with 0% write permissions destroy automation ROI because humans must redo all the work.
+- **Supervised Autonomy is the Solution:** Agents must perform 95% of the heavy lifting autonomously, but pause and request human authorization for high-stakes operations.
+- **The Plumbing Trap:** Sending a Slack message via webhook is trivial. Receiving the inbound button callback securely, preventing double-approval race conditions across teammates, persisting execution state across server restarts, and resuming the agent sub-100ms is a 3-week engineering sinkhole that every AI team dreads building in-house.
+
+### 3. Plan B Rationale: The Reality of Autonomous A2A Delegation
+- **The "Telephone Game" Collapse:** When Agent A (90% accuracy) delegates to Agent B (90% accuracy), compound reliability drops to 81%. Without contract validation, errors and hallucinations compound exponentially across agent boundaries.
+- **State vs. Text Gap:** Autonomous delegation cannot happen via raw natural language chat. Real work requires passing execution context: git commits, filesystem diffs, environment variables, and sandbox boundaries.
+- **Recursive Deadlocks & Token Drain:** Autonomous agents without strict hop limits and token budgets enter recursive delegation loops, burning hundreds of dollars arguing over ambiguous subtasks.
+- **The Solution:** A deterministic A2A switchboard that treats agent delegation like distributed transaction management with strict schema contracts, state snapshotting, and automatic rollback on failure.
 
 ---
 
-## Architectural Delta: Keep vs. Deprecate vs. Build
+## Architectural Delta: Shared Assets Kept
 
 ```mermaid
 flowchart TD
-    subgraph KEEP ["1. Existing Assets Kept (85% of Backend)"]
-        HE["HoldEngine (45s Pausing & Channels)"]
+    subgraph KEEP ["1. Existing Dotdeck Assets Kept (85% of Backend)"]
+        HE["HoldEngine (45s Pausing & HTTP Hold Channels)"]
         DL["Distributed Mutex & Concurrency Locks"]
         SB["Slack Block Kit Bridge (Interactive Buttons)"]
         WB["Webhook Bridge (HMAC-SHA256 & Retries)"]
@@ -34,45 +42,32 @@ flowchart TD
         PL["Payload Limits (512 KB Guardrail)"]
         PT["PostgreSQL Monthly Partitioned Audit Log"]
         RB["Workspace RBAC Security Middleware"]
+        MCP["Dynamic MCP Switchboard (/mcp/{token})"]
     end
 
-    subgraph DEPRECATE ["2. Deprecated / Retired Assets"]
-        RF["React Flow Topology Node Graph"]
-        MP["Multiplayer Cursor Presence & Canvas Dragging"]
-        CW["Closed-Vendor Pairing Wizard (Dots/Muses)"]
-        DE["Inter-Agent Visual Pulse Edges"]
+    subgraph PLAN_A ["Plan A: HITL Governance Gateway"]
+        PE["Declarative Policy Engine (expr)"]
+        UG["Universal Interception Gateway (/v1/intercept)"]
+        SC["Inbound Slack Callback Handler"]
+        GD["Governance & Audit Dashboard"]
     end
 
-    subgraph BUILD ["3. New Features to Build"]
-        PE["Declarative Policy Engine (expr in-memory rules)"]
-        UG["Universal Gateway Endpoint (/v1/intercept)"]
-        SC["Inbound Slack Callback Handler (/api/v1/slack/actions)"]
-        DB["Clean Governance & Approval Dashboard"]
-        SDK["Python & TypeScript Lightweight SDK Wrappers"]
+    subgraph PLAN_B ["Plan B: Deterministic A2A Delegation Gateway"]
+        CV["Contract & Schema Validator (JSON Schema / Zod)"]
+        SS["Sandbox Snapshot & Rollback Coordinator"]
+        CB["Cost Deadband & Max-Hop Circuit Breaker"]
+        MB["Durable Task Mailbox & State Machine"]
     end
 
-    KEEP --> BUILD
+    KEEP --> PLAN_A
+    KEEP --> PLAN_B
 ```
-
-### Detailed Asset Disposition
-
-| Component | Status | Rationale |
-| :--- | :---: | :--- |
-| **`HoldEngine`** (`backend/internal/mcp/hold_engine.go`) | **KEEP** | Core synchronous pause-and-resume engine; handles 45s HTTP hold channels and sub-100ms inline resume. |
-| **Distributed Locks** (`backend/internal/mcp/`) | **KEEP** | Essential for preventing teammate approval race conditions (two operators clicking "Approve" simultaneously). |
-| **Slack Bridge** (`backend/internal/bridge/slack.go`) | **KEEP & EXPAND** | Outbound Block Kit card dispatch already works; needs inbound callback handler for button clicks. |
-| **Webhook Bridge** (`backend/internal/bridge/webhook.go`) | **KEEP** | Handles fallback escalation to external systems with HMAC-SHA256 signatures and backoff retries. |
-| **Loop Guardrail** (`backend/internal/mcp/server.go`) | **KEEP** | Detects and kills runaway cyclic loops (>5 calls in 10m window) and enforces 512KB payload limits. |
-| **Partitioned DB** (`backend/internal/store/migrations/`) | **KEEP** | High-throughput immutable audit trail for compliance (SOC2, EU AI Act). |
-| **React Flow Canvas** (`frontend/src/components/canvas/`) | **DEPRECATE** | Replace visual node wiring with a clean Datadog/Stripe Radar-style Governance & Audit Dashboard. |
-| **Multiplayer Cursors** (`frontend/src/hooks/useMultiplayerPresence.ts`) | **DEPRECATE** | Unnecessary for asynchronous human approvals; replace with operator assignment badges. |
-| **Closed Agent Wizard** (`frontend/src/components/modals/PairingWizard.tsx`) | **REFACTOR** | Replace with standard API Key / MCP URL generation for any agent framework. |
 
 ---
 
-## Detailed Deliverables
+## PLAN A: HITL Governance Gateway & Circuit Breaker
 
-### Deliverable 1: Declarative Policy & Rules Engine (Go Backend)
+### Deliverable A1: Declarative Policy & Rules Engine (Go Backend)
 - [ ] Integrate fast, in-memory expression evaluation (`github.com/expr-lang/expr`) into `backend/internal/policy/`.
 - [ ] Support dynamic rule definitions without code changes:
   ```yaml
@@ -91,8 +86,8 @@ flowchart TD
 - [ ] Ensure sub-millisecond evaluation latency (<0.05ms per rule).
 - [ ] Provide CRUD API for workspace policies: `GET/POST/PUT /api/v1/workspaces/{id}/policies`.
 
-### Deliverable 2: Universal Interception Gateway (`/v1/intercept`)
-- [ ] Provide a universal HTTP reverse proxy and MCP endpoint that any agentic framework can route through (LangChain, LangGraph, LlamaIndex, OpenAI Assistants, Claude Computer Use, CrewAI).
+### Deliverable A2: Universal Interception Gateway (`/v1/intercept`)
+- [ ] Provide a universal HTTP reverse proxy and MCP endpoint that any agentic framework can route through.
 - [ ] Request lifecycle:
   1. Parse tool call name and arguments.
   2. Evaluate against active workspace policies.
@@ -100,47 +95,70 @@ flowchart TD
   4. If policy matched: activate `HoldEngine`, pause client HTTP request, and dispatch interactive Slack Block Kit card.
   5. If timeout exceeded: fall back to async webhook queue, store state, and notify client.
 
-### Deliverable 3: Inbound Slack Callback & State Machine (`/api/v1/slack/actions`)
+### Deliverable A3: Inbound Slack Callback & State Machine (`/api/v1/slack/actions`)
 - [ ] Implement public webhook receiver for Slack interactive button payloads (`block_actions`).
 - [ ] Verify incoming requests using Slack HMAC-SHA256 signature (`X-Slack-Signature`, `X-Slack-Request-Timestamp`).
 - [ ] Enforce distributed concurrency lock:
   - If Operator A clicks "Approve", lock the decision ID in Redis.
   - Immediately update Slack message UI via `chat.update` to show: *"✅ Approved by @OperatorA at 14:02 UTC"*.
-  - Reject subsequent clicks by Operator B with an ephemeral warning (*"Decision already claimed by @OperatorA"*).
-- [ ] Trigger `holdEngine.ResolveLocal` or Redis Pub/Sub mesh to unblock the waiting agent thread within 50ms.
+  - Reject subsequent clicks by Operator B with an ephemeral warning.
+- [ ] Trigger `holdEngine.ResolveLocal` to unblock waiting agent thread within 50ms.
 
-### Deliverable 4: Governance & Audit Console (Frontend Redesign)
-- [ ] Convert `frontend/` into an enterprise-grade Governance & Audit Dashboard (Stripe Radar / Cloudflare style):
-  - **Live Approvals Queue:** Real-time list of paused agent runs, countdown SLA timers, risk reasons, and one-click review cards.
+### Deliverable A4: Governance & Audit Console (Frontend)
+- [ ] Convert `frontend/` into an enterprise-grade Governance & Audit Dashboard:
+  - **Live Approvals Queue:** Real-time list of paused agent runs, countdown SLA timers, risk reasons, and review cards.
   - **Policy Rule Builder:** No-code visual rule creator (Tool Name, Condition, Action, Slack Channel selector).
-  - **Circuit Breaker Metrics:** Cards for Total Intercepted Actions, Blocked Runaway Loops, Dollars Saved, and Average Human Approval Latency.
-  - **Immutable Audit Trail:** Searchable, filterable table of all historical tool calls, reasoning traces, approving operators, and timestamps with one-click SOC2 CSV/JSON export.
+  - **Circuit Breaker Metrics:** Total Intercepted Actions, Blocked Runaway Loops, Dollars Saved, and Average Human SLA.
+  - **Immutable Audit Trail:** Searchable, filterable table of historical tool calls, reasoning traces, approving operators, and timestamps with SOC2 CSV/JSON export.
 
-### Deliverable 5: Zero-Config Client SDKs (Python & TypeScript)
-- [ ] **Python SDK (`dotdeck-python`)**:
-  ```python
-  from dotdeck import DotdeckGuard
+---
 
-  guard = DotdeckGuard(api_key="dd_live_xxx", workspace_id="prod")
+## PLAN B: Deterministic A2A Delegation Switchboard & Contract Gateway
 
-  @guard.protect(tool_name="issue_refund")
-  def issue_refund(customer_id: str, amount: float):
-      # Automatically paused and routed to Slack if amount > threshold
-      return stripe.Refund.create(customer=customer_id, amount=amount)
-  ```
-- [ ] **TypeScript SDK (`@dotdeck/guard`)**: Drop-in wrapper for LangChain tools and Vercel AI SDK.
+### Deliverable B1: Contract & Schema Enforcement Engine
+- [ ] Implement strict schema validation boundary for agent-to-agent task delegation.
+- [ ] When Agent A invokes `delegate_task_to_{peer}` via the MCP Switchboard:
+  - The switchboard validates Agent A's input payload against the delegatee's registered JSON Schema / Zod contract.
+  - If schema validation fails: the request is **rejected immediately at the gateway** before invoking Agent B. A structured diagnostic error is returned to Agent A explaining the missing fields or invalid types so Agent A can self-correct without polluting Agent B's context.
+  - If validation passes: the switchboard wraps the payload into an immutable task envelope with a cryptographic trace ID.
+
+### Deliverable B2: Workspace State Snapshotting & Rollback Coordinator
+- [ ] Implement state checkpointing prior to task delegation handoffs:
+  - Before Agent B receives execution rights, Dotdeck triggers a pre-delegation checkpoint (Git commit SHA, container file diff hash, or workspace state snapshot).
+  - If Agent B fails, crashes, or returns an unhandled exception:
+    - Dotdeck automatically triggers a state rollback to the pre-delegation checkpoint.
+    - Dotdeck notifies Agent A: *"Delegation to Agent B failed at step X with error Y. Environment rolled back to checkpoint Z."*
+  - Eliminates cascading file/database corruption caused by rogue delegatees.
+
+### Deliverable B3: Cost Deadbands & Recursion Circuit Breakers
+- [ ] Implement strict financial and recursion guards on every delegation tree:
+  - **Max Hop Depth:** Default limit of 3 delegation hops (`Agent A -> Agent B -> Agent C`). Any attempt to delegate to a 4th agent trips the circuit breaker.
+  - **Task Budget Cap:** Enforce a hard dollar/token ceiling per delegation tree (e.g. `$2.50` maximum spend across all sub-agents).
+  - **Cycle Detector:** Expand `CheckDelegationLoop` in `backend/internal/mcp/server.go` to detect indirect circular handoffs (`A -> B -> C -> A`).
+  - When a breaker trips: pause execution, park the task on the `HoldEngine`, and page the human operator via Slack.
+
+### Deliverable B4: Durable Task Mailbox & Asynchronous State Machine
+- [ ] Upgrade the MCP switchboard with a durable PostgreSQL-backed task queue (`tasks_delegation` table partitioned by workspace):
+  - State machine lifecycle: `QUEUED` $\to$ `VALIDATED` $\to$ `CLAIMED` $\to$ `EXECUTING` $\to$ `VERIFYING` $\to$ `COMPLETED` / `ROLLED_BACK`.
+  - Supports asynchronous agent handoffs: Agent A can delegate a long-running 15-minute analysis to Agent B, detach cleanly, and receive a webhook or wake-up callback when Agent B finishes.
+  - Dead-Letter Queue (DLQ) for unresolvable delegations with human triage drawer.
+
+### Deliverable B5: Multi-Agent Telemetry & Trace Visualizer
+- [ ] Repurpose the telemetry drawer into a **Distributed Agent Trace Viewer** (OpenTelemetry style):
+  - Span visualization of the delegation waterfall: see latency, token cost, input contract validation, and execution output for each agent in the chain.
+  - One-click inspection of inter-agent contract payloads and diff summaries.
 
 ---
 
 ## Definition of Done (DoD)
 
-1. **Sub-Millisecond Policy Evaluation:** Declarative rules evaluated dynamically via `expr` in under 0.1ms without hardcoded variable names.
-2. **End-to-End Slack Roundtrip:** 
-   - Python/Go client calls protected tool.
-   - Request halts with open HTTP connection.
-   - Interactive Slack Block Kit message appears in test channel.
-   - Operator clicks "Approve" in Slack.
-   - Inbound webhook verifies HMAC signature, claims distributed lock, updates Slack card, and unblocks agent HTTP request within 100ms.
-3. **Double-Approval Prevention:** Concurrent clicks from two separate users on the same Slack button result in exactly one execution and an error notice on the second click.
-4. **Zero-Code Dashboard Rule Creation:** Creating a new rule in the dashboard takes effect immediately across all live agent calls without restarting the backend.
-5. **Zero Single-Character Identifiers & Google Docstrings:** All new Go code strictly adheres to project coding standards.
+### For Plan A (HITL Governance Gateway):
+1. **Sub-Millisecond Policy Evaluation:** Declarative rules evaluated dynamically via `expr` in under 0.1ms.
+2. **End-to-End Slack Roundtrip:** Protected tool call halted on open HTTP connection, Slack card dispatched, operator clicks "Approve", and agent resumes within 100ms.
+3. **Double-Approval Concurrency Lock:** Two concurrent clicks on the same decision result in exactly one execution with distributed lock protection.
+
+### For Plan B (Deterministic A2A Delegation Switchboard):
+1. **Contract Boundary Validation:** Malformed delegation payloads are rejected at the gateway with structured self-correction feedback without invoking the downstream agent.
+2. **Automatic Workspace Rollback:** A simulated failure in a delegatee agent cleanly triggers environment rollback to the pre-delegation checkpoint.
+3. **Budget & Hop Circuit Breaker:** Exceeding either max delegation depth (3 hops) or tree budget ($2.50) instantly arrests execution and alerts the human operator via Slack.
+4. **End-to-End Multi-Agent Handoff:** Agent A successfully delegates a task to Agent B via `/mcp/{agent_token}`, schema is validated, task executes, and typed result is returned to Agent A with an immutable trace log in PostgreSQL.
