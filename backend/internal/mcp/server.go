@@ -128,17 +128,22 @@ func NewServer(repository AgentRepository, holdEngine *HoldEngine, broadcaster E
 
 // resetIdleTimer starts or resets the 60-second inactivity timer that transitions working agents back to resting.
 func (server *Server) resetIdleTimer(agentContext *AgentContext) {
+	server.resetIdleTimerForAgent(agentContext.ID, agentContext.WorkspaceID)
+}
+
+// resetIdleTimerForAgent starts a 60-second inactivity timer for any specified agent ID.
+func (server *Server) resetIdleTimerForAgent(agentID, workspaceID string) {
 	server.idleTimerLock.Lock()
 	defer server.idleTimerLock.Unlock()
 
-	if existingTimer, timerFound := server.idleTimers[agentContext.ID]; timerFound && existingTimer != nil {
+	if existingTimer, timerFound := server.idleTimers[agentID]; timerFound && existingTimer != nil {
 		existingTimer.Stop()
 	}
 
-	server.idleTimers[agentContext.ID] = time.AfterFunc(60*time.Second, func() {
-		_ = server.repository.UpdateStatus(agentContext.ID, "resting")
-		server.broadcaster.Broadcast(agentContext.WorkspaceID, "AGENT_STATE_CHANGED", map[string]interface{}{
-			"agent_id": agentContext.ID,
+	server.idleTimers[agentID] = time.AfterFunc(60*time.Second, func() {
+		_ = server.repository.UpdateStatus(agentID, "resting")
+		server.broadcaster.Broadcast(workspaceID, "AGENT_STATE_CHANGED", map[string]interface{}{
+			"agent_id": agentID,
 			"status":   "resting",
 		})
 	})
@@ -813,6 +818,7 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 				})
 
 				_ = server.repository.UpdateStatus(edge.TargetAgentID, "working")
+				server.resetIdleTimerForAgent(edge.TargetAgentID, agentContext.WorkspaceID)
 
 				server.broadcaster.Broadcast(agentContext.WorkspaceID, "HANDOFF_EMITTED", map[string]interface{}{
 					"source_agent_id": agentContext.ID,
@@ -852,6 +858,9 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 				},
 			}
 		}
+
+		_ = server.repository.UpdateStatus(agentContext.ID, "working")
+		server.resetIdleTimer(agentContext)
 
 		_ = server.repository.RecordThought(agentContext.ID, 0, fmt.Sprintf("Ingested upstream deliverable from %s: %s", deliverable.SourceAgentName, deliverable.Summary), "Processing pipeline deliverable payload", "fetch_pipeline_deliverable", deliverable.Deliverable)
 		server.broadcaster.Broadcast(agentContext.WorkspaceID, "THOUGHT_STEP_EMITTED", map[string]interface{}{
