@@ -23,17 +23,19 @@ func (broadcaster *mockBroadcaster) Broadcast(workspaceID, eventType string, pay
 }
 
 type mockAgentRepository struct {
-	agents  map[string]*AgentContext
-	edges   map[string][]EdgeContext
-	status  map[string]string
-	thought []string
+	agents       map[string]*AgentContext
+	edges        map[string][]EdgeContext
+	status       map[string]string
+	thought      []string
+	deliverables map[string]*PipelineDeliverable
 }
 
 func newMockRepository() *mockAgentRepository {
 	return &mockAgentRepository{
-		agents: make(map[string]*AgentContext),
-		edges:  make(map[string][]EdgeContext),
-		status: make(map[string]string),
+		agents:       make(map[string]*AgentContext),
+		edges:        make(map[string][]EdgeContext),
+		status:       make(map[string]string),
+		deliverables: make(map[string]*PipelineDeliverable),
 	}
 }
 
@@ -73,6 +75,15 @@ func (repository *mockAgentRepository) CreateAgent(ctx context.Context, agent do
 		Status:      string(agent.Status),
 	}
 	return &agent, nil
+}
+
+func (repository *mockAgentRepository) SavePipelineDeliverable(targetAgentID string, deliverable PipelineDeliverable) error {
+	repository.deliverables[targetAgentID] = &deliverable
+	return nil
+}
+
+func (repository *mockAgentRepository) GetLatestPipelineDeliverable(agentID string) (*PipelineDeliverable, error) {
+	return repository.deliverables[agentID], nil
 }
 
 // TestMCPServerInitialize validates the JSON-RPC 2.0 initialize handshake.

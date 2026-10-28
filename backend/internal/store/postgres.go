@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,8 +19,9 @@ import (
 
 // PostgresStore implements mcp.AgentRepository and enterprise persistence backed by PostgreSQL and sqlc.
 type PostgresStore struct {
-	pool    *pgxpool.Pool
-	queries *db.Queries
+	pool         *pgxpool.Pool
+	queries      *db.Queries
+	deliverables sync.Map
 }
 
 // NewPostgresStore constructs a repository backed by a pgxpool connection pool.
@@ -453,4 +455,20 @@ func stringToUUID(sourceString string) (pgtype.UUID, error) {
 		Bytes: parsedUUID,
 		Valid: true,
 	}, nil
+}
+
+// SavePipelineDeliverable buffers an inbound artifact for an agent wired downstream.
+func (store *PostgresStore) SavePipelineDeliverable(targetAgentID string, deliverable mcp.PipelineDeliverable) error {
+	store.deliverables.Store(targetAgentID, deliverable)
+	return nil
+}
+
+// GetLatestPipelineDeliverable retrieves the latest buffered deliverable routed to the agent.
+func (store *PostgresStore) GetLatestPipelineDeliverable(agentID string) (*mcp.PipelineDeliverable, error) {
+	if rawVal, found := store.deliverables.Load(agentID); found {
+		if deliverable, ok := rawVal.(mcp.PipelineDeliverable); ok {
+			return &deliverable, nil
+		}
+	}
+	return nil, nil
 }

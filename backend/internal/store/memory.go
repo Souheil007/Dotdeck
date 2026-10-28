@@ -19,12 +19,13 @@ import (
 
 // MemoryStore provides a thread-safe in-memory repository for local development and tests.
 type MemoryStore struct {
-	storeMutex sync.RWMutex
-	agents     map[string]*mcp.AgentContext // token -> AgentContext
-	byID       map[string]*mcp.AgentContext // id -> AgentContext
-	edges      map[string][]mcp.EdgeContext // source_agent_id -> edges
-	thoughts   map[string][]domain.ThoughtEvent
-	approvals  map[string]*domain.ApprovalRequest
+	storeMutex   sync.RWMutex
+	agents       map[string]*mcp.AgentContext // token -> AgentContext
+	byID         map[string]*mcp.AgentContext // id -> AgentContext
+	edges        map[string][]mcp.EdgeContext // source_agent_id -> edges
+	thoughts     map[string][]domain.ThoughtEvent
+	approvals    map[string]*domain.ApprovalRequest
+	deliverables map[string]*mcp.PipelineDeliverable // target_agent_id -> latest deliverable
 }
 
 type memoryStoreData struct {
@@ -93,11 +94,12 @@ func (store *MemoryStore) loadFromDisk() bool {
 // NewMemoryStore initializes an in-memory store pre-seeded with development agents.
 func NewMemoryStore() *MemoryStore {
 	storeInstance := &MemoryStore{
-		agents:    make(map[string]*mcp.AgentContext),
-		byID:      make(map[string]*mcp.AgentContext),
-		edges:     make(map[string][]mcp.EdgeContext),
-		thoughts:  make(map[string][]domain.ThoughtEvent),
-		approvals: make(map[string]*domain.ApprovalRequest),
+		agents:       make(map[string]*mcp.AgentContext),
+		byID:         make(map[string]*mcp.AgentContext),
+		edges:        make(map[string][]mcp.EdgeContext),
+		thoughts:     make(map[string][]domain.ThoughtEvent),
+		approvals:    make(map[string]*domain.ApprovalRequest),
+		deliverables: make(map[string]*mcp.PipelineDeliverable),
 	}
 
 	loaded := storeInstance.loadFromDisk()
@@ -412,4 +414,19 @@ func (store *MemoryStore) GetApprovals(requestContext context.Context, workspace
 		}
 	}
 	return pendingApprovals, nil
+}
+
+// SavePipelineDeliverable buffers an inbound artifact for an agent wired downstream.
+func (store *MemoryStore) SavePipelineDeliverable(targetAgentID string, deliverable mcp.PipelineDeliverable) error {
+	store.storeMutex.Lock()
+	defer store.storeMutex.Unlock()
+	store.deliverables[targetAgentID] = &deliverable
+	return nil
+}
+
+// GetLatestPipelineDeliverable retrieves the latest buffered deliverable routed to the agent.
+func (store *MemoryStore) GetLatestPipelineDeliverable(agentID string) (*mcp.PipelineDeliverable, error) {
+	store.storeMutex.RLock()
+	defer store.storeMutex.RUnlock()
+	return store.deliverables[agentID], nil
 }

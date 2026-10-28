@@ -30,6 +30,15 @@ type EventBroadcaster interface {
 	Broadcast(workspaceID, eventType string, payload interface{})
 }
 
+// PipelineDeliverable represents an artifact or deliverable auto-forwarded across canvas edges.
+type PipelineDeliverable struct {
+	SourceAgentID   string    `json:"source_agent_id"`
+	SourceAgentName string    `json:"source_agent_name"`
+	Summary         string    `json:"summary"`
+	Deliverable     string    `json:"deliverable"`
+	Timestamp       time.Time `json:"timestamp"`
+}
+
 // AgentRepository abstracts agent lookup and edge resolution for dynamic tooling.
 type AgentRepository interface {
 	GetAgentByToken(token string) (*AgentContext, error)
@@ -38,6 +47,8 @@ type AgentRepository interface {
 	RecordThought(agentID string, step int, trace, nextStep, tool string, payload interface{}) error
 	RecordApproval(workspaceID, agentID, question string, options []string, trace string) (string, error)
 	CreateAgent(ctx context.Context, agent domain.Agent) (*domain.Agent, error)
+	SavePipelineDeliverable(targetAgentID string, deliverable PipelineDeliverable) error
+	GetLatestPipelineDeliverable(agentID string) (*PipelineDeliverable, error)
 }
 
 // AgentContext contains core metadata required to serve an agent's MCP session.
@@ -657,6 +668,7 @@ func (server *Server) handleMethod(request *http.Request, agentContext *AgentCon
 			BuildTelemetryTool(),
 			BuildHumanApprovalTool(),
 			BuildTaskCompletionTool(),
+			BuildPipelineIngestionTool(),
 		}
 		for _, edge := range edges {
 			toolsList = append(toolsList, BuildDelegationTool(edge.TargetAgentName, edge.TargetAgentGoal, edge.TargetAgentProvider, edge.ToolName))
@@ -779,12 +791,86 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 			"status":   "resting",
 		})
 
+		// Automatically route completed deliverable downstream across canvas edges
+		outboundEdges, queryError := server.repository.GetOutboundEdges(agentContext.ID)
+		if queryError == nil && len(outboundEdges) > 0 {
+			for _, edge := range outboundEdges {
+				deliverableRecord := PipelineDeliverable{
+					SourceAgentID:   agentContext.ID,
+					SourceAgentName: agentContext.Name,
+					Summary:         summaryText,
+					Deliverable:     deliverableText,
+					Timestamp:       time.Now().UTC(),
+				}
+				_ = server.repository.SavePipelineDeliverable(edge.TargetAgentID, deliverableRecord)
+
+				ingressReasoning := fmt.Sprintf("Pipeline deliverable automatically routed from %s (%s): %s", agentContext.Name, FormatProviderVendor(agentContext.Provider), summaryText)
+				_ = server.repository.RecordThought(edge.TargetAgentID, 0, ingressReasoning, "Awaiting turn or downstream processing", "pipeline_ingress", map[string]interface{}{
+					"source_agent_id":   agentContext.ID,
+					"source_agent_name": agentContext.Name,
+					"summary":           summaryText,
+					"deliverable":       deliverableText,
+				})
+
+				_ = server.repository.UpdateStatus(edge.TargetAgentID, "working")
+
+				server.broadcaster.Broadcast(agentContext.WorkspaceID, "HANDOFF_EMITTED", map[string]interface{}{
+					"source_agent_id": agentContext.ID,
+					"target_agent_id": edge.TargetAgentID,
+					"tool_called":     "complete_task",
+					"instructions":    fmt.Sprintf("Pipeline deliverable automatically routed from %s: %s", agentContext.Name, summaryText),
+					"payload":         deliverableText,
+					"reasoning_trace": summaryText,
+					"timestamp":       time.Now().UTC(),
+				})
+
+				server.broadcaster.Broadcast(agentContext.WorkspaceID, "AGENT_STATE_CHANGED", map[string]interface{}{
+					"agent_id": edge.TargetAgentID,
+					"status":   "working",
+				})
+			}
+		}
+
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      rpcRequest.ID,
 			Result: map[string]interface{}{
 				"status":  "completed",
-				"message": "Task completion recorded. Status set to resting.",
+				"message": "Task completion recorded. Output automatically routed downstream across canvas edges.",
+			},
+		}
+
+	case "fetch_pipeline_deliverable":
+		deliverable, lookupError := server.repository.GetLatestPipelineDeliverable(agentContext.ID)
+		if lookupError != nil || deliverable == nil {
+			return JSONRPCResponse{
+				JSONRPC: "2.0",
+				ID:      rpcRequest.ID,
+				Result: map[string]interface{}{
+					"status":  "empty",
+					"message": "No upstream deliverables currently in your pipeline inbox. Upstream connected peers have not called complete_task yet.",
+				},
+			}
+		}
+
+		_ = server.repository.RecordThought(agentContext.ID, 0, fmt.Sprintf("Ingested upstream deliverable from %s: %s", deliverable.SourceAgentName, deliverable.Summary), "Processing pipeline deliverable payload", "fetch_pipeline_deliverable", deliverable.Deliverable)
+		server.broadcaster.Broadcast(agentContext.WorkspaceID, "THOUGHT_STEP_EMITTED", map[string]interface{}{
+			"agent_id":          agentContext.ID,
+			"reasoning_trace":   fmt.Sprintf("Ingested upstream deliverable from %s: %s", deliverable.SourceAgentName, deliverable.Summary),
+			"next_planned_step": "Processing pipeline deliverable payload",
+			"tool_called":       "fetch_pipeline_deliverable",
+			"timestamp":         time.Now().UTC(),
+		})
+
+		return JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      rpcRequest.ID,
+			Result: map[string]interface{}{
+				"status":      "received",
+				"from_agent":  deliverable.SourceAgentName,
+				"summary":     deliverable.Summary,
+				"deliverable": deliverable.Deliverable,
+				"timestamp":   deliverable.Timestamp,
 			},
 		}
 

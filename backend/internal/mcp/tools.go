@@ -141,3 +141,15 @@ func BuildDelegationTool(targetAgentName, targetAgentGoal, targetAgentProvider, 
 		},
 	}
 }
+
+// BuildPipelineIngestionTool returns the schema for fetching data deliverables automatically forwarded across canvas edges.
+func BuildPipelineIngestionTool() ToolDefinition {
+	return ToolDefinition{
+		Name:        "fetch_pipeline_deliverable",
+		Description: "PIPELINE INBOX RETRIEVAL: Retrieves the latest data deliverable, report, or unread emails automatically forwarded to you by upstream connected agents (such as Grok or email reader bots) on the Dotdeck canvas. Invoke this tool at the start of your turn whenever asked to inspect, categorize, summarize, or analyze incoming team data.",
+		InputSchema: map[string]interface{}{
+			"type":       "object",
+			"properties": map[string]interface{}{},
+		},
+	}
+}
