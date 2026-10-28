@@ -24,6 +24,7 @@ import (
 type AgentSteeringRepository interface {
 	GetAgentByID(requestContext context.Context, agentID string) (*domain.Agent, error)
 	CreateAgent(requestContext context.Context, agent domain.Agent) (*domain.Agent, error)
+	DeleteAgent(requestContext context.Context, agentID string) error
 	CreateEdge(requestContext context.Context, edge domain.Edge) (*domain.Edge, error)
 	DeleteEdge(requestContext context.Context, workspaceID, sourceAgentID, targetAgentID string) error
 	UpdateStatus(agentID, status string) error
@@ -130,6 +131,33 @@ func (handler *AgentHandler) Create(writer http.ResponseWriter, request *http.Re
 		Agent:           agentRecord,
 		McpURL:          mcpEndpointURL,
 		BootstrapPrompt: promptText,
+	})
+}
+
+// Delete decommissions an agent node, cascades edge teardown, and notifies workspace clients.
+func (handler *AgentHandler) Delete(writer http.ResponseWriter, request *http.Request) {
+	agentID := chi.URLParam(request, "id")
+	if agentID == "" {
+		response.Error(writer, http.StatusBadRequest, "agent id is required")
+		return
+	}
+
+	if handler.repository != nil {
+		if deleteError := handler.repository.DeleteAgent(request.Context(), agentID); deleteError != nil {
+			response.Error(writer, http.StatusInternalServerError, "failed to delete agent node")
+			return
+		}
+	}
+
+	if handler.broadcaster != nil {
+		handler.broadcaster.Broadcast("", "AGENT_DECOMMISSIONED", map[string]interface{}{
+			"agent_id": agentID,
+		})
+	}
+
+	response.JSON(writer, http.StatusOK, map[string]interface{}{
+		"status":   "decommissioned",
+		"agent_id": agentID,
 	})
 }
 

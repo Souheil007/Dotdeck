@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { Bot, Sparkles, Clock, AlertCircle, CheckCircle, Zap, ShieldAlert, Cpu, Flame, Globe } from 'lucide-react';
+import { Bot, Sparkles, Clock, AlertCircle, CheckCircle, Zap, ShieldAlert, Cpu, Flame, Globe, Trash2 } from 'lucide-react';
 import type { AgentData } from '../../../store/useWorkspaceStore';
 import { useWorkspaceStore } from '../../../store/useWorkspaceStore';
 
@@ -89,7 +89,7 @@ const providerMetadata: Record<
 };
 
 export const AgentNode = memo(({ id, data, selected }: AgentNodeProps) => {
-  const { setSelectedAgentId, openPairingModal } = useWorkspaceStore();
+  const { setSelectedAgentId, openPairingModal, deleteAgentNode, userRole } = useWorkspaceStore();
   const config = statusConfig[data.status] || statusConfig.resting;
   const StatusIcon = config.icon;
 
@@ -144,10 +144,27 @@ export const AgentNode = memo(({ id, data, selected }: AgentNodeProps) => {
           </div>
         </div>
 
-        {/* State Phosphor Badge */}
-        <div className={`px-2 py-0.5 rounded border text-[10px] font-mono font-semibold flex items-center gap-1.5 shrink-0 ${config.badgeClass}`}>
-          <StatusIcon className="w-3 h-3" />
-          <span>{config.label}</span>
+        {/* State Phosphor Badge & Decommission Action */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className={`px-2 py-0.5 rounded border text-[10px] font-mono font-semibold flex items-center gap-1.5 ${config.badgeClass}`}>
+            <StatusIcon className="w-3 h-3" />
+            <span>{config.label}</span>
+          </div>
+
+          {userRole !== 'read' && (
+            <button
+              onClick={(clickEvent) => {
+                clickEvent.stopPropagation();
+                if (window.confirm(`Decommission and destroy agent "${data.name}"? This action removes all connected links and cannot be undone.`)) {
+                  deleteAgentNode(id);
+                }
+              }}
+              className="p-1 rounded text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+              title="Decommission & Destroy Agent"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 

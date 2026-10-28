@@ -109,6 +109,7 @@ interface WorkspaceState {
   addEdgeToWorkspace: (edge: Edge) => void;
   removeEdgeFromWorkspace: (edgeId: string) => void;
   addAgentNode: (agent: AgentData, position?: { x: number; y: number }) => void;
+  deleteAgentNode: (agentId: string) => void;
   updateNodePosition: (nodeId: string, position: { x: number; y: number }) => void;
   updateNodeStatus: (agentId: string, status: AgentStatus) => void;
   updateNodeThought: (agentId: string, thought: string, nextStep: string) => void;
@@ -164,7 +165,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           description: 'High-touch ticket triage with 45s human authorization hold on financial refunds.',
           providers: ['openai_dot', 'claude'],
           agentCount: 2,
-          activeApprovalsCount: 0,
+          activeApprovalsCount: 1,
           membersCount: 3,
           lastActive: '2h ago',
           role: 'write',
@@ -222,6 +223,50 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           return {
             nodes: updatedNodes,
             workspaces: updatedWorkspaces,
+          };
+        }),
+      deleteAgentNode: (agentId) =>
+        set((state) => {
+          const updatedNodes = state.nodes.filter((node) => node.id !== agentId);
+          const updatedEdges = state.edges.filter(
+            (edge) => edge.source !== agentId && edge.target !== agentId
+          );
+          const updatedWorkspaces = state.workspaces.map((ws) =>
+            ws.id === state.activeWorkspaceId
+              ? { ...ws, agentCount: updatedNodes.length }
+              : ws
+          );
+          const nextThoughts = { ...state.thoughts };
+          delete nextThoughts[agentId];
+
+          const nextApprovals = { ...state.approvals };
+          Object.keys(nextApprovals).forEach((key) => {
+            if (nextApprovals[key].agentId === agentId) {
+              delete nextApprovals[key];
+            }
+          });
+
+          // Dispatch async DELETE to backend
+          try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+            fetch(`${apiUrl}/api/v1/agents/${agentId}`, {
+              method: 'DELETE',
+              headers: {
+                'X-User-ID': state.currentUserId,
+                'X-User-Name': state.currentUserName,
+              },
+            }).catch(() => {});
+          } catch {
+            // Non-fatal if offline
+          }
+
+          return {
+            nodes: updatedNodes,
+            edges: updatedEdges,
+            workspaces: updatedWorkspaces,
+            selectedAgentId: state.selectedAgentId === agentId ? null : state.selectedAgentId,
+            thoughts: nextThoughts,
+            approvals: nextApprovals,
           };
         }),
       updateNodePosition: (nodeId, position) =>
@@ -432,6 +477,65 @@ export const useWorkspaceStore = create<WorkspaceState>()(
                 data: { toolName: 'delegate_task_to_claude_auditor' },
               },
             ];
+          } else if (workspaceId === 'ws-support') {
+            targetNodes = [
+              {
+                id: 'supp-1',
+                type: 'agentNode',
+                position: { x: 120, y: 180 },
+                data: {
+                  id: 'supp-1',
+                  name: 'Triage OpenAI Dot',
+                  provider: 'openai_dot',
+                  goal: 'Classify incoming customer dispute tickets, compute SLA uptime breaches, and draft refund authorizations.',
+                  status: 'working',
+                  currentThought: 'Evaluating SLA outage dispute for Acme Corp (#8921); requesting $1,250 refund.',
+                  currentStep: 'Forwarding SLA breach analysis to Claude Escalation Specialist',
+                  lastRunStatus: 'success',
+                  lastRunTime: '3m ago',
+                },
+              },
+              {
+                id: 'supp-2',
+                type: 'agentNode',
+                position: { x: 580, y: 180 },
+                data: {
+                  id: 'supp-2',
+                  name: 'Claude Escalation Specialist',
+                  provider: 'claude',
+                  goal: 'Audit refund payouts against corporate policy and gate payouts behind human operator approval.',
+                  status: 'blocked_on_user',
+                  currentThought: 'Payout exceeds $500 threshold ($1,250). Initiating 45s operator hold.',
+                  lastRunStatus: 'success',
+                  lastRunTime: '1m ago',
+                },
+              },
+            ];
+
+            targetEdges = [
+              {
+                id: 'edge-supp-1-2',
+                source: 'supp-1',
+                target: 'supp-2',
+                sourceHandle: 'handle-right',
+                targetHandle: 'handle-left',
+                type: 'pulseEdge',
+                data: { toolName: 'delegate_task_to_claude_escalation_specialist' },
+              },
+            ];
+          }
+
+          const targetApprovals = { ...state.approvals };
+          if (workspaceId === 'ws-support' && !targetApprovals['app-supp-1']) {
+            targetApprovals['app-supp-1'] = {
+              id: 'app-supp-1',
+              agentId: 'supp-2',
+              question: 'Refund payout of $1,250 requested for Acme Corp (Dispute #8921). Authorize refund release?',
+              options: ['Approve $1,250 Payout', 'Reject SLA Claim', 'Issue $625 Partial Credit'],
+              reasoningTrace: 'Customer experienced 4.2-hour outage exceeding SLA Section 4.3 uptime guarantee.',
+              status: 'pending',
+              createdAt: new Date().toISOString(),
+            };
           }
 
           return {
@@ -441,6 +545,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             userRole: target.role,
             nodes: targetNodes,
             edges: targetEdges,
+            approvals: targetApprovals,
             selectedAgentId: null,
           };
         }),

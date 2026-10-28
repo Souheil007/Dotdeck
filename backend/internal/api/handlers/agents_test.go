@@ -35,6 +35,11 @@ func (repo *mockAgentSteeringRepository) CreateAgent(requestContext context.Cont
 	return &agent, nil
 }
 
+func (repo *mockAgentSteeringRepository) DeleteAgent(requestContext context.Context, agentID string) error {
+	repo.agentRecord = nil
+	return nil
+}
+
 func (repo *mockAgentSteeringRepository) CreateEdge(requestContext context.Context, edge domain.Edge) (*domain.Edge, error) {
 	return &edge, nil
 }
@@ -189,6 +194,34 @@ func TestAgentHandlerCreateAndConnectEdge(testingTarget *testing.T) {
 
 	if recorderEdge.Code != http.StatusCreated {
 		testingTarget.Fatalf("expected HTTP 201 for edge connect, got %d", recorderEdge.Code)
+	}
+}
+
+// TestAgentHandlerDelete validates agent decommissioning and removal.
+func TestAgentHandlerDelete(testingTarget *testing.T) {
+	mockRepo := &mockAgentSteeringRepository{
+		agentRecord: &domain.Agent{
+			ID:   "agent-to-delete",
+			Name: "Decommission Me",
+		},
+	}
+	agentHandler := NewAgentHandler("http://localhost:8080")
+	agentHandler.SetRepository(mockRepo)
+
+	router := chi.NewRouter()
+	router.Delete("/api/v1/agents/{id}", agentHandler.Delete)
+
+	request := httptest.NewRequest(http.MethodDelete, "/api/v1/agents/agent-to-delete", nil)
+	recorder := httptest.NewRecorder()
+
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		testingTarget.Fatalf("expected HTTP 200 for agent deletion, got %d", recorder.Code)
+	}
+
+	if mockRepo.agentRecord != nil {
+		testingTarget.Errorf("expected agentRecord to be nil after deletion")
 	}
 }
 

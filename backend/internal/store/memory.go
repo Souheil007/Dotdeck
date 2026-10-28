@@ -183,6 +183,33 @@ func (store *MemoryStore) CreateAgent(requestContext context.Context, agent doma
 	return &agent, nil
 }
 
+// DeleteAgent decommissions an agent by its ID, cleaning up token maps and connected edges.
+func (store *MemoryStore) DeleteAgent(requestContext context.Context, agentID string) error {
+	store.storeMutex.Lock()
+	defer store.storeMutex.Unlock()
+
+	delete(store.byID, agentID)
+	for tokenString, agentContext := range store.agents {
+		if agentContext.ID == agentID {
+			delete(store.agents, tokenString)
+			break
+		}
+	}
+
+	delete(store.edges, agentID)
+	for sourceID, edgesList := range store.edges {
+		var filteredEdges []mcp.EdgeContext
+		for _, edgeItem := range edgesList {
+			if edgeItem.TargetAgentID != agentID {
+				filteredEdges = append(filteredEdges, edgeItem)
+			}
+		}
+		store.edges[sourceID] = filteredEdges
+	}
+
+	return nil
+}
+
 // UpdateStatus adjusts the agent state badge across the Dotdeck live canvas.
 func (store *MemoryStore) UpdateStatus(agentID, status string) error {
 	store.storeMutex.Lock()

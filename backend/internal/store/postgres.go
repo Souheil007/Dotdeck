@@ -384,6 +384,20 @@ func (store *PostgresStore) RecordApproval(workspaceID, agentID, question string
 	return createdApproval.ID, nil
 }
 
+// DeleteAgent satisfies AgentSteeringRepository, deleting an agent and cascading removal of edges and traces.
+func (store *PostgresStore) DeleteAgent(requestContext context.Context, agentID string) error {
+	agentUUID, parseError := stringToUUID(agentID)
+	if parseError != nil {
+		return parseError
+	}
+
+	deleteContext, cancelDelete := context.WithTimeout(requestContext, 5*time.Second)
+	defer cancelDelete()
+
+	_, execError := store.pool.Exec(deleteContext, "DELETE FROM agents WHERE id = $1", agentUUID)
+	return execError
+}
+
 func uuidToString(sourceUUID pgtype.UUID) string {
 	if !sourceUUID.Valid {
 		return ""

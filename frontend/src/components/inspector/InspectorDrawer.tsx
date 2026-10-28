@@ -13,6 +13,7 @@ import {
   Copy,
   Check,
   Activity,
+  Trash2,
 } from 'lucide-react';
 import { useWorkspaceStore, type AgentStatus } from '../../store/useWorkspaceStore';
 import { ThoughtStream } from './ThoughtStream';
@@ -85,7 +86,15 @@ const providerConfig: Record<string, { label: string; icon: typeof Sparkles; col
 };
 
 export function InspectorDrawer() {
-  const { selectedAgentId, setSelectedAgentId, nodes, thoughts, approvals } = useWorkspaceStore();
+  const {
+    selectedAgentId,
+    setSelectedAgentId,
+    nodes,
+    thoughts,
+    approvals,
+    deleteAgentNode,
+    userRole,
+  } = useWorkspaceStore();
   const [activeTab, setActiveTab] = useState<'thoughts' | 'approvals'>('thoughts');
   const [copiedGoal, setCopiedGoal] = useState(false);
 
@@ -157,14 +166,30 @@ export function InspectorDrawer() {
             </div>
           </div>
 
-          <button
-            onClick={() => setSelectedAgentId(null)}
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors shrink-0 font-mono text-[10px]"
-            title="Close Inspector (Esc)"
-          >
-            <span>[ESC]</span>
-            <X className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            {userRole !== 'read' && (
+              <button
+                onClick={() => {
+                  if (window.confirm(`Decommission and destroy agent "${agent.name}"? This removes all active handoffs and telemetry.`)) {
+                    deleteAgentNode(agent.id);
+                  }
+                }}
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                title="Decommission & Destroy Agent"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            <button
+              onClick={() => setSelectedAgentId(null)}
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-zinc-400 hover:text-zinc-700 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors shrink-0 font-mono text-[10px]"
+              title="Close Inspector (Esc)"
+            >
+              <span>[ESC]</span>
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* Target Mission Objective Directive */}
