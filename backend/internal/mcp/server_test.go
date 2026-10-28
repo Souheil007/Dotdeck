@@ -86,6 +86,15 @@ func (repository *mockAgentRepository) GetLatestPipelineDeliverable(agentID stri
 	return repository.deliverables[agentID], nil
 }
 
+func (repository *mockAgentRepository) GetAgentByWorkspaceAndProvider(workspaceID string, provider domain.Provider) (*AgentContext, error) {
+	for _, agentContext := range repository.agents {
+		if agentContext.WorkspaceID == workspaceID && agentContext.Provider == string(provider) {
+			return agentContext, nil
+		}
+	}
+	return nil, nil
+}
+
 // TestMCPServerInitialize validates the JSON-RPC 2.0 initialize handshake.
 func TestMCPServerInitialize(testingT *testing.T) {
 	mockRepo := newMockRepository()

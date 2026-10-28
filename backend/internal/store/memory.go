@@ -430,3 +430,16 @@ func (store *MemoryStore) GetLatestPipelineDeliverable(agentID string) (*mcp.Pip
 	defer store.storeMutex.RUnlock()
 	return store.deliverables[agentID], nil
 }
+
+// GetAgentByWorkspaceAndProvider looks up an existing agent in a workspace matching a cloud provider.
+func (store *MemoryStore) GetAgentByWorkspaceAndProvider(workspaceID string, provider domain.Provider) (*mcp.AgentContext, error) {
+	store.storeMutex.RLock()
+	defer store.storeMutex.RUnlock()
+
+	for _, agentContext := range store.byID {
+		if agentContext.WorkspaceID == workspaceID && agentContext.Provider == string(provider) {
+			return agentContext, nil
+		}
+	}
+	return nil, nil
+}

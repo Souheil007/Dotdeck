@@ -49,6 +49,7 @@ type AgentRepository interface {
 	CreateAgent(ctx context.Context, agent domain.Agent) (*domain.Agent, error)
 	SavePipelineDeliverable(targetAgentID string, deliverable PipelineDeliverable) error
 	GetLatestPipelineDeliverable(agentID string) (*PipelineDeliverable, error)
+	GetAgentByWorkspaceAndProvider(workspaceID string, provider domain.Provider) (*AgentContext, error)
 }
 
 // AgentContext contains core metadata required to serve an agent's MCP session.
@@ -501,6 +502,8 @@ func (server *Server) handleWorkspaceHub(writer http.ResponseWriter, request *ht
 		}
 	}
 
+	provider := inferProvider(clientName, request.UserAgent())
+
 	// Determine deterministic hub token and display name for actual agent
 	var hubToken string
 	var displayName string
@@ -510,18 +513,29 @@ func (server *Server) handleWorkspaceHub(writer http.ResponseWriter, request *ht
 		cleanedAlias = strings.ReplaceAll(cleanedAlias, " ", "_")
 		cleanedAlias = strings.ReplaceAll(cleanedAlias, "-", "_")
 		hubToken = fmt.Sprintf("hub_%s_%s", workspaceID, cleanedAlias)
-	} else if clientName != "" && !strings.EqualFold(clientName, "grok") && !strings.EqualFold(clientName, "claude") {
-		displayName = formatDisplayName(clientName)
-		hubToken = fmt.Sprintf("hub_%s_agent", workspaceID)
 	} else {
-		// Single fleet agent endpoint /mcp/ws/{workspace_id}
-		hubToken = fmt.Sprintf("hub_%s_agent", workspaceID)
-		displayName = formatDisplayName(clientName)
+		// Vendor-aware automatic workspace hub routing:
+		// When clients connect to base /mcp/ws/{workspace_id}, partition by vendor identity
+		switch provider {
+		case domain.ProviderOpenAIDot:
+			hubToken = fmt.Sprintf("hub_%s_chatgpt", workspaceID)
+			displayName = "ChatGPT Agent"
+		case domain.ProviderClaude:
+			hubToken = fmt.Sprintf("hub_%s_claude", workspaceID)
+			displayName = "Claude Agent"
+		default:
+			hubToken = fmt.Sprintf("hub_%s_agent", workspaceID)
+			displayName = formatDisplayName(clientName)
+		}
 	}
 
-	provider := inferProvider(displayName, request.UserAgent())
-
 	agentContext, _ := server.repository.GetAgentByToken(hubToken)
+	if agentContext == nil && customAlias == "" {
+		// If connecting to base workspace hub without custom alias, look for an existing agent matching this provider in the workspace
+		if matchingAgent, matchErr := server.repository.GetAgentByWorkspaceAndProvider(workspaceID, provider); matchErr == nil && matchingAgent != nil {
+			agentContext = matchingAgent
+		}
+	}
 	if agentContext == nil {
 		agentID := uuid.New().String()
 		agentRecord := domain.Agent{
