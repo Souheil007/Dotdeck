@@ -46,3 +46,9 @@ data/
 docs/SESSION_TRANSCRIPT.*
 scripts/export_session.py
 
+# Local Design Skills (Cloned from upstream)
+.agents/skills/taste-skill/
+.agents/skills/transitions-dev/
+.agents/skills/ui-ux-pro-max/
+
+
