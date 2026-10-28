@@ -543,12 +543,26 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
         setSelectedAgentId: (selectedAgentId) => set({ selectedAgentId }),
         addThoughtStep: (agentId, step) =>
-          set((state) => ({
-            thoughts: {
-              ...state.thoughts,
-              [agentId]: [step, ...(state.thoughts[agentId] || [])],
-            },
-          })),
+          set((state) => {
+            const existingSteps = state.thoughts[agentId] || [];
+            // Deduplicate: ignore if an entry with the exact same ID or matching trace within 4 seconds already exists
+            const isDuplicate = existingSteps.some(
+              (existing) =>
+                existing.id === step.id ||
+                (existing.reasoningTrace === step.reasoningTrace &&
+                  existing.nextPlannedStep === step.nextPlannedStep &&
+                  Math.abs(new Date(existing.timestamp).getTime() - new Date(step.timestamp).getTime()) < 4000)
+            );
+            if (isDuplicate) {
+              return state;
+            }
+            return {
+              thoughts: {
+                ...state.thoughts,
+                [agentId]: [step, ...existingSteps],
+              },
+            };
+          }),
 
         addApproval: (approval) =>
           set((state) => ({

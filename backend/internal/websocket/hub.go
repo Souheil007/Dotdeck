@@ -50,6 +50,14 @@ func (hubInstance *Hub) Run() {
 				roomClients = make(map[*Client]bool)
 				hubInstance.workspaceRooms[clientInstance.WorkspaceID] = roomClients
 			}
+			// Close and remove any existing stale client for this same UserID
+			for existingClient := range roomClients {
+				if existingClient.UserID == clientInstance.UserID && existingClient != clientInstance {
+					delete(roomClients, existingClient)
+					close(existingClient.sendChannel)
+					_ = existingClient.connection.Close(coderws.StatusNormalClosure, "superseded by new connection")
+				}
+			}
 			roomClients[clientInstance] = true
 			hubInstance.hubMutex.Unlock()
 

@@ -284,6 +284,7 @@ func (server *Server) handleCheckinWebhook(writer http.ResponseWriter, request *
 	if payload.ReasoningTrace != "" {
 		_ = server.repository.RecordThought(agentContext.ID, 0, payload.ReasoningTrace, payload.NextPlannedStep, payload.ToolCalled, payload.PayloadData)
 		server.broadcaster.Broadcast(agentContext.WorkspaceID, "THOUGHT_STEP_EMITTED", map[string]interface{}{
+			"id":                uuid.New().String(),
 			"agent_id":          agentContext.ID,
 			"reasoning_trace":   payload.ReasoningTrace,
 			"next_planned_step": payload.NextPlannedStep,
@@ -410,6 +411,7 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 		_ = server.repository.RecordThought(agentContext.ID, stepNumber, reasoningTrace, nextPlannedStep, callArguments.Name, nil)
 
 		server.broadcaster.Broadcast(agentContext.WorkspaceID, "THOUGHT_STEP_EMITTED", map[string]interface{}{
+			"id":                uuid.New().String(),
 			"agent_id":          agentContext.ID,
 			"step_index":        stepNumber,
 			"reasoning_trace":   reasoningTrace,

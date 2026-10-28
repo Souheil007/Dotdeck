@@ -6,6 +6,7 @@ export function useMultiplayerWebSocket(websocketUrl: string) {
   const reconnectTimeoutRef = useRef<number | null>(null);
   const backoffDelayRef = useRef<number>(500);
   const lastCursorSendRef = useRef<number>(0);
+  const isDisposedRef = useRef<boolean>(false);
 
   const {
     updateNodeStatus,
@@ -19,6 +20,19 @@ export function useMultiplayerWebSocket(websocketUrl: string) {
   } = useWorkspaceStore();
 
   const connect = useCallback(() => {
+    if (isDisposedRef.current) return;
+
+    // Teardown any prior socket cleanly without triggering ghost reconnects
+    if (socketRef.current) {
+      const priorSocket = socketRef.current;
+      priorSocket.onopen = null;
+      priorSocket.onmessage = null;
+      priorSocket.onerror = null;
+      priorSocket.onclose = null;
+      priorSocket.close();
+      socketRef.current = null;
+    }
+
     try {
       const activeSocket = new WebSocket(websocketUrl);
       socketRef.current = activeSocket;
@@ -38,7 +52,7 @@ export function useMultiplayerWebSocket(websocketUrl: string) {
             case 'THOUGHT_STEP_EMITTED':
               updateNodeThought(payload.agent_id, payload.reasoning_trace, payload.next_planned_step);
               addThoughtStep(payload.agent_id, {
-                id: Math.random().toString(),
+                id: payload.id || `${payload.agent_id}-${payload.step_index || 0}-${payload.reasoning_trace}`,
                 agentId: payload.agent_id,
                 stepIndex: payload.step_index || 0,
                 reasoningTrace: payload.reasoning_trace,
@@ -104,18 +118,23 @@ export function useMultiplayerWebSocket(websocketUrl: string) {
       };
 
       activeSocket.onclose = () => {
+        if (isDisposedRef.current) return;
         const nextDelay = Math.min(backoffDelayRef.current * 1.5, 10000);
         backoffDelayRef.current = nextDelay;
         reconnectTimeoutRef.current = window.setTimeout(connect, backoffDelayRef.current);
       };
 
       activeSocket.onerror = () => {
-        activeSocket.close();
+        if (!isDisposedRef.current) {
+          activeSocket.close();
+        }
       };
     } catch {
-      const nextDelay = Math.min(backoffDelayRef.current * 1.5, 10000);
-      backoffDelayRef.current = nextDelay;
-      reconnectTimeoutRef.current = window.setTimeout(connect, backoffDelayRef.current);
+      if (!isDisposedRef.current) {
+        const nextDelay = Math.min(backoffDelayRef.current * 1.5, 10000);
+        backoffDelayRef.current = nextDelay;
+        reconnectTimeoutRef.current = window.setTimeout(connect, backoffDelayRef.current);
+      }
     }
   }, [
     websocketUrl,
@@ -130,10 +149,23 @@ export function useMultiplayerWebSocket(websocketUrl: string) {
   ]);
 
   useEffect(() => {
+    isDisposedRef.current = false;
     connect();
     return () => {
-      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-      if (socketRef.current) socketRef.current.close();
+      isDisposedRef.current = true;
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      if (socketRef.current) {
+        const staleSocket = socketRef.current;
+        staleSocket.onopen = null;
+        staleSocket.onmessage = null;
+        staleSocket.onerror = null;
+        staleSocket.onclose = null;
+        staleSocket.close();
+        socketRef.current = null;
+      }
     };
   }, [connect]);
 
