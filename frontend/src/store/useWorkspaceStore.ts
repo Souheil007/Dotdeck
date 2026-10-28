@@ -67,6 +67,13 @@ export interface HandoffPreview {
   payload?: unknown;
 }
 
+export interface DecommissionTarget {
+  id: string;
+  name: string;
+  provider?: string;
+  connectedWiresCount: number;
+}
+
 function getOrCreateSessionUser() {
   if (typeof window === 'undefined') {
     return { userId: 'operator-1', userName: 'Operator' };
@@ -128,6 +135,9 @@ interface WorkspaceState {
   setUserRole: (role: 'admin' | 'write' | 'read') => void;
   setShareModalOpen: (open: boolean) => void;
   setHandoffPreview: (preview: HandoffPreview | null) => void;
+  decommissionTarget: DecommissionTarget | null;
+  openDecommissionModal: (target: DecommissionTarget) => void;
+  closeDecommissionModal: () => void;
   switchWorkspace: (workspaceId: string) => void;
   createWorkspace: (name: string, description: string) => WorkspaceItem;
 }
@@ -192,6 +202,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         isCreateAgentModalOpen: false,
         isShareModalOpen: false,
         handoffPreview: null,
+        decommissionTarget: null,
 
       setNodes: (nodes) => set({ nodes }),
       setEdges: (edges) => set({ edges }),
@@ -350,6 +361,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       closePairingModal: () => set({ isPairingModalOpen: false, pairingAgent: null, pairingSession: null }),
       openCreateAgentModal: () => set({ isCreateAgentModalOpen: true }),
       closeCreateAgentModal: () => set({ isCreateAgentModalOpen: false }),
+      openDecommissionModal: (decommissionTarget) => set({ decommissionTarget }),
+      closeDecommissionModal: () => set({ decommissionTarget: null }),
       setUserRole: (userRole) => set({ userRole }),
       setShareModalOpen: (isShareModalOpen) => set({ isShareModalOpen }),
       setHandoffPreview: (handoffPreview) => set({ handoffPreview }),

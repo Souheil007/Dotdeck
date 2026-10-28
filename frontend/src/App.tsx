@@ -18,6 +18,7 @@ import { InspectorDrawer } from './components/inspector/InspectorDrawer';
 import { PairingWizard } from './components/modals/PairingWizard';
 import { CreateAgentModal } from './components/modals/CreateAgentModal';
 import { ShareModal } from './components/modals/ShareModal';
+import { DecommissionAgentModal } from './components/modals/DecommissionAgentModal';
 import { LandingPage } from './components/home/LandingPage';
 import { WorkspaceDashboard } from './components/workspaces/WorkspaceDashboard';
 import { ThemeToggle } from './components/common/ThemeToggle';
@@ -322,6 +323,7 @@ export function App() {
       <CreateAgentModal />
       <PairingWizard />
       <ShareModal />
+      <DecommissionAgentModal />
     </div>
   );
 }

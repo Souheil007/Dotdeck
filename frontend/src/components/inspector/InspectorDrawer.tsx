@@ -90,9 +90,10 @@ export function InspectorDrawer() {
     selectedAgentId,
     setSelectedAgentId,
     nodes,
+    edges,
     thoughts,
     approvals,
-    deleteAgentNode,
+    openDecommissionModal,
     userRole,
   } = useWorkspaceStore();
   const [activeTab, setActiveTab] = useState<'thoughts' | 'approvals'>('thoughts');
@@ -170,9 +171,15 @@ export function InspectorDrawer() {
             {userRole !== 'read' && (
               <button
                 onClick={() => {
-                  if (window.confirm(`Decommission and destroy agent "${agent.name}"? This removes all active handoffs and telemetry.`)) {
-                    deleteAgentNode(agent.id);
-                  }
+                  const connectedWiresCount = edges.filter(
+                    (edge) => edge.source === agent.id || edge.target === agent.id
+                  ).length;
+                  openDecommissionModal({
+                    id: agent.id,
+                    name: agent.name,
+                    provider: agent.provider,
+                    connectedWiresCount,
+                  });
                 }}
                 className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                 title="Decommission & Destroy Agent"

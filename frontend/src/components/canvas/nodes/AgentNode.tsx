@@ -89,7 +89,7 @@ const providerMetadata: Record<
 };
 
 export const AgentNode = memo(({ id, data, selected }: AgentNodeProps) => {
-  const { setSelectedAgentId, openPairingModal, deleteAgentNode, userRole } = useWorkspaceStore();
+  const { setSelectedAgentId, openPairingModal, openDecommissionModal, edges, userRole } = useWorkspaceStore();
   const config = statusConfig[data.status] || statusConfig.resting;
   const StatusIcon = config.icon;
 
@@ -155,9 +155,15 @@ export const AgentNode = memo(({ id, data, selected }: AgentNodeProps) => {
             <button
               onClick={(clickEvent) => {
                 clickEvent.stopPropagation();
-                if (window.confirm(`Decommission and destroy agent "${data.name}"? This action removes all connected links and cannot be undone.`)) {
-                  deleteAgentNode(id);
-                }
+                const connectedWiresCount = edges.filter(
+                  (edge) => edge.source === id || edge.target === id
+                ).length;
+                openDecommissionModal({
+                  id,
+                  name: data.name,
+                  provider: data.provider,
+                  connectedWiresCount,
+                });
               }}
               className="p-1 rounded text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
               title="Decommission & Destroy Agent"
