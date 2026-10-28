@@ -22,7 +22,14 @@ const providerGuidance: Record<string, { targetName: string; locationText: strin
 };
 
 export function PairingWizard() {
-  const { isPairingModalOpen, pairingAgent, pairingSession, closePairingModal, nodes } = useWorkspaceStore();
+  const {
+    isPairingModalOpen,
+    pairingAgent,
+    pairingSession,
+    closePairingModal,
+    setSelectedAgentId,
+    nodes,
+  } = useWorkspaceStore();
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [justPaired, setJustPaired] = useState(false);
@@ -31,6 +38,13 @@ export function PairingWizard() {
   const liveAgentNode = nodes.find((node) => node.id === pairingAgent?.id);
   const currentStatus = liveAgentNode ? liveAgentNode.data.status : pairingAgent?.status || 'unpaired';
   const isPaired = currentStatus !== 'unpaired';
+
+  const handleCompleteAndFocus = () => {
+    if (pairingAgent) {
+      setSelectedAgentId(pairingAgent.id);
+    }
+    closePairingModal();
+  };
 
   useEffect(() => {
     if (isPaired && !justPaired) {
@@ -200,7 +214,7 @@ ${pairingAgent.goal}
 
           <div className="flex items-center gap-2">
             <button
-              onClick={closePairingModal}
+              onClick={handleCompleteAndFocus}
               className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
                 isPaired
                   ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20'

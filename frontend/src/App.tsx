@@ -283,7 +283,7 @@ export function App() {
 
       {/* Main Canvas Area */}
       <main className="flex-1 relative overflow-hidden bg-[#f8f9fa] dark:bg-[#07080b]">
-        <AgentCanvas />
+        <AgentCanvas key={activeWorkspaceId} />
         <InspectorDrawer />
 
         {/* Viral Growth Badge (Bottom-Left) */}

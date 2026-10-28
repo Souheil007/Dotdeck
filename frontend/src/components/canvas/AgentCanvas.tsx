@@ -1,6 +1,8 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import {
   ReactFlow,
+  ReactFlowProvider,
+  useReactFlow,
   Background,
   Controls,
   MiniMap,
@@ -95,7 +97,7 @@ function calculateAutoLayout(nodes: Node<AgentData>[], edges: { source: string; 
   });
 }
 
-export function AgentCanvas() {
+function AgentCanvasInner() {
   const {
     workspaceId,
     currentUserId,
@@ -111,9 +113,11 @@ export function AgentCanvas() {
     handoffPreview,
     setHandoffPreview,
     openCreateAgentModal,
+    selectedAgentId,
   } = useWorkspaceStore();
 
   const { theme } = useThemeStore();
+  const { fitView, setCenter } = useReactFlow();
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<AgentData>>(storeNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(storeEdges);
@@ -126,6 +130,31 @@ export function AgentCanvas() {
   useEffect(() => {
     setEdges(storeEdges);
   }, [storeEdges, setEdges]);
+
+  // Reactive camera: automatically re-fit view whenever agents are added or removed
+  const previousNodesLengthRef = useRef(storeNodes.length);
+  useEffect(() => {
+    if (storeNodes.length > 0 && previousNodesLengthRef.current !== storeNodes.length) {
+      const timer = setTimeout(() => {
+        fitView({ padding: 0.35, duration: 400 });
+      }, 50);
+      previousNodesLengthRef.current = storeNodes.length;
+      return () => clearTimeout(timer);
+    }
+    previousNodesLengthRef.current = storeNodes.length;
+  }, [storeNodes.length, fitView]);
+
+  // Center & zoom on newly paired or selected agent
+  useEffect(() => {
+    if (!selectedAgentId) return;
+    const targetNode = storeNodes.find((node) => node.id === selectedAgentId);
+    if (targetNode) {
+      const timer = setTimeout(() => {
+        setCenter(targetNode.position.x + 180, targetNode.position.y + 140, { zoom: 0.9, duration: 400 });
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedAgentId, storeNodes, setCenter]);
 
   const baseWsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws';
   const websocketUrl = `${baseWsUrl}?user_id=${encodeURIComponent(currentUserId)}&user_name=${encodeURIComponent(currentUserName)}&workspace_id=${encodeURIComponent(workspaceId)}&role=${userRole}`;
@@ -268,7 +297,10 @@ export function AgentCanvas() {
     const organizedNodes = calculateAutoLayout(nodes, edges);
     setNodes(organizedNodes);
     setStoreNodes(organizedNodes);
-  }, [nodes, edges, setNodes, setStoreNodes]);
+    setTimeout(() => {
+      fitView({ padding: 0.35, duration: 400 });
+    }, 50);
+  }, [nodes, edges, setNodes, setStoreNodes, fitView]);
 
   const handleMouseMove = useCallback(
     (mouseEvent: React.MouseEvent<HTMLDivElement>) => {
@@ -438,5 +470,13 @@ export function AgentCanvas() {
         </div>
       )}
     </div>
+  );
+}
+
+export function AgentCanvas() {
+  return (
+    <ReactFlowProvider>
+      <AgentCanvasInner />
+    </ReactFlowProvider>
   );
 }
