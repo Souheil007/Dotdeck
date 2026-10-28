@@ -789,10 +789,13 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 			"timestamp":         time.Now().UTC(),
 		})
 
+		textContent := "Thought step recorded."
 		resultPayload := map[string]interface{}{
-			"status": "acknowledged",
+			"status":  "acknowledged",
+			"isError": false,
 		}
 		if deliverable, lookupError := server.repository.GetLatestPipelineDeliverable(callingContext.ID); lookupError == nil && deliverable != nil {
+			textContent = fmt.Sprintf("Thought step recorded. Upstream deliverable available from %s: %s\n\n%s", deliverable.SourceAgentName, deliverable.Summary, deliverable.Deliverable)
 			resultPayload["pipeline_deliverable"] = map[string]interface{}{
 				"from_agent":  deliverable.SourceAgentName,
 				"summary":     deliverable.Summary,
@@ -800,6 +803,13 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 				"timestamp":   deliverable.Timestamp,
 			}
 			resultPayload["inbox_notice"] = fmt.Sprintf("Upstream deliverable available from %s: %s", deliverable.SourceAgentName, deliverable.Summary)
+		}
+
+		resultPayload["content"] = []map[string]interface{}{
+			{
+				"type": "text",
+				"text": textContent,
+			},
 		}
 
 		return JSONRPCResponse{
@@ -886,6 +896,13 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 			JSONRPC: "2.0",
 			ID:      rpcRequest.ID,
 			Result: map[string]interface{}{
+				"content": []map[string]interface{}{
+					{
+						"type": "text",
+						"text": "Task completion recorded. Output automatically routed downstream across canvas edges.",
+					},
+				},
+				"isError": false,
 				"status":  "completed",
 				"message": "Task completion recorded. Output automatically routed downstream across canvas edges.",
 			},
@@ -898,6 +915,13 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 				JSONRPC: "2.0",
 				ID:      rpcRequest.ID,
 				Result: map[string]interface{}{
+					"content": []map[string]interface{}{
+						{
+							"type": "text",
+							"text": "No upstream deliverables currently in your pipeline inbox. Upstream connected peers have not called complete_task yet.",
+						},
+					},
+					"isError": false,
 					"status":  "empty",
 					"message": "No upstream deliverables currently in your pipeline inbox. Upstream connected peers have not called complete_task yet.",
 				},
@@ -916,10 +940,22 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 			"timestamp":         time.Now().UTC(),
 		})
 
+		deliverableContent := deliverable.Deliverable
+		if deliverableContent == "" {
+			deliverableContent = deliverable.Summary
+		}
+
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      rpcRequest.ID,
 			Result: map[string]interface{}{
+				"content": []map[string]interface{}{
+					{
+						"type": "text",
+						"text": deliverableContent,
+					},
+				},
+				"isError":     false,
 				"status":      "received",
 				"from_agent":  deliverable.SourceAgentName,
 				"summary":     deliverable.Summary,
@@ -981,19 +1017,35 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 		decisionOutcome, holdError := server.holdEngine.Hold(request.Context(), decisionRequest, 45*time.Second)
 		if holdError != nil {
 			_ = server.repository.UpdateStatus(callingContext.ID, "resting")
+			queuedMsg := "Human operator review pending. Task queued; Dotdeck will wake you upon human decision."
 			return JSONRPCResponse{
 				JSONRPC: "2.0",
 				ID:      rpcRequest.ID,
 				Result: map[string]interface{}{
+					"content": []map[string]interface{}{
+						{
+							"type": "text",
+							"text": queuedMsg,
+						},
+					},
+					"isError": false,
 					"status":  "queued_for_review",
-					"message": "Human operator review pending. Task queued; Dotdeck will wake you upon human decision.",
+					"message": queuedMsg,
 				},
 			}
 		}
 
 		_ = server.repository.UpdateStatus(callingContext.ID, "working")
 		server.resetIdleTimer(callingContext)
+		approvalText := fmt.Sprintf("Human operator approved request: %s (approved by: %s)", decisionOutcome.Answer, decisionOutcome.OperatorID)
 		approvalResult := map[string]interface{}{
+			"content": []map[string]interface{}{
+				{
+					"type": "text",
+					"text": approvalText,
+				},
+			},
+			"isError":     false,
 			"status":      "approved",
 			"user_answer": decisionOutcome.Answer,
 			"approved_by": decisionOutcome.OperatorID,
@@ -1070,12 +1122,20 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 				"timestamp":       time.Now().UTC(),
 			})
 
+			handoffMsg := fmt.Sprintf("Delegation artifact dispatched via Dotdeck collaborative switchboard. Instructions: %s", instructionsText)
 			return JSONRPCResponse{
 				JSONRPC: "2.0",
 				ID:      rpcRequest.ID,
 				Result: map[string]interface{}{
+					"content": []map[string]interface{}{
+						{
+							"type": "text",
+							"text": handoffMsg,
+						},
+					},
+					"isError": false,
 					"status":  "handoff_queued",
-					"message": "Delegation artifact dispatched via Dotdeck collaborative switchboard.",
+					"message": handoffMsg,
 				},
 			}
 		}
