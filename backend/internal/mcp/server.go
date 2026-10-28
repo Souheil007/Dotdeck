@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -567,6 +568,14 @@ func (server *Server) handleWorkspaceHub(writer http.ResponseWriter, request *ht
 	}
 
 	rpcResponse := server.handleMethod(request, agentContext, rpcRequest)
+	respBytes, _ := json.Marshal(rpcResponse)
+	slog.Info("handleWorkspaceHub executed",
+		"method", rpcRequest.Method,
+		"ua", request.UserAgent(),
+		"agentName", agentContext.Name,
+		"agentID", agentContext.ID,
+		"respBytes", len(respBytes),
+	)
 	writer.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(writer).Encode(rpcResponse)
 }

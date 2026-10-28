@@ -30,11 +30,12 @@ type MemoryStore struct {
 }
 
 type memoryStoreData struct {
-	Agents    map[string]*mcp.AgentContext       `json:"agents"`
-	ByID      map[string]*mcp.AgentContext       `json:"by_id"`
-	Edges     map[string][]mcp.EdgeContext       `json:"edges"`
-	Thoughts  map[string][]domain.ThoughtEvent   `json:"thoughts"`
-	Approvals map[string]*domain.ApprovalRequest `json:"approvals"`
+	Agents       map[string]*mcp.AgentContext        `json:"agents"`
+	ByID         map[string]*mcp.AgentContext        `json:"by_id"`
+	Edges        map[string][]mcp.EdgeContext        `json:"edges"`
+	Thoughts     map[string][]domain.ThoughtEvent    `json:"thoughts"`
+	Approvals    map[string]*domain.ApprovalRequest  `json:"approvals"`
+	Deliverables map[string]*mcp.PipelineDeliverable `json:"deliverables"`
 }
 
 func getStoreFilePath() string {
@@ -52,11 +53,12 @@ func getStoreFilePath() string {
 func (store *MemoryStore) persistToDiskLocked() {
 	filePath := getStoreFilePath()
 	data := memoryStoreData{
-		Agents:    store.agents,
-		ByID:      store.byID,
-		Edges:     store.edges,
-		Thoughts:  store.thoughts,
-		Approvals: store.approvals,
+		Agents:       store.agents,
+		ByID:         store.byID,
+		Edges:        store.edges,
+		Thoughts:     store.thoughts,
+		Approvals:    store.approvals,
+		Deliverables: store.deliverables,
 	}
 	bytes, err := json.MarshalIndent(data, "", "  ")
 	if err == nil {
@@ -88,6 +90,9 @@ func (store *MemoryStore) loadFromDisk() bool {
 	}
 	if data.Approvals != nil {
 		store.approvals = data.Approvals
+	}
+	if data.Deliverables != nil {
+		store.deliverables = data.Deliverables
 	}
 	return true
 }
@@ -422,6 +427,7 @@ func (store *MemoryStore) SavePipelineDeliverable(targetAgentID string, delivera
 	store.storeMutex.Lock()
 	defer store.storeMutex.Unlock()
 	store.deliverables[targetAgentID] = &deliverable
+	store.persistToDiskLocked()
 	return nil
 }
 
