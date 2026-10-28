@@ -32,6 +32,10 @@ func BuildTelemetryTool() ToolDefinition {
 					"type":        "integer",
 					"description": "Sequential index of the execution step (optional).",
 				},
+				"agent_name": map[string]interface{}{
+					"type":        "string",
+					"description": "Optional name of your agent persona on the Dotdeck canvas (e.g. 'Grok Scraper') when multiple bots share a workspace connector.",
+				},
 			},
 			"required": []string{"reasoning_trace", "next_planned_step"},
 		},
@@ -82,6 +86,10 @@ func BuildTaskCompletionTool() ToolDefinition {
 				"deliverable": map[string]interface{}{
 					"type":        "string",
 					"description": "Optional full text or markdown representation of the final deliverable output.",
+				},
+				"agent_name": map[string]interface{}{
+					"type":        "string",
+					"description": "Optional name of your agent persona on the Dotdeck canvas (e.g. 'Grok Scraper') when multiple bots share a workspace connector.",
 				},
 			},
 			"required": []string{"summary"},
@@ -148,8 +156,13 @@ func BuildPipelineIngestionTool() ToolDefinition {
 		Name:        "fetch_pipeline_deliverable",
 		Description: "PIPELINE INBOX RETRIEVAL: Retrieves the latest data deliverable, report, or unread emails automatically forwarded to you by upstream connected agents (such as Grok or email reader bots) on the Dotdeck canvas. Invoke this tool at the start of your turn whenever asked to inspect, categorize, summarize, or analyze incoming team data.",
 		InputSchema: map[string]interface{}{
-			"type":       "object",
-			"properties": map[string]interface{}{},
+			"type": "object",
+			"properties": map[string]interface{}{
+				"agent_name": map[string]interface{}{
+					"type":        "string",
+					"description": "Optional name of your agent persona on the Dotdeck canvas (e.g. 'Email Reader') to retrieve deliverables specifically queued for you.",
+				},
+			},
 		},
 	}
 }

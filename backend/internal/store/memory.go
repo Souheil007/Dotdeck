@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -438,6 +439,19 @@ func (store *MemoryStore) GetAgentByWorkspaceAndProvider(workspaceID string, pro
 
 	for _, agentContext := range store.byID {
 		if agentContext.WorkspaceID == workspaceID && agentContext.Provider == string(provider) {
+			return agentContext, nil
+		}
+	}
+	return nil, nil
+}
+
+// GetAgentByWorkspaceAndName looks up an existing agent in a workspace matching an agent name.
+func (store *MemoryStore) GetAgentByWorkspaceAndName(workspaceID, name string) (*mcp.AgentContext, error) {
+	store.storeMutex.RLock()
+	defer store.storeMutex.RUnlock()
+
+	for _, agentContext := range store.byID {
+		if agentContext.WorkspaceID == workspaceID && strings.EqualFold(agentContext.Name, name) {
 			return agentContext, nil
 		}
 	}

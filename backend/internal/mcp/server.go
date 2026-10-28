@@ -50,6 +50,7 @@ type AgentRepository interface {
 	SavePipelineDeliverable(targetAgentID string, deliverable PipelineDeliverable) error
 	GetLatestPipelineDeliverable(agentID string) (*PipelineDeliverable, error)
 	GetAgentByWorkspaceAndProvider(workspaceID string, provider domain.Provider) (*AgentContext, error)
+	GetAgentByWorkspaceAndName(workspaceID, name string) (*AgentContext, error)
 }
 
 // AgentContext contains core metadata required to serve an agent's MCP session.
@@ -737,6 +738,14 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 		}
 	}
 
+	// Dynamically resolve agent context when multiple bots on the same account share a single workspace connector
+	callingContext := agentContext
+	if explicitAgentName, hasName := callArguments.Arguments["agent_name"].(string); hasName && explicitAgentName != "" {
+		if matchedContext, matchErr := server.repository.GetAgentByWorkspaceAndName(agentContext.WorkspaceID, explicitAgentName); matchErr == nil && matchedContext != nil {
+			callingContext = matchedContext
+		}
+	}
+
 	switch callArguments.Name {
 	case "report_thought_step":
 		reasoningTrace, _ := callArguments.Arguments["reasoning_trace"].(string)
@@ -758,13 +767,13 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 			stepNumber = int(rawStep)
 		}
 
-		_ = server.repository.UpdateStatus(agentContext.ID, "working")
-		server.resetIdleTimer(agentContext)
-		_ = server.repository.RecordThought(agentContext.ID, stepNumber, reasoningTrace, nextPlannedStep, callArguments.Name, nil)
+		_ = server.repository.UpdateStatus(callingContext.ID, "working")
+		server.resetIdleTimer(callingContext)
+		_ = server.repository.RecordThought(callingContext.ID, stepNumber, reasoningTrace, nextPlannedStep, callArguments.Name, nil)
 
-		server.broadcaster.Broadcast(agentContext.WorkspaceID, "THOUGHT_STEP_EMITTED", map[string]interface{}{
+		server.broadcaster.Broadcast(callingContext.WorkspaceID, "THOUGHT_STEP_EMITTED", map[string]interface{}{
 			"id":                uuid.New().String(),
-			"agent_id":          agentContext.ID,
+			"agent_id":          callingContext.ID,
 			"step_index":        stepNumber,
 			"reasoning_trace":   reasoningTrace,
 			"next_planned_step": nextPlannedStep,
@@ -778,7 +787,7 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 		}
 
 	case "complete_task":
-		server.stopIdleTimer(agentContext.ID)
+		server.stopIdleTimer(callingContext.ID)
 		summaryText, _ := callArguments.Arguments["summary"].(string)
 		deliverableText, _ := callArguments.Arguments["deliverable"].(string)
 
@@ -793,58 +802,58 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 			}
 		}
 
-		_ = server.repository.UpdateStatus(agentContext.ID, "resting")
-		_ = server.repository.RecordThought(agentContext.ID, 0, summaryText, "Task completed", callArguments.Name, map[string]interface{}{
+		_ = server.repository.UpdateStatus(callingContext.ID, "resting")
+		_ = server.repository.RecordThought(callingContext.ID, 0, summaryText, "Task completed", callArguments.Name, map[string]interface{}{
 			"deliverable": deliverableText,
 		})
 
-		server.broadcaster.Broadcast(agentContext.WorkspaceID, "TASK_COMPLETED", map[string]interface{}{
-			"agent_id":    agentContext.ID,
+		server.broadcaster.Broadcast(callingContext.WorkspaceID, "TASK_COMPLETED", map[string]interface{}{
+			"agent_id":    callingContext.ID,
 			"summary":     summaryText,
 			"deliverable": deliverableText,
 			"timestamp":   time.Now().UTC(),
 		})
 
-		server.broadcaster.Broadcast(agentContext.WorkspaceID, "AGENT_STATE_CHANGED", map[string]interface{}{
-			"agent_id": agentContext.ID,
+		server.broadcaster.Broadcast(callingContext.WorkspaceID, "AGENT_STATE_CHANGED", map[string]interface{}{
+			"agent_id": callingContext.ID,
 			"status":   "resting",
 		})
 
 		// Automatically route completed deliverable downstream across canvas edges
-		outboundEdges, queryError := server.repository.GetOutboundEdges(agentContext.ID)
+		outboundEdges, queryError := server.repository.GetOutboundEdges(callingContext.ID)
 		if queryError == nil && len(outboundEdges) > 0 {
 			for _, edge := range outboundEdges {
 				deliverableRecord := PipelineDeliverable{
-					SourceAgentID:   agentContext.ID,
-					SourceAgentName: agentContext.Name,
+					SourceAgentID:   callingContext.ID,
+					SourceAgentName: callingContext.Name,
 					Summary:         summaryText,
 					Deliverable:     deliverableText,
 					Timestamp:       time.Now().UTC(),
 				}
 				_ = server.repository.SavePipelineDeliverable(edge.TargetAgentID, deliverableRecord)
 
-				ingressReasoning := fmt.Sprintf("Pipeline deliverable automatically routed from %s (%s): %s", agentContext.Name, FormatProviderVendor(agentContext.Provider), summaryText)
+				ingressReasoning := fmt.Sprintf("Pipeline deliverable automatically routed from %s (%s): %s", callingContext.Name, FormatProviderVendor(callingContext.Provider), summaryText)
 				_ = server.repository.RecordThought(edge.TargetAgentID, 0, ingressReasoning, "Awaiting turn or downstream processing", "pipeline_ingress", map[string]interface{}{
-					"source_agent_id":   agentContext.ID,
-					"source_agent_name": agentContext.Name,
+					"source_agent_id":   callingContext.ID,
+					"source_agent_name": callingContext.Name,
 					"summary":           summaryText,
 					"deliverable":       deliverableText,
 				})
 
 				_ = server.repository.UpdateStatus(edge.TargetAgentID, "working")
-				server.resetIdleTimerForAgent(edge.TargetAgentID, agentContext.WorkspaceID)
+				server.resetIdleTimerForAgent(edge.TargetAgentID, callingContext.WorkspaceID)
 
-				server.broadcaster.Broadcast(agentContext.WorkspaceID, "HANDOFF_EMITTED", map[string]interface{}{
-					"source_agent_id": agentContext.ID,
+				server.broadcaster.Broadcast(callingContext.WorkspaceID, "HANDOFF_EMITTED", map[string]interface{}{
+					"source_agent_id": callingContext.ID,
 					"target_agent_id": edge.TargetAgentID,
 					"tool_called":     "complete_task",
-					"instructions":    fmt.Sprintf("Pipeline deliverable automatically routed from %s: %s", agentContext.Name, summaryText),
+					"instructions":    fmt.Sprintf("Pipeline deliverable automatically routed from %s: %s", callingContext.Name, summaryText),
 					"payload":         deliverableText,
 					"reasoning_trace": summaryText,
 					"timestamp":       time.Now().UTC(),
 				})
 
-				server.broadcaster.Broadcast(agentContext.WorkspaceID, "AGENT_STATE_CHANGED", map[string]interface{}{
+				server.broadcaster.Broadcast(callingContext.WorkspaceID, "AGENT_STATE_CHANGED", map[string]interface{}{
 					"agent_id": edge.TargetAgentID,
 					"status":   "working",
 				})
@@ -861,7 +870,7 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 		}
 
 	case "fetch_pipeline_deliverable":
-		deliverable, lookupError := server.repository.GetLatestPipelineDeliverable(agentContext.ID)
+		deliverable, lookupError := server.repository.GetLatestPipelineDeliverable(callingContext.ID)
 		if lookupError != nil || deliverable == nil {
 			return JSONRPCResponse{
 				JSONRPC: "2.0",
@@ -873,12 +882,12 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 			}
 		}
 
-		_ = server.repository.UpdateStatus(agentContext.ID, "working")
-		server.resetIdleTimer(agentContext)
+		_ = server.repository.UpdateStatus(callingContext.ID, "working")
+		server.resetIdleTimer(callingContext)
 
-		_ = server.repository.RecordThought(agentContext.ID, 0, fmt.Sprintf("Ingested upstream deliverable from %s: %s", deliverable.SourceAgentName, deliverable.Summary), "Processing pipeline deliverable payload", "fetch_pipeline_deliverable", deliverable.Deliverable)
-		server.broadcaster.Broadcast(agentContext.WorkspaceID, "THOUGHT_STEP_EMITTED", map[string]interface{}{
-			"agent_id":          agentContext.ID,
+		_ = server.repository.RecordThought(callingContext.ID, 0, fmt.Sprintf("Ingested upstream deliverable from %s: %s", deliverable.SourceAgentName, deliverable.Summary), "Processing pipeline deliverable payload", "fetch_pipeline_deliverable", deliverable.Deliverable)
+		server.broadcaster.Broadcast(callingContext.WorkspaceID, "THOUGHT_STEP_EMITTED", map[string]interface{}{
+			"agent_id":          callingContext.ID,
 			"reasoning_trace":   fmt.Sprintf("Ingested upstream deliverable from %s: %s", deliverable.SourceAgentName, deliverable.Summary),
 			"next_planned_step": "Processing pipeline deliverable payload",
 			"tool_called":       "fetch_pipeline_deliverable",
@@ -921,16 +930,16 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 			}
 		}
 
-		server.stopIdleTimer(agentContext.ID)
+		server.stopIdleTimer(callingContext.ID)
 		approvalIdentifier := uuid.New().String()
-		if recordedID, recordError := server.repository.RecordApproval(agentContext.WorkspaceID, agentContext.ID, questionText, optionsList, reasoningTrace); recordError == nil && recordedID != "" {
+		if recordedID, recordError := server.repository.RecordApproval(callingContext.WorkspaceID, callingContext.ID, questionText, optionsList, reasoningTrace); recordError == nil && recordedID != "" {
 			approvalIdentifier = recordedID
 		}
-		_ = server.repository.UpdateStatus(agentContext.ID, "blocked_on_user")
+		_ = server.repository.UpdateStatus(callingContext.ID, "blocked_on_user")
 
-		server.broadcaster.Broadcast(agentContext.WorkspaceID, "APPROVAL_REQUESTED", map[string]interface{}{
+		server.broadcaster.Broadcast(callingContext.WorkspaceID, "APPROVAL_REQUESTED", map[string]interface{}{
 			"approval_id":     approvalIdentifier,
-			"agent_id":        agentContext.ID,
+			"agent_id":        callingContext.ID,
 			"question":        questionText,
 			"options":         optionsList,
 			"reasoning_trace": reasoningTrace,
@@ -939,8 +948,8 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 
 		decisionRequest := DecisionRequest{
 			ID:             approvalIdentifier,
-			WorkspaceID:    agentContext.WorkspaceID,
-			AgentID:        agentContext.ID,
+			WorkspaceID:    callingContext.WorkspaceID,
+			AgentID:        callingContext.ID,
 			Question:       questionText,
 			Options:        optionsList,
 			ReasoningTrace: reasoningTrace,
@@ -949,7 +958,7 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 
 		decisionOutcome, holdError := server.holdEngine.Hold(request.Context(), decisionRequest, 45*time.Second)
 		if holdError != nil {
-			_ = server.repository.UpdateStatus(agentContext.ID, "resting")
+			_ = server.repository.UpdateStatus(callingContext.ID, "resting")
 			return JSONRPCResponse{
 				JSONRPC: "2.0",
 				ID:      rpcRequest.ID,
@@ -960,8 +969,8 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 			}
 		}
 
-		_ = server.repository.UpdateStatus(agentContext.ID, "working")
-		server.resetIdleTimer(agentContext)
+		_ = server.repository.UpdateStatus(callingContext.ID, "working")
+		server.resetIdleTimer(callingContext)
 		return JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      rpcRequest.ID,
@@ -976,10 +985,10 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 		// Check for dynamic cross-agent delegation tools: delegate_task_to_<peer>
 		if strings.HasPrefix(callArguments.Name, "delegate_task_") {
 			// Enforce runaway cyclic loop guardrail
-			if server.CheckDelegationLoop(agentContext.ID) {
-				_ = server.repository.UpdateStatus(agentContext.ID, "blocked_on_user")
-				server.broadcaster.Broadcast(agentContext.WorkspaceID, "RATE_LIMIT_GUARD", map[string]interface{}{
-					"agent_id":    agentContext.ID,
+			if server.CheckDelegationLoop(callingContext.ID) {
+				_ = server.repository.UpdateStatus(callingContext.ID, "blocked_on_user")
+				server.broadcaster.Broadcast(callingContext.WorkspaceID, "RATE_LIMIT_GUARD", map[string]interface{}{
+					"agent_id":    callingContext.ID,
 					"tool_called": callArguments.Name,
 					"reason":      "Runaway cyclic delegation loop detected (exceeded 5 delegations within 10m window without human review). Execution suspended.",
 					"timestamp":   time.Now().UTC(),
@@ -1011,9 +1020,9 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 
 			// Enforce mandatory piggybacked thought ingestion
 			if reasoningTrace != "" {
-				_ = server.repository.RecordThought(agentContext.ID, 0, reasoningTrace, "Dispatching task delegation", callArguments.Name, artifactPayload)
-				server.broadcaster.Broadcast(agentContext.WorkspaceID, "THOUGHT_STEP_EMITTED", map[string]interface{}{
-					"agent_id":          agentContext.ID,
+				_ = server.repository.RecordThought(callingContext.ID, 0, reasoningTrace, "Dispatching task delegation", callArguments.Name, artifactPayload)
+				server.broadcaster.Broadcast(callingContext.WorkspaceID, "THOUGHT_STEP_EMITTED", map[string]interface{}{
+					"agent_id":          callingContext.ID,
 					"reasoning_trace":   reasoningTrace,
 					"next_planned_step": "Dispatching task delegation to peer",
 					"tool_called":       callArguments.Name,
@@ -1021,8 +1030,8 @@ func (server *Server) handleToolCall(request *http.Request, agentContext *AgentC
 				})
 			}
 
-			server.broadcaster.Broadcast(agentContext.WorkspaceID, "HANDOFF_EMITTED", map[string]interface{}{
-				"source_agent_id": agentContext.ID,
+			server.broadcaster.Broadcast(callingContext.WorkspaceID, "HANDOFF_EMITTED", map[string]interface{}{
+				"source_agent_id": callingContext.ID,
 				"tool_called":     callArguments.Name,
 				"instructions":    instructionsText,
 				"payload":         artifactPayload,

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -490,6 +491,36 @@ func (store *PostgresStore) GetAgentByWorkspaceAndProvider(workspaceID string, p
 
 	for _, agentRecord := range agentRecords {
 		if agentRecord.Provider == string(provider) {
+			return &mcp.AgentContext{
+				ID:          uuidToString(agentRecord.ID),
+				WorkspaceID: uuidToString(agentRecord.WorkspaceID),
+				Name:        agentRecord.Name,
+				Provider:    agentRecord.Provider,
+				Goal:        agentRecord.Goal,
+				Status:      agentRecord.Status,
+			}, nil
+		}
+	}
+	return nil, nil
+}
+
+// GetAgentByWorkspaceAndName looks up an existing agent in a workspace matching an agent name.
+func (store *PostgresStore) GetAgentByWorkspaceAndName(workspaceID, name string) (*mcp.AgentContext, error) {
+	lookupContext, cancelLookup := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelLookup()
+
+	workspaceUUID, parseError := stringToUUID(workspaceID)
+	if parseError != nil {
+		return nil, parseError
+	}
+
+	agentRecords, queryError := store.queries.ListAgentsByWorkspace(lookupContext, workspaceUUID)
+	if queryError != nil {
+		return nil, queryError
+	}
+
+	for _, agentRecord := range agentRecords {
+		if strings.EqualFold(agentRecord.Name, name) {
 			return &mcp.AgentContext{
 				ID:          uuidToString(agentRecord.ID),
 				WorkspaceID: uuidToString(agentRecord.WorkspaceID),

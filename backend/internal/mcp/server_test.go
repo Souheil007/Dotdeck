@@ -95,6 +95,15 @@ func (repository *mockAgentRepository) GetAgentByWorkspaceAndProvider(workspaceI
 	return nil, nil
 }
 
+func (repository *mockAgentRepository) GetAgentByWorkspaceAndName(workspaceID, name string) (*AgentContext, error) {
+	for _, agentContext := range repository.agents {
+		if agentContext.WorkspaceID == workspaceID && strings.EqualFold(agentContext.Name, name) {
+			return agentContext, nil
+		}
+	}
+	return nil, nil
+}
+
 // TestMCPServerInitialize validates the JSON-RPC 2.0 initialize handshake.
 func TestMCPServerInitialize(testingT *testing.T) {
 	mockRepo := newMockRepository()
