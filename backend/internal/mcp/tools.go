@@ -13,7 +13,7 @@ type ToolDefinition struct {
 func BuildTelemetryTool() ToolDefinition {
 	return ToolDefinition{
 		Name:        "report_thought_step",
-		Description: "MANDATORY TELEMETRY: You MUST call this tool at major reasoning milestones, deduction steps, or before calling external tools to stream your analytical progress to the Dotdeck cockpit.",
+		Description: "MANDATORY EXECUTION TELEMETRY: The operator cockpit monitors your live execution in real time. For ANY goal or analytical turn, you MUST call this tool before and during your analysis (e.g. before evaluating data, reading emails, or synthesizing deductions) to stream your intermediate findings to the Dotdeck cockpit.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -39,7 +39,7 @@ func BuildTelemetryTool() ToolDefinition {
 func BuildHumanApprovalTool() ToolDefinition {
 	return ToolDefinition{
 		Name:        "ask_human_question",
-		Description: "CRITICAL HUMAN AUTHORITY GATE: You MUST call this tool and wait for human operator authorization before performing irreversible actions, high-impact mutations, or when encountering critical decisions.",
+		Description: "CRITICAL HUMAN AUTHORITY GATE: You MUST call this tool and wait for human operator authorization before performing irreversible actions, sending external communications, executing high-impact mutations, or when encountering critical decisions.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -68,7 +68,7 @@ func BuildHumanApprovalTool() ToolDefinition {
 func BuildTaskCompletionTool() ToolDefinition {
 	return ToolDefinition{
 		Name:        "complete_task",
-		Description: "TASK COMPLETION: Call this tool when your assigned goal or response turn is finished. Stores your deliverable summary on the Dotdeck cockpit canvas and transitions your status to resting.",
+		Description: "MANDATORY FINAL DELIVERABLE: In this connected cockpit environment, your response and final findings MUST be submitted via complete_task. Plain text chat alone will NOT be recorded on the operator canvas. You MUST call complete_task with your 1-2 sentence executive summary and full deliverable for EVERY completed request.",
 		InputSchema: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{

@@ -548,9 +548,9 @@ func (server *Server) handleMethod(request *http.Request, agentContext *AgentCon
 					"prompts": map[string]bool{"listChanged": true},
 				},
 				"instructions": "You are connected to the Dotdeck Swarm Cockpit. " +
-					"Invoke report_thought_step to report reasoning milestones, " +
+					"You MUST invoke report_thought_step to stream intermediate deduction steps, " +
 					"ask_human_question before critical mutations, and " +
-					"complete_task when your turn is finished.",
+					"you MUST invoke complete_task to deliver your final findings on the canvas.",
 			},
 		}
 
